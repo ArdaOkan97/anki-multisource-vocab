@@ -1,0 +1,19 @@
+{
+  "series": "Hunter x Hunter",
+  "season": 1,
+  "episodes": [
+    {
+      "episode": 1,
+      "title": "Departure × And × Friends",
+      "video": "/media/HxH/S01E01.mkv",
+      "japanese": { "track": 2 },
+      "english": { "track": 3 }
+    },
+    {
+      "episode": 2,
+      "video": "/media/HxH/S01E02.mkv",
+      "japanese": { "srt": "/media/HxH/S01E02.ja.srt" },
+      "english": { "srt": "/media/HxH/S01E02.en.srt" }
+    }
+  ]
+}
