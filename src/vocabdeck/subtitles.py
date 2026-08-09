@@ -21,6 +21,8 @@ _TIMING = re.compile(
 _HTML = re.compile(r"<[^>]+>")
 _ASS_OVERRIDE = re.compile(r"\{\\[^}]+\}")
 _SPEAKER = re.compile(r"^(?:[（(][^）)]{1,24}[）)]\s*)+")
+_ENGLISH_TERMINAL = re.compile(r'[.!?]["”’)]*$')
+_CONTINUATION_ENDINGS = (",", ";", ":", "—", "-", "…")
 
 
 def _millis(hours: str, minutes: str, seconds: str, millis: str) -> int:
@@ -93,33 +95,68 @@ def merge_continuations(cues: Iterable[Cue], max_gap_ms: int = 500) -> List[Cue]
     return merged
 
 
+def _is_continuation(previous: Cue, following: Cue, max_gap_ms: int = 150) -> bool:
+    if following.start_ms - previous.end_ms > max_gap_ms:
+        return False
+    left = previous.text.rstrip()
+    right = following.text.lstrip()
+    return left.endswith(_CONTINUATION_ENDINGS) or (
+        right[:1].islower() and not _ENGLISH_TERMINAL.search(left)
+    )
+
+
+def _translation_groups(candidates: List[Cue]) -> List[List[Cue]]:
+    groups: List[List[Cue]] = []
+    for candidate in candidates:
+        if groups and _is_continuation(groups[-1][-1], candidate):
+            groups[-1].append(candidate)
+        else:
+            groups.append([candidate])
+    return groups
+
+
 def align_translation(cue: Cue, translations: Iterable[Cue]) -> Optional[str]:
     candidates = sorted(translations, key=lambda item: (item.start_ms, item.end_ms))
-    overlapping = []
-    for candidate in candidates:
-        overlap = min(cue.end_ms, candidate.end_ms) - max(cue.start_ms, candidate.start_ms)
-        if overlap > 0:
-            overlapping.append(candidate)
-    if not overlapping:
+    japanese_duration = max(1, cue.end_ms - cue.start_ms)
+    scored = []
+    for group in _translation_groups(candidates):
+        overlap = sum(
+            max(0, min(cue.end_ms, item.end_ms) - max(cue.start_ms, item.start_ms))
+            for item in group
+        )
+        if overlap <= 0:
+            continue
+        group_duration = max(1, group[-1].end_ms - group[0].start_ms)
+        midpoint_distance = abs(
+            (cue.start_ms + cue.end_ms)
+            - (group[0].start_ms + group[-1].end_ms)
+        )
+        scored.append(
+            {
+                "group": group,
+                "overlap": overlap,
+                "group_coverage": overlap / group_duration,
+                "japanese_coverage": overlap / japanese_duration,
+                "midpoint_distance": midpoint_distance,
+            }
+        )
+    if not scored:
         return None
 
-    # Subtitle authors often split one translated sentence across two adjacent
-    # cues while the Japanese captions split it at a different point. Preserve
-    # every overlapping fragment and its immediately connected neighbours.
-    first = candidates.index(overlapping[0])
-    last = candidates.index(overlapping[-1])
-    while first > 0 and candidates[first].start_ms - candidates[first - 1].end_ms <= 120:
-        previous = candidates[first - 1]
-        if previous.end_ms < cue.start_ms - 120:
-            break
-        first -= 1
-    while last + 1 < len(candidates) and candidates[last + 1].start_ms - candidates[last].end_ms <= 120:
-        following = candidates[last + 1]
-        if following.start_ms > cue.end_ms + 120:
-            break
-        last += 1
+    # Keep translations substantially covered by the Japanese interval. Weak
+    # boundary overlaps usually belong to the previous or following utterance.
+    selected = [
+        item for item in scored
+        if item["group_coverage"] >= 0.5 or item["japanese_coverage"] >= 0.35
+    ]
+    if not selected:
+        selected = [
+            max(scored, key=lambda item: (item["overlap"], -item["midpoint_distance"]))
+        ]
+
     texts = []
-    for candidate in candidates[first : last + 1]:
-        if candidate.text not in texts:
-            texts.append(candidate.text)
+    for item in selected:
+        for candidate in item["group"]:
+            if candidate.text not in texts:
+                texts.append(candidate.text)
     return " ".join(texts)

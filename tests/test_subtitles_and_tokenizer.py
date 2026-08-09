@@ -28,6 +28,29 @@ class SubtitleAndTokenizerTest(unittest.TestCase):
             "Being a Hunter is so great, he abandoned his own kid!",
         )
 
+    def test_alignment_drops_weak_previous_boundary_overlap(self):
+        japanese = parse_srt_text(
+            "1\n00:00:03,000 --> 00:00:05,000\n何だよ それ。\n"
+        )[0]
+        english = parse_srt_text(
+            "1\n00:00:01,500 --> 00:00:03,200\nThen you buy me dinner!\n\n"
+            "2\n00:00:03,200 --> 00:00:04,900\nI don't get it.\n"
+        )
+        self.assertEqual(align_translation(japanese, english), "I don't get it.")
+
+    def test_alignment_keeps_multiple_fully_covered_sentences(self):
+        japanese = parse_srt_text(
+            "1\n00:00:01,000 --> 00:00:06,000\n長い日本語の字幕。\n"
+        )[0]
+        english = parse_srt_text(
+            "1\n00:00:01,200 --> 00:00:02,500\nFirst sentence.\n\n"
+            "2\n00:00:02,600 --> 00:00:04,200\nSecond sentence.\n\n"
+            "3\n00:00:05,900 --> 00:00:07,500\nFollowing dialogue.\n"
+        )
+        self.assertEqual(
+            align_translation(japanese, english), "First sentence. Second sentence."
+        )
+
     def test_merges_japanese_arrow_continuations(self):
         cues = parse_srt_text(
             "1\n00:00:01,000 --> 00:00:02,000\n世界一になって→\n\n"
