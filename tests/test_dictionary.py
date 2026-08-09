@@ -27,6 +27,12 @@ class DictionaryTest(unittest.TestCase):
         self.assertIn("not", match.gloss)
         self.assertIn("nonexistent", match.gloss)
 
+    def test_iu_selects_speaking_instead_of_arranging_hair(self):
+        match = self.resolver.resolve("いう", "イウ", "動詞", "What did you say?")
+        self.assertIsNotNone(match)
+        self.assertEqual(match.entry_id, 1587040)
+        self.assertIn("to say", match.gloss)
+
 
 if __name__ == "__main__":
     unittest.main()

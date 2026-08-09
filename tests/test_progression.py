@@ -1,9 +1,25 @@
 import unittest
 
-from vocabdeck.progression import desired_sentence_words, example_score
+from vocabdeck.progression import (
+    desired_sentence_words,
+    example_score,
+    joint_planning_score,
+)
 
 
 class ProgressionTest(unittest.TestCase):
+    def test_joint_planner_values_easy_context_more_at_start(self):
+        common_with_unknown, early = joint_planning_score(15.0, 10.0, position=0)
+        rarer_with_clear_context, _ = joint_planning_score(25.0, 0.0, position=0)
+        self.assertLess(rarer_with_clear_context, common_with_unknown)
+        self.assertEqual(early["context_weight"], 3.0)
+
+    def test_joint_planner_relaxes_context_weight_later(self):
+        common_with_unknown, later = joint_planning_score(15.0, 10.0, position=30)
+        rarer_with_clear_context, _ = joint_planning_score(25.0, 0.0, position=30)
+        self.assertLess(common_with_unknown, rarer_with_clear_context)
+        self.assertEqual(later["context_weight"], 0.6)
+
     def test_desired_sentence_length_grows_gradually(self):
         self.assertEqual(desired_sentence_words(0), 2)
         self.assertEqual(desired_sentence_words(5), 3)
@@ -69,6 +85,27 @@ class ProgressionTest(unittest.TestCase):
 
         self.assertLess(clean_score, mixed_score)
         self.assertTrue(details["multi_utterance"])
+
+    def test_kana_iitai_is_not_used_as_an_example_for_good(self):
+        false_good = {
+            "word_ids": {10},
+            "japanese": "何が いいたい？",
+            "english": "What do you want to say?",
+            "surface": "いい",
+            "lemma": "いい",
+            "target_end": 5,
+        }
+        real_good = dict(
+            false_good,
+            japanese="いいですね。",
+            english="That's good.",
+            target_end=2,
+        )
+
+        false_score, details = example_score(false_good, 10, set(), position=0)
+        real_score, _ = example_score(real_good, 10, set(), position=0)
+        self.assertGreater(false_score, real_score)
+        self.assertTrue(details["sense_mismatch"])
 
 
 if __name__ == "__main__":

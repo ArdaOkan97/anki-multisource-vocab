@@ -15,6 +15,7 @@ _STOPWORDS = {
 }
 _POS_HINTS = {
     "名詞": ("noun", "numeric"),
+    "代名詞": ("pronoun", "noun"),
     "動詞": ("verb",),
     "形容詞": ("adjective",),
     "形状詞": ("adjectival noun", "na-adjective"),
@@ -28,6 +29,9 @@ _POS_HINTS = {
 # cover both uses; JMdict's first sense only describes absence.
 _CORE_GLOSS_OVERRIDES = {
     ("ない", "形容詞"): ("not; nonexistent; without", 1529520, 3),
+    # UniDic normalizes 言う to kana. JMdict also has いう as a rare reading of
+    # 結う, so spelling/reading alone otherwise selects "to arrange hair".
+    ("いう", "動詞"): ("to say; to utter; to call", 1587040, 0),
 }
 
 

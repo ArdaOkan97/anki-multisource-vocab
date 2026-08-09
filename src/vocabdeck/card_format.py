@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import html
+from typing import Optional
 
 
 _POS_LABELS = {
     "名詞": "Noun",
+    "代名詞": "Pronoun",
     "動詞": "Verb",
     "形容詞": "い-Adjective",
     "形状詞": "な-Adjective",
@@ -24,8 +26,27 @@ def hiragana(reading: str) -> str:
     )
 
 
-def blank_target(sentence: str, target: str) -> str:
+def _valid_span(
+    sentence: str, target: str, start: Optional[int], end: Optional[int]
+) -> bool:
+    return (
+        start is not None
+        and end is not None
+        and 0 <= start < end <= len(sentence)
+        and sentence[start:end] == target
+    )
+
+
+def blank_target(
+    sentence: str, target: str, start: Optional[int] = None, end: Optional[int] = None
+) -> str:
     """Escape a sentence and replace its first target occurrence with a review blank."""
+    if _valid_span(sentence, target, start, end):
+        return (
+            html.escape(sentence[:start])
+            + '<span class="target-blank">（　）</span>'
+            + html.escape(sentence[end:])
+        )
     escaped = html.escape(sentence)
     escaped_target = html.escape(target)
     if not escaped_target or escaped_target not in escaped:
@@ -35,7 +56,15 @@ def blank_target(sentence: str, target: str) -> str:
     )
 
 
-def highlight_target(sentence: str, target: str) -> str:
+def highlight_target(
+    sentence: str, target: str, start: Optional[int] = None, end: Optional[int] = None
+) -> str:
+    if _valid_span(sentence, target, start, end):
+        return (
+            html.escape(sentence[:start])
+            + f'<span class="target-answer">{html.escape(target)}</span>'
+            + html.escape(sentence[end:])
+        )
     escaped = html.escape(sentence)
     escaped_target = html.escape(target)
     if not escaped_target:

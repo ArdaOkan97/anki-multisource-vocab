@@ -30,8 +30,14 @@ def render_preview_html(
       <img loading="lazy" src="{image_src}" alt="Source frame">"""
         progression = row.get("example_progression") or {}
         target = str(row.get("target_surface") or row["lemma"])
-        cloze = blank_target(str(row["japanese"]), target)
-        answer_sentence = highlight_target(str(row["japanese"]), target)
+        target_start = row.get("target_start")
+        target_end = row.get("target_end")
+        cloze = blank_target(
+            str(row["japanese"]), target, target_start, target_end
+        )
+        answer_sentence = highlight_target(
+            str(row["japanese"]), target, target_start, target_end
+        )
         hidden = "" if index == 0 else " hidden"
         cards.append(
             f"""<article class="review-card" data-card="{index}"{hidden}>

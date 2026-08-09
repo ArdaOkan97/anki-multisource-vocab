@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import re
 from dataclasses import dataclass
-from typing import Iterable, List
+from typing import Iterable, List, Optional, Tuple
 
 
 @dataclass(frozen=True)
@@ -12,6 +12,8 @@ class LexemeToken:
     lemma: str
     reading: str
     part_of_speech: str
+    start: int = 0
+    end: int = 0
 
     @property
     def key(self) -> str:
@@ -22,7 +24,9 @@ class LexemeToken:
 
 
 _HAS_JAPANESE = re.compile(r"[\u3040-\u30ff\u3400-\u9fff]")
-_CONTENT_POS = {"名詞", "動詞", "形容詞", "形状詞", "副詞", "連体詞", "感動詞"}
+_CONTENT_POS = {
+    "名詞", "代名詞", "動詞", "形容詞", "形状詞", "副詞", "連体詞", "感動詞",
+}
 
 
 def _feature(feature: object, *names: str, default: str = "") -> str:
@@ -31,6 +35,14 @@ def _feature(feature: object, *names: str, default: str = "") -> str:
         if value and value != "*":
             return str(value)
     return default
+
+
+def _contextual_identity(
+    text: str, end: int, lemma: str, reading: str, pos: str
+) -> tuple:
+    if lemma == "いい" and reading == "イイ" and text[end:].startswith("たい"):
+        return "いう", "イウ", "動詞"
+    return lemma, reading, pos
 
 
 class JapaneseTokenizer:
@@ -43,8 +55,16 @@ class JapaneseTokenizer:
 
     def tokenize(self, text: str) -> List[LexemeToken]:
         tokens: List[LexemeToken] = []
+        cursor = 0
         for word in self._tagger(text):
             surface = str(word.surface)
+            start = text.find(surface, cursor)
+            if start < 0:  # Defensive fallback for unexpected tokenizer normalization.
+                start = text.find(surface)
+            if start < 0:
+                start = cursor
+            end = start + len(surface)
+            cursor = end
             feature = word.feature
             pos = _feature(feature, "pos1", default=str(feature).split(",", 1)[0])
             if pos not in _CONTENT_POS or not _HAS_JAPANESE.search(surface):
@@ -55,5 +75,65 @@ class JapaneseTokenizer:
                 continue
             lemma = _feature(feature, "orthBase", "lemma", default=surface)
             reading = _feature(feature, "kanaBase", "pronBase", "kana", default=surface)
-            tokens.append(LexemeToken(surface, lemma, reading, pos))
+            # UniDic can parse kana-only 言いたい as adjective いい followed by
+            # たい. In this contiguous form it is the verb 言う in continuative
+            # form, so canonicalize the occurrence before global deduplication.
+            lemma, reading, pos = _contextual_identity(
+                text, end, lemma, reading, pos
+            )
+            tokens.append(LexemeToken(surface, lemma, reading, pos, start, end))
         return tokens
+
+    def find_inflected_span(
+        self, text: str, lemma: str, reading: str, surface: str
+    ) -> Optional[Tuple[int, int]]:
+        """Locate a lexeme and include directly attached auxiliary inflection."""
+        wanted_lemma = lemma
+        wanted_reading = reading
+        wanted_surface = surface
+        words = []
+        cursor = 0
+        for word in self._tagger(text):
+            word_surface = str(word.surface)
+            start = text.find(word_surface, cursor)
+            if start < 0:
+                start = text.find(word_surface)
+            if start < 0:
+                start = cursor
+            end = start + len(word_surface)
+            cursor = end
+            feature = word.feature
+            lemma = _feature(feature, "orthBase", "lemma", default=word_surface)
+            reading = _feature(
+                feature, "kanaBase", "pronBase", "kana", default=word_surface
+            )
+            pos = _feature(
+                feature, "pos1", default=str(feature).split(",", 1)[0]
+            )
+            lemma, reading, pos = _contextual_identity(
+                text, end, lemma, reading, pos
+            )
+            words.append(
+                {
+                    "surface": word_surface,
+                    "lemma": lemma,
+                    "reading": reading,
+                    "pos": pos,
+                    "start": start,
+                    "end": end,
+                }
+            )
+        for index, word in enumerate(words):
+            if (
+                word["lemma"] != wanted_lemma
+                or word["reading"] != wanted_reading
+                or word["surface"] != wanted_surface
+            ):
+                continue
+            end = int(word["end"])
+            for following in words[index + 1:]:
+                if following["start"] != end or following["pos"] != "助動詞":
+                    break
+                end = int(following["end"])
+            return int(word["start"]), end
+        return None
