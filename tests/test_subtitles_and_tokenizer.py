@@ -68,6 +68,19 @@ class SubtitleAndTokenizerTest(unittest.TestCase):
         span = tokenizer.find_inflected_span(text, "いる", "イル", "い")
         self.assertEqual(text[span[0]:span[1]], "いた")
 
+    def test_pronouns_are_teachable_content_words(self):
+        tokens = JapaneseTokenizer().tokenize("何で そう思う？")
+        by_surface = {token.surface: token for token in tokens}
+        self.assertEqual(by_surface["何"].lemma, "何")
+        self.assertEqual(by_surface["何"].part_of_speech, "代名詞")
+
+    def test_kana_iitai_is_canonicalized_as_iu(self):
+        tokens = JapaneseTokenizer().tokenize("何が いいたい？")
+        by_surface = {token.surface: token for token in tokens}
+        self.assertEqual(by_surface["いい"].lemma, "いう")
+        self.assertEqual(by_surface["いい"].reading, "イウ")
+        self.assertEqual(by_surface["いい"].part_of_speech, "動詞")
+
 
 if __name__ == "__main__":
     unittest.main()

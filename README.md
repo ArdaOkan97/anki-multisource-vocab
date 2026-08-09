@@ -26,7 +26,15 @@ flowchart LR
     N -->|"first answer: reps > 0"| K
 ```
 
-Canonical identity currently uses `(dictionary form, reading, coarse part of speech)`. This deduplicates conjugations while keeping true homographs separate. Treating spelling alone as identity would incorrectly merge words such as homographs with different readings or grammatical roles.
+Canonical identity currently uses `(dictionary form, reading)`. This deduplicates
+conjugations and merges the same learner-facing item when UniDic assigns different
+grammatical roles in different contexts, while keeping homographs with different
+readings separate. Treating spelling alone as identity would incorrectly merge
+those reading distinctions.
+
+Content vocabulary includes nouns, pronouns, verbs, adjectives, adverbs,
+prenominals, and interjections. Grammatical particles and auxiliary tokens are used
+to preserve inflected target spans but are not scheduled as standalone vocabulary.
 
 ## Install
 

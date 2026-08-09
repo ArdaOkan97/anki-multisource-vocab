@@ -4,8 +4,9 @@ from pathlib import Path
 
 from vocabdeck.database import VocabularyDatabase
 from vocabdeck.anki import sync_source
+from vocabdeck.progression import example_score
 from vocabdeck.subtitles import Cue
-from vocabdeck.tokenizer import LexemeToken
+from vocabdeck.tokenizer import JapaneseTokenizer, LexemeToken
 
 
 class CharacterTokenizer:
@@ -130,6 +131,44 @@ class GlobalDeduplicationTest(unittest.TestCase):
         noun = LexemeToken("そう", "そう", "ソウ", "名詞")
         adverb = LexemeToken("そう", "そう", "ソウ", "副詞")
         self.assertEqual(noun.key, adverb.key)
+
+    def test_pronoun_occurrence_counts_as_unknown_sentence_context(self):
+        source = self.db.add_source(
+            series="Pronoun Show", season=1, episode=1, title=None,
+            video_path=None, japanese_subtitle_path="pronoun.srt",
+            english_subtitle_path=None,
+        )
+        self.db.ingest_cues(
+            source,
+            [Cue(1, 0, 1000, "何で そう思う？")],
+            [Cue(1, 0, 1000, "Why do you think so?")],
+            JapaneseTokenizer(),
+        )
+        lexemes = {
+            row["lemma"]: int(row["id"])
+            for row in self.db.connection.execute(
+                "SELECT id, lemma FROM lexemes WHERE lemma IN ('何', 'そう', '思う')"
+            )
+        }
+        self.assertEqual(set(lexemes), {"何", "そう", "思う"})
+        sentence = self.db.connection.execute(
+            "SELECT id, japanese, english FROM sentences WHERE source_id = ?", (source,)
+        ).fetchone()
+        word_ids = {
+            int(row[0]) for row in self.db.connection.execute(
+                "SELECT DISTINCT lexeme_id FROM occurrences WHERE sentence_id = ?",
+                (sentence["id"],),
+            )
+        }
+        _, details = example_score(
+            {
+                "word_ids": word_ids, "japanese": sentence["japanese"],
+                "english": sentence["english"], "surface": "思う", "lemma": "思う",
+            },
+            lexemes["思う"], {lexemes["そう"]}, position=0,
+        )
+        self.assertEqual(details["content_words"], 3)
+        self.assertEqual(details["unknown_other_words"], 1)
 
     def test_unreviewed_shared_card_moves_when_switching_sources(self):
         hxh = self.add_show("Hunter x Hunter", list("ABCDEFXY"))

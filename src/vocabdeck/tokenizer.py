@@ -24,7 +24,9 @@ class LexemeToken:
 
 
 _HAS_JAPANESE = re.compile(r"[\u3040-\u30ff\u3400-\u9fff]")
-_CONTENT_POS = {"名詞", "動詞", "形容詞", "形状詞", "副詞", "連体詞", "感動詞"}
+_CONTENT_POS = {
+    "名詞", "代名詞", "動詞", "形容詞", "形状詞", "副詞", "連体詞", "感動詞",
+}
 
 
 def _feature(feature: object, *names: str, default: str = "") -> str:
@@ -33,6 +35,14 @@ def _feature(feature: object, *names: str, default: str = "") -> str:
         if value and value != "*":
             return str(value)
     return default
+
+
+def _contextual_identity(
+    text: str, end: int, lemma: str, reading: str, pos: str
+) -> tuple:
+    if lemma == "いい" and reading == "イイ" and text[end:].startswith("たい"):
+        return "いう", "イウ", "動詞"
+    return lemma, reading, pos
 
 
 class JapaneseTokenizer:
@@ -65,6 +75,12 @@ class JapaneseTokenizer:
                 continue
             lemma = _feature(feature, "orthBase", "lemma", default=surface)
             reading = _feature(feature, "kanaBase", "pronBase", "kana", default=surface)
+            # UniDic can parse kana-only 言いたい as adjective いい followed by
+            # たい. In this contiguous form it is the verb 言う in continuative
+            # form, so canonicalize the occurrence before global deduplication.
+            lemma, reading, pos = _contextual_identity(
+                text, end, lemma, reading, pos
+            )
             tokens.append(LexemeToken(surface, lemma, reading, pos, start, end))
         return tokens
 
@@ -72,6 +88,9 @@ class JapaneseTokenizer:
         self, text: str, lemma: str, reading: str, surface: str
     ) -> Optional[Tuple[int, int]]:
         """Locate a lexeme and include directly attached auxiliary inflection."""
+        wanted_lemma = lemma
+        wanted_reading = reading
+        wanted_surface = surface
         words = []
         cursor = 0
         for word in self._tagger(text):
@@ -84,25 +103,31 @@ class JapaneseTokenizer:
             end = start + len(word_surface)
             cursor = end
             feature = word.feature
+            lemma = _feature(feature, "orthBase", "lemma", default=word_surface)
+            reading = _feature(
+                feature, "kanaBase", "pronBase", "kana", default=word_surface
+            )
+            pos = _feature(
+                feature, "pos1", default=str(feature).split(",", 1)[0]
+            )
+            lemma, reading, pos = _contextual_identity(
+                text, end, lemma, reading, pos
+            )
             words.append(
                 {
                     "surface": word_surface,
-                    "lemma": _feature(feature, "orthBase", "lemma", default=word_surface),
-                    "reading": _feature(
-                        feature, "kanaBase", "pronBase", "kana", default=word_surface
-                    ),
-                    "pos": _feature(
-                        feature, "pos1", default=str(feature).split(",", 1)[0]
-                    ),
+                    "lemma": lemma,
+                    "reading": reading,
+                    "pos": pos,
                     "start": start,
                     "end": end,
                 }
             )
         for index, word in enumerate(words):
             if (
-                word["lemma"] != lemma
-                or word["reading"] != reading
-                or word["surface"] != surface
+                word["lemma"] != wanted_lemma
+                or word["reading"] != wanted_reading
+                or word["surface"] != wanted_surface
             ):
                 continue
             end = int(word["end"])

@@ -6,6 +6,7 @@ from typing import Optional
 
 _POS_LABELS = {
     "名詞": "Noun",
+    "代名詞": "Pronoun",
     "動詞": "Verb",
     "形容詞": "い-Adjective",
     "形状詞": "な-Adjective",

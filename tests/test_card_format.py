@@ -16,6 +16,7 @@ class CardFormatTest(unittest.TestCase):
         self.assertIn("target-answer", highlight_target("猫がいる。", "猫"))
         self.assertEqual(hiragana("ネコ"), "ねこ")
         self.assertEqual(learner_pos("名詞"), "Noun")
+        self.assertEqual(learner_pos("代名詞"), "Pronoun")
 
     def test_exact_span_avoids_same_text_in_another_word(self):
         sentence = "おい 誰か いねえか～？"

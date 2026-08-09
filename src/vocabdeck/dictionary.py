@@ -15,6 +15,7 @@ _STOPWORDS = {
 }
 _POS_HINTS = {
     "名詞": ("noun", "numeric"),
+    "代名詞": ("pronoun", "noun"),
     "動詞": ("verb",),
     "形容詞": ("adjective",),
     "形状詞": ("adjectival noun", "na-adjective"),
