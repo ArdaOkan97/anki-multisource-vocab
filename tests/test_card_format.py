@@ -17,6 +17,12 @@ class CardFormatTest(unittest.TestCase):
         self.assertEqual(hiragana("ネコ"), "ねこ")
         self.assertEqual(learner_pos("名詞"), "Noun")
 
+    def test_exact_span_avoids_same_text_in_another_word(self):
+        sentence = "おい 誰か いねえか～？"
+        result = blank_target(sentence, "い", 6, 7)
+        self.assertIn("おい 誰か", result)
+        self.assertIn('誰か <span class="target-blank">（　）</span>ねえ', result)
+
     def test_anki_front_does_not_contain_expression_or_full_sentence(self):
         self.assertNotIn("{{Expression}}", FRONT)
         self.assertNotIn("{{Sentence}}", FRONT)

@@ -142,7 +142,18 @@ The default hybrid score combines:
 - sentence difficulty based on the fraction of words already known, length, and grammar,
 - penalties for fragments, missing translations, and dialogue fillers.
 
-Example selection is recalculated greedily at batch time. Each selected target is treated as provisionally known for the cards after it, so early cards prefer short, complete translated sentences with fewer unknown words and later cards can reuse vocabulary introduced earlier in that batch. Desired context grows from two to eight content words. A future refinement can add JLPT/graded vocabulary levels and explicit grammar complexity. Changing metrics reranks only unseen cards and does not disturb Anki review history.
+Word ordering and example selection are planned together at batch time. For each
+position, the planner combines lexical difficulty with the best sentence available
+given the learner's global known words and the targets already selected in that
+batch. Comprehensibility is weighted most heavily for the opening cards and tapers
+as the batch progresses. Each selected target is treated as provisionally known for
+the cards after it, and desired context grows from two to eight content words. Exact
+token spans are retained so an inflected form such as `いた` is blanked in full at
+its morphological occurrence rather than matching an unrelated `い` elsewhere in
+the sentence.
+A future refinement can add JLPT/graded vocabulary levels and explicit grammar
+complexity. Changing metrics reranks only unseen cards and does not disturb Anki
+review history.
 
 ## Important product decisions
 

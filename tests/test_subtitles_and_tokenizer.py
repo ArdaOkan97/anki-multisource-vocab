@@ -50,6 +50,24 @@ class SubtitleAndTokenizerTest(unittest.TestCase):
         self.assertEqual((by_surface["し"].lemma, by_surface["し"].reading), ("する", "スル"))
         self.assertNotIn("レオ", by_surface)
 
+    def test_tracks_exact_span_for_inflected_iru_after_unrelated_i(self):
+        text = "おい 誰か いねえか～？"
+        tokenizer = JapaneseTokenizer()
+        tokens = tokenizer.tokenize(text)
+        target = next(token for token in tokens if token.lemma == "いる")
+        self.assertEqual(target.surface, "い")
+        self.assertEqual(text[target.start:target.end], "い")
+        self.assertEqual(target.start, 6)
+        span = tokenizer.find_inflected_span(text, "いる", "イル", "い")
+        self.assertEqual(span, (6, 9))
+        self.assertEqual(text[span[0]:span[1]], "いねえ")
+
+    def test_inflected_span_includes_past_auxiliary(self):
+        text = "去年もいたのか？"
+        tokenizer = JapaneseTokenizer()
+        span = tokenizer.find_inflected_span(text, "いる", "イル", "い")
+        self.assertEqual(text[span[0]:span[1]], "いた")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import re
 from dataclasses import dataclass
-from typing import Iterable, List
+from typing import Iterable, List, Optional, Tuple
 
 
 @dataclass(frozen=True)
@@ -12,6 +12,8 @@ class LexemeToken:
     lemma: str
     reading: str
     part_of_speech: str
+    start: int = 0
+    end: int = 0
 
     @property
     def key(self) -> str:
@@ -43,8 +45,16 @@ class JapaneseTokenizer:
 
     def tokenize(self, text: str) -> List[LexemeToken]:
         tokens: List[LexemeToken] = []
+        cursor = 0
         for word in self._tagger(text):
             surface = str(word.surface)
+            start = text.find(surface, cursor)
+            if start < 0:  # Defensive fallback for unexpected tokenizer normalization.
+                start = text.find(surface)
+            if start < 0:
+                start = cursor
+            end = start + len(surface)
+            cursor = end
             feature = word.feature
             pos = _feature(feature, "pos1", default=str(feature).split(",", 1)[0])
             if pos not in _CONTENT_POS or not _HAS_JAPANESE.search(surface):
@@ -55,5 +65,50 @@ class JapaneseTokenizer:
                 continue
             lemma = _feature(feature, "orthBase", "lemma", default=surface)
             reading = _feature(feature, "kanaBase", "pronBase", "kana", default=surface)
-            tokens.append(LexemeToken(surface, lemma, reading, pos))
+            tokens.append(LexemeToken(surface, lemma, reading, pos, start, end))
         return tokens
+
+    def find_inflected_span(
+        self, text: str, lemma: str, reading: str, surface: str
+    ) -> Optional[Tuple[int, int]]:
+        """Locate a lexeme and include directly attached auxiliary inflection."""
+        words = []
+        cursor = 0
+        for word in self._tagger(text):
+            word_surface = str(word.surface)
+            start = text.find(word_surface, cursor)
+            if start < 0:
+                start = text.find(word_surface)
+            if start < 0:
+                start = cursor
+            end = start + len(word_surface)
+            cursor = end
+            feature = word.feature
+            words.append(
+                {
+                    "surface": word_surface,
+                    "lemma": _feature(feature, "orthBase", "lemma", default=word_surface),
+                    "reading": _feature(
+                        feature, "kanaBase", "pronBase", "kana", default=word_surface
+                    ),
+                    "pos": _feature(
+                        feature, "pos1", default=str(feature).split(",", 1)[0]
+                    ),
+                    "start": start,
+                    "end": end,
+                }
+            )
+        for index, word in enumerate(words):
+            if (
+                word["lemma"] != lemma
+                or word["reading"] != reading
+                or word["surface"] != surface
+            ):
+                continue
+            end = int(word["end"])
+            for following in words[index + 1:]:
+                if following["start"] != end or following["pos"] != "助動詞":
+                    break
+                end = int(following["end"])
+            return int(word["start"]), end
+        return None

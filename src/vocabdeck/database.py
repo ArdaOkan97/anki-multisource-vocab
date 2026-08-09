@@ -335,13 +335,18 @@ class VocabularyDatabase:
         )
         from .difficulty import rank_candidates
 
-        ranked = rank_candidates(rows, metric)[:limit]
-        return self._apply_progressive_examples(ranked, source_ids)
+        ranked = rank_candidates(rows, metric)
+        # Joint planning over a bounded lexical shortlist keeps batch generation
+        # responsive without allowing a rare word with a trivial subtitle to
+        # leapfrog arbitrarily far ahead of broadly useful vocabulary.
+        pool_size = min(len(ranked), max(100, limit * 5))
+        return self._plan_progressive_batch(ranked[:pool_size], source_ids, limit)
 
-    def _apply_progressive_examples(
-        self, rows: List[dict], source_ids: Sequence[int]
+    def _plan_progressive_batch(
+        self, rows: List[dict], source_ids: Sequence[int], limit: int
     ) -> List[dict]:
-        from .progression import example_score
+        from .progression import example_score, joint_planning_score
+        from .tokenizer import JapaneseTokenizer
 
         if not rows:
             return rows
@@ -351,8 +356,14 @@ class VocabularyDatabase:
             )
         }
         markers = ",".join("?" for _ in source_ids)
-        for position, row in enumerate(rows):
-            examples = list(
+        tokenizer = JapaneseTokenizer()
+        examples_by_lexeme: Dict[int, List[dict]] = {}
+
+        def load_examples(row: dict) -> List[dict]:
+            lexeme_id = int(row["lexeme_id"])
+            if lexeme_id in examples_by_lexeme:
+                return examples_by_lexeme[lexeme_id]
+            example_rows = list(
                 self.connection.execute(
                     f"""SELECT s.id AS sentence_id, s.japanese, s.english,
                                s.start_ms, s.end_ms, s.source_id, s.cue_index,
@@ -365,34 +376,70 @@ class VocabularyDatabase:
                         JOIN occurrences all_words ON all_words.sentence_id = s.id
                         WHERE target.lexeme_id = ? AND s.source_id IN ({markers})
                         GROUP BY s.id, target.surface""",
-                    (row["lexeme_id"], *source_ids),
+                    (lexeme_id, *source_ids),
                 )
             )
-            best = None
-            for candidate_row in examples:
+            examples = []
+            for candidate_row in example_rows:
                 candidate = dict(candidate_row)
                 candidate["word_ids"] = {
                     int(value) for value in candidate.pop("word_ids_csv").split(",")
                 }
                 candidate["lemma"] = row["lemma"]
-                score, details = example_score(
-                    candidate, int(row["lexeme_id"]), known_ids, position
+                span = tokenizer.find_inflected_span(
+                    candidate["japanese"], row["lemma"], row["reading"],
+                    candidate["surface"],
                 )
-                if best is None or score < best[0]:
-                    best = (score, candidate, details)
-            if best is not None:
-                _, candidate, details = best
-                for field in (
-                    "japanese", "english", "start_ms", "end_ms", "source_id",
-                    "cue_index", "series", "season", "episode", "video_path",
-                ):
-                    row[field] = candidate[field]
-                row["sentence_word_count"] = len(candidate["word_ids"])
-                row["sentence_unknown_word_count"] = details["unknown_other_words"] + 1
-                row["target_surface"] = candidate["surface"]
-                row["example_progression"] = details
+                if span:
+                    candidate["target_start"], candidate["target_end"] = span
+                    candidate["surface"] = candidate["japanese"][span[0]:span[1]]
+                examples.append(candidate)
+            examples_by_lexeme[lexeme_id] = examples
+            return examples
+
+        remaining = list(rows)
+        selected = []
+        for position in range(min(limit, len(remaining))):
+            best_plan = None
+            for rank_index, row in enumerate(remaining):
+                best_example = None
+                for candidate in load_examples(row):
+                    score, details = example_score(
+                        candidate, int(row["lexeme_id"]), known_ids, position
+                    )
+                    if best_example is None or score < best_example[0]:
+                        best_example = (score, candidate, details)
+                if best_example is None:
+                    continue
+                example_value, candidate, details = best_example
+                joint_value, planner = joint_planning_score(
+                    float(row["difficulty_score"]), example_value, position
+                )
+                plan = (
+                    joint_value, float(row["difficulty_score"]), rank_index,
+                    row, candidate, details, planner,
+                )
+                if best_plan is None or plan[:3] < best_plan[:3]:
+                    best_plan = plan
+            if best_plan is None:
+                break
+            _, _, rank_index, row, candidate, details, planner = best_plan
+            remaining.pop(rank_index)
+            for field in (
+                "japanese", "english", "start_ms", "end_ms", "source_id",
+                "cue_index", "series", "season", "episode", "video_path",
+            ):
+                row[field] = candidate[field]
+            row["sentence_word_count"] = len(candidate["word_ids"])
+            row["sentence_unknown_word_count"] = details["unknown_other_words"] + 1
+            row["target_surface"] = candidate["surface"]
+            row["target_start"] = candidate.get("target_start")
+            row["target_end"] = candidate.get("target_end")
+            row["example_progression"] = details
+            row["batch_planning"] = planner
+            selected.append(row)
             known_ids.add(int(row["lexeme_id"]))
-        return rows
+        return selected
 
     def enrich_dictionary(
         self, source_ids: Optional[Sequence[int]] = None, force: bool = False

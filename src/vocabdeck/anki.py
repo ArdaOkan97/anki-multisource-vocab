@@ -157,18 +157,27 @@ def sync_source(
                 "dictionary_sense_index": row.get("dictionary_sense_index"),
                 "dictionary_confidence": row.get("dictionary_confidence"),
                 "target_surface": row.get("target_surface"),
+                "target_start": row.get("target_start"),
+                "target_end": row.get("target_end"),
                 "example_progression": row.get("example_progression"),
+                "batch_planning": row.get("batch_planning"),
             },
             ensure_ascii=False,
         )
         target = str(row.get("target_surface") or row["lemma"])
+        target_start = row.get("target_start")
+        target_end = row.get("target_end")
         fields = {
             "LexemeKey": str(row["lexeme_key"]), "Expression": str(row["lemma"]),
             "Reading": hiragana(str(row["reading"])),
             "PartOfSpeech": learner_pos(str(row["part_of_speech"])),
             "Gloss": str(row.get("gloss") or ""), "Sentence": str(row["japanese"]),
-            "SentenceCloze": blank_target(str(row["japanese"]), target),
-            "SentenceAnswer": highlight_target(str(row["japanese"]), target),
+            "SentenceCloze": blank_target(
+                str(row["japanese"]), target, target_start, target_end
+            ),
+            "SentenceAnswer": highlight_target(
+                str(row["japanese"]), target, target_start, target_end
+            ),
             "SentenceEnglish": str(row.get("english") or ""), "SentenceAudio": sentence_audio,
             "Image": image, "Source": source_label, "Metadata": metadata,
         }
