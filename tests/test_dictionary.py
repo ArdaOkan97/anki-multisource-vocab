@@ -43,6 +43,11 @@ class DictionaryTest(unittest.TestCase):
     def test_does_not_invent_compositional_expression(self):
         self.assertIsNone(JMDictExpressionResolver().resolve("どうする", "ドウスル"))
 
+    def test_plain_compound_is_not_an_opaque_expression_candidate(self):
+        self.assertIsNone(
+            JMDictExpressionResolver().resolve("試験官", "シケンカン")
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

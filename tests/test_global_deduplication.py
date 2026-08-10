@@ -6,6 +6,7 @@ from unittest.mock import patch
 from vocabdeck.database import VocabularyDatabase
 from vocabdeck.anki import sync_source
 from vocabdeck.progression import example_score
+from vocabdeck.semantics import ExpressionDecision
 from vocabdeck.subtitles import Cue
 from vocabdeck.tokenizer import JapaneseTokenizer, LexemeToken
 
@@ -13,6 +14,27 @@ from vocabdeck.tokenizer import JapaneseTokenizer, LexemeToken
 class CharacterTokenizer:
     def tokenize(self, text):
         return [LexemeToken(char, char, char, "名詞") for char in text.replace(" ", "")]
+
+
+class FixedExpressionScorer:
+    def __init__(self, decision):
+        self.decision = decision
+
+    def decide(
+        self, english, phrase_senses, component_glosses, standalone=False
+    ):
+        phrase_score = 0.95 if self.decision == "expression" else 0.20
+        component_score = 0.20 if self.decision == "expression" else 0.95
+        return ExpressionDecision(
+            decision=self.decision,
+            phrase_score=phrase_score,
+            component_score=component_score,
+            margin=phrase_score - component_score,
+            opacity=0.80,
+            phrase_description=phrase_senses[0],
+            component_description=" | ".join(component_glosses),
+            model="test-embedder",
+        )
 
 
 class FakeAnkiConnect:
@@ -181,7 +203,9 @@ class GlobalDeduplicationTest(unittest.TestCase):
             source,
             [Cue(1, 0, 1000, "どうも。"), Cue(2, 1000, 2000, "どうする？")],
             [Cue(1, 0, 1000, "Thank you."), Cue(2, 1000, 2000, "What will you do?")],
-            JapaneseTokenizer(),
+            JapaneseTokenizer(
+                expression_scorer=FixedExpressionScorer("expression")
+            ),
         )
 
         occurrences = {
@@ -199,6 +223,43 @@ class GlobalDeduplicationTest(unittest.TestCase):
         self.assertNotIn(("どう", "どうも。"), occurrences)
         self.assertIn(("どう", "どうする？"), occurrences)
         self.assertIn(("する", "どうする？"), occurrences)
+        analysis = self.db.connection.execute(
+            """SELECT decision, model FROM expression_analyses
+               WHERE sentence_id = (
+                 SELECT id FROM sentences WHERE source_id = ? AND cue_index = 1
+               ) AND surface = 'どうも'""",
+            (source,),
+        ).fetchone()
+        self.assertEqual((analysis["decision"], analysis["model"]), (
+            "expression", "test-embedder"
+        ))
+
+    def test_rejected_expression_keeps_component_occurrences(self):
+        source = self.db.add_source(
+            series="Literal Show", season=1, episode=1, title=None,
+            video_path=None, japanese_subtitle_path="literal.srt",
+            english_subtitle_path=None,
+        )
+        self.db.ingest_cues(
+            source,
+            [Cue(1, 0, 1000, "いい顔だぁ！")],
+            [Cue(1, 0, 1000, "I really do love that look.")],
+            JapaneseTokenizer(
+                expression_scorer=FixedExpressionScorer("components")
+            ),
+        )
+        lemmas = {
+            row[0] for row in self.db.connection.execute(
+                """SELECT l.lemma FROM occurrences o
+                   JOIN lexemes l ON l.id = o.lexeme_id
+                   JOIN sentences s ON s.id = o.sentence_id
+                   WHERE s.source_id = ?""",
+                (source,),
+            )
+        }
+        self.assertIn("いい", lemmas)
+        self.assertIn("顔", lemmas)
+        self.assertNotIn("いい顔", lemmas)
 
     def test_planner_prefers_an_easier_unknown_context_word(self):
         source = self.add_show("Difficulty Show", ["AB", "AC"])

@@ -16,6 +16,12 @@ from .subtitles import merge_continuations, read_srt
 from .tokenizer import JapaneseTokenizer
 
 
+def _semantic_tokenizer() -> JapaneseTokenizer:
+    from .semantics import ExpressionSemanticScorer
+
+    return JapaneseTokenizer(expression_scorer=ExpressionSemanticScorer())
+
+
 def _database(path: str) -> VocabularyDatabase:
     db = VocabularyDatabase(Path(path).expanduser().resolve())
     db.initialize()
@@ -178,14 +184,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 db, series=args.series, season=args.season, episode=args.episode,
                 title=args.title, video=args.video, ja_srt=args.ja_srt,
                 en_srt=args.en_srt, ja_track=args.ja_track, en_track=args.en_track,
-                tokenizer=JapaneseTokenizer(),
+                tokenizer=_semantic_tokenizer(),
             )
             print(json.dumps(result, ensure_ascii=False))
         elif args.command == "ingest-manifest":
             manifest_path = args.manifest.resolve()
             data = json.loads(manifest_path.read_text(encoding="utf-8"))
             selected = set(args.episodes)
-            tokenizer = JapaneseTokenizer()
+            tokenizer = _semantic_tokenizer()
             results = []
             for item in data["episodes"]:
                 episode = int(item["episode"])

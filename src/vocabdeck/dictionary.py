@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Optional
+from typing import Optional, Tuple
 
 from jamdict import Jamdict
 
@@ -86,6 +86,8 @@ class ExpressionMatch:
     lemma: str
     reading: str
     entry_id: int
+    senses: Tuple[str, ...]
+    sense_indices: Tuple[int, ...]
 
 
 class JMDictExpressionResolver:
@@ -105,16 +107,35 @@ class JMDictExpressionResolver:
             readings = [form.text for form in entry.kana_forms]
             if surface not in spellings and surface not in readings:
                 continue
+            entry_pos = " ".join(
+                str(pos).lower() for sense in entry.senses for pos in sense.pos
+            )
+            if "expressions (phrases" not in entry_pos and "interjection" not in entry_pos:
+                continue
             selected_reading = reading or (
                 surface if surface in readings
                 else (readings[0] if readings else surface)
             )
+            senses = []
+            sense_indices = []
+            for sense_index, sense in enumerate(entry.senses):
+                glosses = [
+                    gloss.text for gloss in sense.gloss
+                    if gloss.lang in ("", "eng")
+                ]
+                if glosses:
+                    description = "; ".join(glosses[:4])
+                    if description not in senses:
+                        senses.append(description)
+                        sense_indices.append(sense_index)
             score = _priority(entry.kanji_forms + entry.kana_forms)
             score += 0.25 if surface in spellings else 0.0
             match = ExpressionMatch(
                 lemma=surface,
                 reading=_katakana(selected_reading),
                 entry_id=int(entry.idseq),
+                senses=tuple(senses),
+                sense_indices=tuple(sense_indices),
             )
             if best is None or score > best[0]:
                 best = (score, match)
