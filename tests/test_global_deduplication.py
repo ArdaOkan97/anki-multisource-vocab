@@ -141,17 +141,17 @@ class GlobalDeduplicationTest(unittest.TestCase):
         )
         self.db.ingest_cues(
             source,
-            [Cue(1, 0, 1000, "何で そう思う？")],
-            [Cue(1, 0, 1000, "Why do you think so?")],
+            [Cue(1, 0, 1000, "何を思う？")],
+            [Cue(1, 0, 1000, "What do you think?")],
             JapaneseTokenizer(),
         )
         lexemes = {
             row["lemma"]: int(row["id"])
             for row in self.db.connection.execute(
-                "SELECT id, lemma FROM lexemes WHERE lemma IN ('何', 'そう', '思う')"
+                "SELECT id, lemma FROM lexemes WHERE lemma IN ('何', '思う')"
             )
         }
-        self.assertEqual(set(lexemes), {"何", "そう", "思う"})
+        self.assertEqual(set(lexemes), {"何", "思う"})
         sentence = self.db.connection.execute(
             "SELECT id, japanese, english FROM sentences WHERE source_id = ?", (source,)
         ).fetchone()
@@ -166,10 +166,39 @@ class GlobalDeduplicationTest(unittest.TestCase):
                 "word_ids": word_ids, "japanese": sentence["japanese"],
                 "english": sentence["english"], "surface": "思う", "lemma": "思う",
             },
-            lexemes["思う"], {lexemes["そう"]}, position=0,
+            lexemes["思う"], set(), position=0,
         )
-        self.assertEqual(details["content_words"], 3)
+        self.assertEqual(details["content_words"], 2)
         self.assertEqual(details["unknown_other_words"], 1)
+
+    def test_expression_ingestion_does_not_count_opaque_component(self):
+        source = self.db.add_source(
+            series="Expression Show", season=1, episode=1, title=None,
+            video_path=None, japanese_subtitle_path="expression.srt",
+            english_subtitle_path=None,
+        )
+        self.db.ingest_cues(
+            source,
+            [Cue(1, 0, 1000, "どうも。"), Cue(2, 1000, 2000, "どうする？")],
+            [Cue(1, 0, 1000, "Thank you."), Cue(2, 1000, 2000, "What will you do?")],
+            JapaneseTokenizer(),
+        )
+
+        occurrences = {
+            (row["lemma"], row["japanese"])
+            for row in self.db.connection.execute(
+                """SELECT l.lemma, s.japanese FROM occurrences o
+                   JOIN lexemes l ON l.id = o.lexeme_id
+                   JOIN sentences s ON s.id = o.sentence_id
+                   WHERE s.source_id = ?""",
+                (source,),
+            )
+        }
+
+        self.assertIn(("どうも", "どうも。"), occurrences)
+        self.assertNotIn(("どう", "どうも。"), occurrences)
+        self.assertIn(("どう", "どうする？"), occurrences)
+        self.assertIn(("する", "どうする？"), occurrences)
 
     def test_planner_prefers_an_easier_unknown_context_word(self):
         source = self.add_show("Difficulty Show", ["AB", "AC"])

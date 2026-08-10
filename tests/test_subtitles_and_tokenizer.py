@@ -92,10 +92,29 @@ class SubtitleAndTokenizerTest(unittest.TestCase):
         self.assertEqual(text[span[0]:span[1]], "いた")
 
     def test_pronouns_are_teachable_content_words(self):
-        tokens = JapaneseTokenizer().tokenize("何で そう思う？")
+        tokens = JapaneseTokenizer().tokenize("何？")
         by_surface = {token.surface: token for token in tokens}
         self.assertEqual(by_surface["何"].lemma, "何")
         self.assertEqual(by_surface["何"].part_of_speech, "代名詞")
+
+    def test_dictionary_expression_suppresses_component_occurrences(self):
+        tokens = JapaneseTokenizer().tokenize("どうも。")
+        self.assertEqual(
+            [(token.surface, token.lemma, token.part_of_speech) for token in tokens],
+            [("どうも", "どうも", "表現")],
+        )
+
+    def test_compositional_words_remain_separate(self):
+        tokens = JapaneseTokenizer().tokenize("どうする？")
+        self.assertEqual(
+            [(token.lemma, token.part_of_speech) for token in tokens],
+            [("どう", "副詞"), ("する", "動詞")],
+        )
+
+    def test_expression_target_span_covers_complete_phrase(self):
+        tokenizer = JapaneseTokenizer()
+        span = tokenizer.find_inflected_span("どうも。", "どうも", "ドウモ", "どうも")
+        self.assertEqual(span, (0, 3))
 
     def test_kana_iitai_is_canonicalized_as_iu(self):
         tokens = JapaneseTokenizer().tokenize("何が いいたい？")

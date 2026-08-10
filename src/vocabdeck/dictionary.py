@@ -22,6 +22,7 @@ _POS_HINTS = {
     "副詞": ("adverb",),
     "連体詞": ("pre-noun", "prenominal"),
     "感動詞": ("interjection",),
+    "表現": ("expressions", "interjection", "adverb"),
 }
 
 # UniDic groups lexical 無い and the negative auxiliary under the same coarse
@@ -39,6 +40,17 @@ def _hiragana(value: str) -> str:
     return "".join(
         chr(ord(char) - 0x60) if "ァ" <= char <= "ヶ" else char for char in value
     )
+
+
+def _katakana(value: str) -> str:
+    return "".join(
+        chr(ord(char) + 0x60) if "ぁ" <= char <= "ゖ" else char for char in value
+    )
+
+
+@lru_cache(maxsize=1)
+def _dictionary() -> Jamdict:
+    return Jamdict()
 
 
 def _words(value: str) -> set:
@@ -69,9 +81,49 @@ class DictionaryMatch:
     confidence: float
 
 
+@dataclass(frozen=True)
+class ExpressionMatch:
+    lemma: str
+    reading: str
+    entry_id: int
+
+
+class JMDictExpressionResolver:
+    """Find exact JMdict entries spanning multiple tokenizer tokens."""
+
+    def __init__(self) -> None:
+        self.dictionary = _dictionary()
+
+    @lru_cache(maxsize=100_000)
+    def resolve(self, surface: str) -> Optional[ExpressionMatch]:
+        result = self.dictionary.lookup(
+            surface, lookup_chars=False, lookup_ne=False
+        )
+        best = None
+        for entry in result.entries:
+            spellings = [form.text for form in entry.kanji_forms]
+            readings = [form.text for form in entry.kana_forms]
+            if surface not in spellings and surface not in readings:
+                continue
+            reading = (
+                surface if surface in readings
+                else (readings[0] if readings else surface)
+            )
+            score = _priority(entry.kanji_forms + entry.kana_forms)
+            score += 0.25 if surface in spellings else 0.0
+            match = ExpressionMatch(
+                lemma=surface,
+                reading=_katakana(reading),
+                entry_id=int(entry.idseq),
+            )
+            if best is None or score > best[0]:
+                best = (score, match)
+        return best[1] if best else None
+
+
 class JMDictResolver:
     def __init__(self) -> None:
-        self.dictionary = Jamdict()
+        self.dictionary = _dictionary()
 
     @lru_cache(maxsize=100_000)
     def resolve(

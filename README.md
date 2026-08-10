@@ -36,6 +36,15 @@ Content vocabulary includes nouns, pronouns, verbs, adjectives, adverbs,
 prenominals, and interjections. Grammatical particles and auxiliary tokens are used
 to preserve inflected target spans but are not scheduled as standalone vocabulary.
 
+Before recording those tokens, the tokenizer performs deterministic longest-match
+lookups against the bundled offline JMdict data. When adjacent tokenizer tokens
+form an exact dictionary expression, the expression becomes one vocabulary item
+and its opaque components are not recorded as standalone occurrences for that
+sentence. For example, `どうも。` is stored as the expression `どうも` ("thanks")
+rather than as an example of standalone `どう` ("how"). A compositional sequence
+without an exact expression entry, such as `どうする？`, remains split into `どう`
+and `する`. This process is local and does not require an LLM or network service.
+
 ## Install
 
 Requirements: Python 3.9+, `ffmpeg`/`ffprobe`, desktop Anki, and the AnkiConnect add-on for direct synchronization.

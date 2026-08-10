@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import re
 from dataclasses import dataclass
-from typing import Iterable, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 
 @dataclass(frozen=True)
@@ -52,9 +52,12 @@ class JapaneseTokenizer:
         except ImportError as exc:  # pragma: no cover - packaging failure path
             raise RuntimeError("Japanese tokenization requires: pip install fugashi unidic-lite") from exc
         self._tagger = fugashi.Tagger()
+        from .dictionary import JMDictExpressionResolver
 
-    def tokenize(self, text: str) -> List[LexemeToken]:
-        tokens: List[LexemeToken] = []
+        self._expressions = JMDictExpressionResolver()
+
+    def _morphs(self, text: str) -> List[Dict[str, Any]]:
+        words = []
         cursor = 0
         for word in self._tagger(text):
             surface = str(word.surface)
@@ -67,21 +70,96 @@ class JapaneseTokenizer:
             cursor = end
             feature = word.feature
             pos = _feature(feature, "pos1", default=str(feature).split(",", 1)[0])
+            lemma = _feature(feature, "orthBase", "lemma", default=surface)
+            reading = _feature(
+                feature, "kanaBase", "pronBase", "kana", default=surface
+            )
+            lemma, reading, pos = _contextual_identity(
+                text, end, lemma, reading, pos
+            )
+            words.append(
+                {
+                    "surface": surface,
+                    "lemma": lemma,
+                    "reading": reading,
+                    "pos": pos,
+                    "pos2": _feature(feature, "pos2"),
+                    "start": start,
+                    "end": end,
+                }
+            )
+        return words
+
+    def _expression_tokens(
+        self, text: str, words: List[Dict[str, Any]]
+    ) -> Tuple[Dict[int, LexemeToken], Set[int]]:
+        expressions: Dict[int, LexemeToken] = {}
+        claimed: Set[int] = set()
+        index = 0
+        while index < len(words):
+            selected = None
+            for end_index in range(min(len(words), index + 4), index + 1, -1):
+                span = words[index:end_index]
+                if any(word["pos"] == "補助記号" for word in span):
+                    continue
+                if any(
+                    span[offset]["end"] != span[offset + 1]["start"]
+                    for offset in range(len(span) - 1)
+                ):
+                    continue
+                if not any(word["pos"] in _CONTENT_POS for word in span):
+                    continue
+                start = int(span[0]["start"])
+                end = int(span[-1]["end"])
+                surface = text[start:end]
+                if not _HAS_JAPANESE.search(surface):
+                    continue
+                match = self._expressions.resolve(surface)
+                if match is not None:
+                    selected = (
+                        end_index,
+                        LexemeToken(
+                            surface, match.lemma, match.reading, "表現", start, end
+                        ),
+                    )
+                    break
+            if selected is None:
+                index += 1
+                continue
+            end_index, token = selected
+            expressions[index] = token
+            claimed.update(range(index, end_index))
+            index = end_index
+        return expressions, claimed
+
+    def tokenize(self, text: str) -> List[LexemeToken]:
+        tokens: List[LexemeToken] = []
+        words = self._morphs(text)
+        expressions, claimed = self._expression_tokens(text, words)
+        for index, word in enumerate(words):
+            if index in expressions:
+                tokens.append(expressions[index])
+                continue
+            if index in claimed:
+                continue
+            surface = str(word["surface"])
+            pos = str(word["pos"])
             if pos not in _CONTENT_POS or not _HAS_JAPANESE.search(surface):
                 continue
             # Proper names are excellent source metadata but poor global-core
             # vocabulary candidates, and UniDic may romanize their lemma values.
-            if pos == "名詞" and _feature(feature, "pos2") == "固有名詞":
+            if pos == "名詞" and word["pos2"] == "固有名詞":
                 continue
-            lemma = _feature(feature, "orthBase", "lemma", default=surface)
-            reading = _feature(feature, "kanaBase", "pronBase", "kana", default=surface)
-            # UniDic can parse kana-only 言いたい as adjective いい followed by
-            # たい. In this contiguous form it is the verb 言う in continuative
-            # form, so canonicalize the occurrence before global deduplication.
-            lemma, reading, pos = _contextual_identity(
-                text, end, lemma, reading, pos
+            tokens.append(
+                LexemeToken(
+                    surface,
+                    str(word["lemma"]),
+                    str(word["reading"]),
+                    pos,
+                    int(word["start"]),
+                    int(word["end"]),
+                )
             )
-            tokens.append(LexemeToken(surface, lemma, reading, pos, start, end))
         return tokens
 
     def find_inflected_span(
@@ -136,4 +214,11 @@ class JapaneseTokenizer:
                     break
                 end = int(following["end"])
             return int(word["start"]), end
+        for token in self.tokenize(text):
+            if (
+                token.lemma == wanted_lemma
+                and token.reading == wanted_reading
+                and token.surface == wanted_surface
+            ):
+                return token.start, token.end
         return None
