@@ -95,7 +95,7 @@ class JMDictExpressionResolver:
         self.dictionary = _dictionary()
 
     @lru_cache(maxsize=100_000)
-    def resolve(self, surface: str) -> Optional[ExpressionMatch]:
+    def resolve(self, surface: str, reading: str = "") -> Optional[ExpressionMatch]:
         result = self.dictionary.lookup(
             surface, lookup_chars=False, lookup_ne=False
         )
@@ -105,7 +105,7 @@ class JMDictExpressionResolver:
             readings = [form.text for form in entry.kana_forms]
             if surface not in spellings and surface not in readings:
                 continue
-            reading = (
+            selected_reading = reading or (
                 surface if surface in readings
                 else (readings[0] if readings else surface)
             )
@@ -113,7 +113,7 @@ class JMDictExpressionResolver:
             score += 0.25 if surface in spellings else 0.0
             match = ExpressionMatch(
                 lemma=surface,
-                reading=_katakana(reading),
+                reading=_katakana(selected_reading),
                 entry_id=int(entry.idseq),
             )
             if best is None or score > best[0]:

@@ -42,6 +42,15 @@ def _contextual_identity(
 ) -> tuple:
     if lemma == "いい" and reading == "イイ" and text[end:].startswith("たい"):
         return "いう", "イウ", "動詞"
+    if lemma == "何" and reading == "ナン":
+        following = text[end:].lstrip()
+        nani_contexts = ("が", "を", "も", "に", "へ", "から", "まで", "か")
+        if (
+            not following
+            or following[0] in "。？！?!"
+            or following.startswith(nani_contexts)
+        ):
+            return lemma, "ナニ", pos
     return lemma, reading, pos
 
 
@@ -74,14 +83,21 @@ class JapaneseTokenizer:
             reading = _feature(
                 feature, "kanaBase", "pronBase", "kana", default=surface
             )
+            surface_reading = _feature(
+                feature, "kana", "pron", default=reading
+            )
+            original_reading = reading
             lemma, reading, pos = _contextual_identity(
                 text, end, lemma, reading, pos
             )
+            if reading != original_reading:
+                surface_reading = reading
             words.append(
                 {
                     "surface": surface,
                     "lemma": lemma,
                     "reading": reading,
+                    "surface_reading": surface_reading,
                     "pos": pos,
                     "pos2": _feature(feature, "pos2"),
                     "start": start,
@@ -114,7 +130,10 @@ class JapaneseTokenizer:
                 surface = text[start:end]
                 if not _HAS_JAPANESE.search(surface):
                     continue
-                match = self._expressions.resolve(surface)
+                surface_reading = "".join(
+                    str(word["surface_reading"]) for word in span
+                )
+                match = self._expressions.resolve(surface, surface_reading)
                 if match is not None:
                     selected = (
                         end_index,

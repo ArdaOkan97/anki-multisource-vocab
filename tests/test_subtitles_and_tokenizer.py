@@ -95,7 +95,16 @@ class SubtitleAndTokenizerTest(unittest.TestCase):
         tokens = JapaneseTokenizer().tokenize("何？")
         by_surface = {token.surface: token for token in tokens}
         self.assertEqual(by_surface["何"].lemma, "何")
+        self.assertEqual(by_surface["何"].reading, "ナニ")
         self.assertEqual(by_surface["何"].part_of_speech, "代名詞")
+
+    def test_nani_reading_before_common_particles(self):
+        tokenizer = JapaneseTokenizer()
+        for text in ("何が？", "何を？", "何に？"):
+            target = next(
+                token for token in tokenizer.tokenize(text) if token.lemma == "何"
+            )
+            self.assertEqual(target.reading, "ナニ")
 
     def test_dictionary_expression_suppresses_component_occurrences(self):
         tokens = JapaneseTokenizer().tokenize("どうも。")
@@ -115,6 +124,10 @@ class SubtitleAndTokenizerTest(unittest.TestCase):
         tokenizer = JapaneseTokenizer()
         span = tokenizer.find_inflected_span("どうも。", "どうも", "ドウモ", "どうも")
         self.assertEqual(span, (0, 3))
+
+    def test_expression_uses_contextual_surface_reading(self):
+        target = JapaneseTokenizer().tokenize("何のこと？")[0]
+        self.assertEqual((target.lemma, target.reading), ("何の", "ナンノ"))
 
     def test_kana_iitai_is_canonicalized_as_iu(self):
         tokens = JapaneseTokenizer().tokenize("何が いいたい？")

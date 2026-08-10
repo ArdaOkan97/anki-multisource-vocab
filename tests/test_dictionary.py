@@ -34,14 +34,14 @@ class DictionaryTest(unittest.TestCase):
         self.assertIn("to say", match.gloss)
 
     def test_finds_exact_multi_token_expression(self):
-        match = JMDictExpressionResolver().resolve("どうも")
+        match = JMDictExpressionResolver().resolve("どうも", "ドウモ")
         self.assertIsNotNone(match)
         self.assertEqual(match.entry_id, 1009000)
         self.assertEqual(match.lemma, "どうも")
         self.assertEqual(match.reading, "ドウモ")
 
     def test_does_not_invent_compositional_expression(self):
-        self.assertIsNone(JMDictExpressionResolver().resolve("どうする"))
+        self.assertIsNone(JMDictExpressionResolver().resolve("どうする", "ドウスル"))
 
 
 if __name__ == "__main__":
