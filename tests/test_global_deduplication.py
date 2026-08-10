@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from vocabdeck.database import VocabularyDatabase
 from vocabdeck.anki import sync_source
@@ -169,6 +170,26 @@ class GlobalDeduplicationTest(unittest.TestCase):
         )
         self.assertEqual(details["content_words"], 3)
         self.assertEqual(details["unknown_other_words"], 1)
+
+    def test_planner_prefers_an_easier_unknown_context_word(self):
+        source = self.add_show("Difficulty Show", ["AB", "AC"])
+        fixed_difficulties = {"A": 20.0, "B": 10.0, "C": 50.0}
+
+        def rank_with_fixed_difficulty(rows, metric):
+            ranked = []
+            for raw_row in rows:
+                row = dict(raw_row)
+                row["difficulty_score"] = fixed_difficulties[row["lemma"]]
+                row["difficulty_metric"] = metric
+                ranked.append(row)
+            return ranked
+
+        with patch("vocabdeck.difficulty.rank_candidates", rank_with_fixed_difficulty):
+            rows = self.db.next_unseen(source, limit=1)
+
+        self.assertEqual(rows[0]["lemma"], "A")
+        self.assertEqual(rows[0]["japanese"], "AB")
+        self.assertEqual(rows[0]["example_progression"]["harder_unknown_words"], 0)
 
     def test_unreviewed_shared_card_moves_when_switching_sources(self):
         hxh = self.add_show("Hunter x Hunter", list("ABCDEFXY"))

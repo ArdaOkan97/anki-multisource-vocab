@@ -336,14 +336,24 @@ class VocabularyDatabase:
         from .difficulty import rank_candidates
 
         ranked = rank_candidates(rows, metric)
+        lexical_difficulties = {
+            int(row["lexeme_id"]): float(row["difficulty_score"])
+            for row in ranked
+        }
         # Joint planning over a bounded lexical shortlist keeps batch generation
         # responsive without allowing a rare word with a trivial subtitle to
         # leapfrog arbitrarily far ahead of broadly useful vocabulary.
         pool_size = min(len(ranked), max(100, limit * 5))
-        return self._plan_progressive_batch(ranked[:pool_size], source_ids, limit)
+        return self._plan_progressive_batch(
+            ranked[:pool_size], source_ids, limit, lexical_difficulties
+        )
 
     def _plan_progressive_batch(
-        self, rows: List[dict], source_ids: Sequence[int], limit: int
+        self,
+        rows: List[dict],
+        source_ids: Sequence[int],
+        limit: int,
+        lexical_difficulties: Dict[int, float],
     ) -> List[dict]:
         from .progression import example_score, joint_planning_score
         from .tokenizer import JapaneseTokenizer
@@ -405,7 +415,12 @@ class VocabularyDatabase:
                 best_example = None
                 for candidate in load_examples(row):
                     score, details = example_score(
-                        candidate, int(row["lexeme_id"]), known_ids, position
+                        candidate,
+                        int(row["lexeme_id"]),
+                        known_ids,
+                        position,
+                        lexical_difficulties,
+                        float(row["difficulty_score"]),
                     )
                     if best_example is None or score < best_example[0]:
                         best_example = (score, candidate, details)

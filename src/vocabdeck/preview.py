@@ -55,6 +55,7 @@ def render_preview_html(
     <div class="meta">Difficulty {float(row['difficulty_score']):.1f} ·
       {int(progression.get('content_words', 0))} content words ·
       {int(progression.get('unknown_other_words', 0))} other unknown ·
+      {int(progression.get('harder_unknown_words', 0))} harder than target ·
       {html.escape(str(row['series']))} S{int(row['season']):02d}E{int(row['episode']):02d}
     </div>
   </section>
