@@ -278,6 +278,7 @@ class GlobalDeduplicationTest(unittest.TestCase):
             rows = self.db.next_unseen(source, limit=1)
 
         self.assertEqual(rows[0]["lemma"], "A")
+        self.assertIsInstance(rows[0]["sentence_id"], int)
         self.assertEqual(rows[0]["japanese"], "AB")
         self.assertEqual(rows[0]["example_progression"]["harder_unknown_words"], 0)
 

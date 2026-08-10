@@ -122,6 +122,20 @@ target word, and keeps the expression, reading, full sentence, image, and audio
 hidden until **Show answer** is pressed. Space reveals the answer; the arrow keys
 move between cards.
 
+Audit the exact batch before sending it to Anki:
+
+```bash
+uv run vocabdeck audit \
+  --series "Hunter x Hunter" --season 1 --episodes 1-10 --limit 100 \
+  --output ".vocabdeck/audits/hxh-episodes-1-10.html"
+```
+
+The standalone report flags missing or semantically weak subtitle translations,
+definitions that are poorly supported by the selected context, ambiguous or
+borderline multiword-expression decisions, alternate recorded readings, and
+examples containing unknown words harder than the target. It audits the same
+progressively planned queue used by `sync-anki`; it never changes learning state.
+
 Three explainable difficulty metrics are available:
 
 - `source`: repeated words in the selected episodes first; immersive, but show-specific vocabulary can arrive too early.

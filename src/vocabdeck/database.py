@@ -521,7 +521,7 @@ class VocabularyDatabase:
             _, _, rank_index, row, candidate, details, planner = best_plan
             remaining.pop(rank_index)
             for field in (
-                "japanese", "english", "start_ms", "end_ms", "source_id",
+                "sentence_id", "japanese", "english", "start_ms", "end_ms", "source_id",
                 "cue_index", "series", "season", "episode", "video_path",
             ):
                 row[field] = candidate[field]
@@ -671,6 +671,38 @@ class VocabularyDatabase:
                 (series, season, *episodes),
             )
         return [int(row[0]) for row in rows]
+
+    def lexeme_labels(self, lexeme_ids: Sequence[int]) -> List[str]:
+        if not lexeme_ids:
+            return []
+        markers = ",".join("?" for _ in lexeme_ids)
+        rows = self.connection.execute(
+            f"SELECT id, lemma, reading FROM lexemes WHERE id IN ({markers})",
+            tuple(int(value) for value in lexeme_ids),
+        )
+        by_id = {
+            int(row["id"]): f"{row['lemma']}（{row['reading']}）" for row in rows
+        }
+        return [by_id[value] for value in map(int, lexeme_ids) if value in by_id]
+
+    def reading_variants(self, lemma: str, reading: str) -> List[str]:
+        rows = self.connection.execute(
+            """SELECT DISTINCT reading FROM lexemes
+               WHERE lemma = ? AND reading != ? ORDER BY reading""",
+            (lemma, reading),
+        )
+        return [f"{lemma}（{row['reading']}）" for row in rows]
+
+    def expression_analyses_for_sentence(
+        self, sentence_id: Optional[int]
+    ) -> List[sqlite3.Row]:
+        if sentence_id is None:
+            return []
+        return list(self.connection.execute(
+            """SELECT * FROM expression_analyses
+               WHERE sentence_id = ? ORDER BY start_char, end_char""",
+            (int(sentence_id),),
+        ))
 
     def stats(self) -> Dict[str, int]:
         result: Dict[str, int] = {}
