@@ -54,6 +54,45 @@ class ProgressionTest(unittest.TestCase):
         self.assertEqual(known_details["unknown_other_words"], 0)
         self.assertEqual(unknown_details["unknown_other_words"], 1)
 
+    def test_easier_unknown_context_beats_harder_unknown_context(self):
+        target_id = 10
+        easier_context = {
+            "word_ids": {target_id, 1},
+            "japanese": "簡単な例。",
+            "english": "An easy example.",
+            "surface": "例",
+            "lemma": "例",
+        }
+        harder_context = dict(easier_context, word_ids={target_id, 2})
+        difficulties = {target_id: 20.0, 1: 10.0, 2: 50.0}
+
+        easier_score, easier_details = example_score(
+            easier_context, target_id, set(), 0, difficulties, 20.0
+        )
+        harder_score, harder_details = example_score(
+            harder_context, target_id, set(), 0, difficulties, 20.0
+        )
+
+        self.assertLess(easier_score, harder_score)
+        self.assertEqual(easier_details["harder_unknown_words"], 0)
+        self.assertEqual(harder_details["harder_unknown_words"], 1)
+        self.assertEqual(harder_details["harder_unknown_ids"], [2])
+        self.assertEqual(harder_details["max_unknown_difficulty_gap"], 28.0)
+
+    def test_small_difficulty_difference_is_tolerated(self):
+        example = {
+            "word_ids": {10, 1},
+            "japanese": "短い例。",
+            "english": "A short example.",
+            "surface": "例",
+            "lemma": "例",
+        }
+
+        _, details = example_score(example, 10, set(), 0, {1: 21.5}, 20.0)
+
+        self.assertEqual(details["harder_unknown_words"], 0)
+        self.assertEqual(details["unknown_difficulty_burden"], 0.0)
+
     def test_missing_translation_is_strongly_penalized(self):
         translated = {
             "word_ids": {10, 1},

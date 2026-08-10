@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, Mapping, Set, Tuple
+from typing import Any, Mapping, Optional, Set, Tuple
 
 
 _FRAGMENT_MARKERS = ("→", "…", "＜", "《", "≪", "≫", "((", "))")
 _COLLOQUIAL_MARKERS = ("ねえ", "ぜ", "ぞ", "やが", "りゃ", "じゃん", "～")
+_DIFFICULTY_TOLERANCE = 2.0
+_HARDER_UNKNOWN_BASE_PENALTY = 8.0
+_HARDER_UNKNOWN_GAP_WEIGHT = 1.0
 
 
 def desired_sentence_words(position: int) -> int:
@@ -29,7 +32,12 @@ def joint_planning_score(
 
 
 def example_score(
-    example: Mapping[str, Any], target_id: int, known_ids: Set[int], position: int
+    example: Mapping[str, Any],
+    target_id: int,
+    known_ids: Set[int],
+    position: int,
+    lexical_difficulties: Optional[Mapping[int, float]] = None,
+    target_difficulty: Optional[float] = None,
 ) -> Tuple[float, dict]:
     word_ids = set(example["word_ids"])
     other_ids = word_ids - {target_id}
@@ -50,9 +58,25 @@ def example_score(
     # It must not become an example for the vocabulary item "good".
     sense_mismatch = str(example.get("lemma") or "") == "いい" and following.startswith("たい")
 
-    # Unknown context dominates. Quality problems and excessive colloquialism
-    # matter most at the beginning, while desired length rises every five cards.
+    unknown_difficulties = {
+        lexeme_id: float(lexical_difficulties[lexeme_id])
+        for lexeme_id in unknown_other
+        if lexical_difficulties is not None and lexeme_id in lexical_difficulties
+    }
+    harder_unknown_gaps = {
+        lexeme_id: difficulty - float(target_difficulty) - _DIFFICULTY_TOLERANCE
+        for lexeme_id, difficulty in unknown_difficulties.items()
+        if target_difficulty is not None
+        and difficulty > float(target_difficulty) + _DIFFICULTY_TOLERANCE
+    }
+    difficulty_burden = sum(harder_unknown_gaps.values())
+
+    # Unknown context dominates. An unknown that is harder than the word being
+    # introduced is especially costly, but remains a soft constraint for source
+    # material where no cleaner example exists.
     score = len(unknown_other) * 10.0
+    score += len(harder_unknown_gaps) * _HARDER_UNKNOWN_BASE_PENALTY
+    score += difficulty_burden * _HARDER_UNKNOWN_GAP_WEIGHT
     score += 25.0 if missing_translation else 0.0
     score += 15.0 if fragment else 0.0
     score += 8.0 if multi_utterance else 0.0
@@ -69,6 +93,12 @@ def example_score(
         "content_words": word_count,
         "known_other_words": len(other_ids & known_ids),
         "unknown_other_words": len(unknown_other),
+        "harder_unknown_words": len(harder_unknown_gaps),
+        "harder_unknown_ids": sorted(harder_unknown_gaps),
+        "max_unknown_difficulty_gap": round(
+            max(harder_unknown_gaps.values(), default=0.0), 3
+        ),
+        "unknown_difficulty_burden": round(difficulty_burden, 3),
         "missing_translation": missing_translation,
         "fragment": fragment,
         "multi_utterance": multi_utterance,
