@@ -33,6 +33,14 @@ class DictionaryTest(unittest.TestCase):
         self.assertEqual(match.entry_id, 1587040)
         self.assertIn("to say", match.gloss)
 
+    def test_interjection_cannot_take_same_reading_noun_sense(self):
+        u_match = self.resolver.resolve("う", "ウ", "感動詞", "Oh!")
+        ha_match = self.resolver.resolve("は", "ハ", "感動詞", "Huh?")
+        self.assertEqual(u_match.entry_id, 2603520)
+        self.assertNotIn("rabbit", u_match.gloss)
+        self.assertEqual(ha_match.entry_id, 2069620)
+        self.assertNotIn("feather", ha_match.gloss)
+
     def test_finds_exact_multi_token_expression(self):
         match = JMDictExpressionResolver().resolve("どうも", "ドウモ")
         self.assertIsNotNone(match)

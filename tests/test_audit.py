@@ -77,6 +77,19 @@ class FakeDatabase:
             "opacity": 0.4,
         }]
 
+    def excluded_candidates(self, source_ids, limit=100):
+        return [{
+            "lexeme_key": "なっ|ナッ",
+            "lemma": "なっ",
+            "reading": "ナッ",
+            "series": "Test Show",
+            "season": 1,
+            "episode": 2,
+            "japanese": "なっ 何だ？",
+            "english": "What?",
+            "exclusion_reason": "missing_definition",
+        }]
+
 
 class AuditTest(unittest.TestCase):
     def test_flags_actionable_quality_risks(self):
@@ -100,6 +113,7 @@ class AuditTest(unittest.TestCase):
             "missing_translation", "missing_definition",
         })
         self.assertEqual(report["summary"]["cards_with_findings"], 2)
+        self.assertEqual(report["summary"]["excluded_candidates"], 1)
         self.assertEqual(report["summary"]["severity_counts"], {
             "high": 4, "medium": 2, "info": 1,
         })
@@ -116,6 +130,8 @@ class AuditTest(unittest.TestCase):
         self.assertIn("Translation deserves review", document)
         self.assertIn("猫", document)
         self.assertIn('data-filter="flagged"', document)
+        self.assertIn("Excluded candidates", document)
+        self.assertIn("Not eligible for Anki", document)
 
     def test_cli_accepts_episode_range(self):
         args = build_parser().parse_args([

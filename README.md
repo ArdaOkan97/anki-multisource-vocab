@@ -135,6 +135,10 @@ definitions that are poorly supported by the selected context, ambiguous or
 borderline multiword-expression decisions, alternate recorded readings, and
 examples containing unknown words harder than the target. It audits the same
 progressively planned queue used by `sync-anki`; it never changes learning state.
+The report also lists structurally excluded candidates separately. Words without
+a reliable definition and one-kana reaction fragments never enter the eligible
+queue. Dictionary matches are versioned so older databases automatically recheck
+entries when stricter resolver rules are introduced.
 
 Three explainable difficulty metrics are available:
 
@@ -199,6 +203,7 @@ review history.
 
 - **“Known” means introduced, not mastered.** The first answer is enough to prevent a duplicate new card elsewhere. Anki/FSRS remains responsible for whether the word is actually retained.
 - **One note, many occurrences.** A vocabulary card has one primary context, but its database record can point to every show, season, episode, timestamp, and subtitle line where it appeared.
+- **One sentence, one teaching card.** Once a sentence is selected for a card, it is reserved. Other words use a different occurrence or wait until another source supplies one.
 - **Decks are views, not the source of truth.** SQLite owns global identity and source history; Anki owns review scheduling and logs.
 - **Never delete or move reviewed cards during deduplication.** A reviewed card stays in its original deck. An unreviewed prefetched card may move when its source changes; other queues skip a learned lexeme.
 - **Batch lazily.** Creating thousands of duplicate suspended notes up front makes reconciliation fragile and pollutes the collection.

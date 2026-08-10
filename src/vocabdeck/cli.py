@@ -222,10 +222,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             print(json.dumps(results, ensure_ascii=False, indent=2))
         elif args.command == "queue":
             source_ids = _selected_source_ids(db, args)
+            db.enrich_dictionary(source_ids)
             rows = db.next_unseen_for_sources(source_ids, args.limit, args.metric)
             print(json.dumps(rows, ensure_ascii=False, indent=2))
         elif args.command == "compare-difficulty":
             source_ids = _selected_source_ids(db, args)
+            db.enrich_dictionary(source_ids)
             comparison = {}
             for metric in METRICS:
                 rows = db.next_unseen_for_sources(source_ids, args.limit, metric)

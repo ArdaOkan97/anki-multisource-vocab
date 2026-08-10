@@ -163,16 +163,23 @@ def audit_queue(
         row["expression_analyses"] = relevant_analyses
         cards.append(row)
 
+    excluded = (
+        database.excluded_candidates(source_ids, limit)
+        if hasattr(database, "excluded_candidates") else []
+    )
+
     return {
         "summary": {
             "cards": len(cards),
             "cards_with_findings": sum(bool(card["audit_findings"]) for card in cards),
+            "excluded_candidates": len(excluded),
             "findings": sum(severity_counts.values()),
             "severity_counts": severity_counts,
             "code_counts": dict(sorted(code_counts.items())),
             "metric": metric,
         },
         "cards": cards,
+        "excluded": excluded,
     }
 
 
@@ -209,6 +216,24 @@ def render_audit_html(report: Mapping[str, Any], output: Path) -> Path:
 </article>""")
 
     severity = summary["severity_counts"]
+    excluded_html = []
+    exclusion_titles = {
+        "reaction_fragment": "Reaction fragment",
+        "missing_definition": "No reliable definition",
+    }
+    for item in report.get("excluded", []):
+        reason = str(item["exclusion_reason"])
+        excluded_html.append(f"""<article class="card excluded" data-severity="excluded">
+  <header><span class="position">Excluded</span>
+    <h2><ruby>{html.escape(str(item['lemma']))}<rt>{html.escape(str(item['reading']))}</rt></ruby></h2>
+    <span class="source">{html.escape(str(item['series']))} S{int(item['season']):02d}E{int(item['episode']):02d}</span>
+  </header>
+  <p class="gloss">{html.escape(exclusion_titles.get(reason, reason))}</p>
+  <p class="japanese">{html.escape(str(item['japanese']))}</p>
+  <p class="english">{html.escape(str(item.get('english') or 'No English subtitle'))}</p>
+  <ul><li class="finding high"><strong>Not eligible for Anki</strong>
+    <span>{'The tokenizer found a one-kana reaction or sound fragment.' if reason == 'reaction_fragment' else 'No POS-compatible learner definition was found.'}</span></li></ul>
+</article>""")
     document = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Vocabulary quality audit</title><style>
@@ -229,10 +254,13 @@ ul {{ list-style:none; padding:0; margin:18px 0 0; }} .finding {{ display:grid; 
 code {{ color:#bdc1c6; }} @media(max-width:700px) {{ .finding {{ grid-template-columns:1fr; }} .source {{ margin-left:0; }} header {{ flex-wrap:wrap; }} }}
 </style></head><body><main><h1>Vocabulary quality audit</h1>
 <p class="summary">{int(summary['cards'])} cards · {int(summary['cards_with_findings'])} flagged ·
-{int(severity['high'])} high · {int(severity['medium'])} medium · {int(severity['info'])} informational</p>
+{int(severity['high'])} high · {int(severity['medium'])} medium · {int(severity['info'])} informational ·
+{int(summary.get('excluded_candidates', 0))} excluded</p>
 <nav class="filters"><button class="active" data-filter="all">All</button><button data-filter="flagged">Flagged</button>
-<button data-filter="high">High</button><button data-filter="medium">Medium</button><button data-filter="passed">Passed</button></nav>
-{''.join(cards_html)}</main><script>
+<button data-filter="high">High</button><button data-filter="medium">Medium</button><button data-filter="passed">Passed</button>
+<button data-filter="excluded">Excluded</button></nav>
+<h2 class="section-title">Eligible queue</h2>{''.join(cards_html)}
+<h2 class="section-title">Excluded candidates</h2>{''.join(excluded_html) or '<p class="summary">No candidates were excluded.</p>'}</main><script>
 const buttons=[...document.querySelectorAll('button[data-filter]')]; const cards=[...document.querySelectorAll('.card')];
 buttons.forEach(button=>button.addEventListener('click',()=>{{ buttons.forEach(item=>item.classList.remove('active')); button.classList.add('active'); const value=button.dataset.filter; cards.forEach(card=>{{ const tags=card.dataset.severity.split(' '); card.hidden=!(value==='all'||(value==='flagged'&&!tags.includes('passed'))||tags.includes(value)); }}); }}));
 </script></body></html>"""
