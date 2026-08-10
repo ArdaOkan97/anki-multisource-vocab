@@ -16,6 +16,7 @@ dependencies = [
   "ipadic>=1.0.0",
   "jamdict>=0.1a11.post2",
   "jamdict-data>=1.5",
+  "sentence-transformers>=3.0.0,<6.0.0",
 ]
 
 [project.optional-dependencies]

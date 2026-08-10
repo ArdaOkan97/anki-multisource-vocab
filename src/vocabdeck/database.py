@@ -62,6 +62,23 @@ CREATE TABLE IF NOT EXISTS occurrences (
     PRIMARY KEY(lexeme_id, sentence_id, surface)
 );
 
+CREATE TABLE IF NOT EXISTS expression_analyses (
+    sentence_id INTEGER NOT NULL REFERENCES sentences(id) ON DELETE CASCADE,
+    start_char INTEGER NOT NULL,
+    end_char INTEGER NOT NULL,
+    surface TEXT NOT NULL,
+    dictionary_entry_id INTEGER NOT NULL,
+    dictionary_sense_index INTEGER NOT NULL,
+    decision TEXT NOT NULL,
+    phrase_score REAL NOT NULL,
+    component_score REAL NOT NULL,
+    margin REAL NOT NULL,
+    opacity REAL NOT NULL,
+    model TEXT NOT NULL,
+    details_json TEXT NOT NULL,
+    PRIMARY KEY(sentence_id, start_char, end_char, dictionary_entry_id)
+);
+
 CREATE TABLE IF NOT EXISTS source_queue (
     source_id INTEGER NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
     lexeme_id INTEGER NOT NULL REFERENCES lexemes(id) ON DELETE CASCADE,
@@ -110,6 +127,21 @@ class VocabularyDatabase:
         for name, sql_type in additions.items():
             if name not in existing:
                 self.connection.execute(f"ALTER TABLE lexemes ADD COLUMN {name} {sql_type}")
+        analysis_columns = {
+            row["name"] for row in self.connection.execute(
+                "PRAGMA table_info(expression_analyses)"
+            )
+        }
+        if "dictionary_sense_index" not in analysis_columns:
+            self.connection.execute(
+                """ALTER TABLE expression_analyses
+                   ADD COLUMN dictionary_sense_index INTEGER NOT NULL DEFAULT 0"""
+            )
+        if "opacity" not in analysis_columns:
+            self.connection.execute(
+                """ALTER TABLE expression_analyses
+                   ADD COLUMN opacity REAL NOT NULL DEFAULT 0"""
+            )
         self.connection.commit()
 
     @contextmanager
@@ -183,7 +215,37 @@ class VocabularyDatabase:
                 sentence_count += 1
                 counts: Dict[tuple, int] = {}
                 token_by_identity: Dict[tuple, LexemeToken] = {}
-                for token in tokenizer.tokenize(cue.text):
+                accepted_expressions = {}
+                if hasattr(tokenizer, "tokenize_with_context"):
+                    tokenization = tokenizer.tokenize_with_context(
+                        cue.text, translation or ""
+                    )
+                    tokens = tokenization.tokens
+                    for analysis in tokenization.expression_analyses:
+                        connection.execute(
+                            """INSERT INTO expression_analyses
+                               (sentence_id, start_char, end_char, surface,
+                                dictionary_entry_id, dictionary_sense_index,
+                                decision, phrase_score,
+                                component_score, margin, opacity, model, details_json)
+                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                            (
+                                sentence_id, analysis.start, analysis.end,
+                                analysis.surface, analysis.entry_id,
+                                analysis.sense_index, analysis.decision,
+                                analysis.phrase_score,
+                                analysis.component_score, analysis.margin,
+                                analysis.opacity,
+                                analysis.model, analysis.details_json,
+                            ),
+                        )
+                        if analysis.decision == "expression":
+                            accepted_expressions[(
+                                analysis.start, analysis.end, analysis.surface
+                            )] = analysis
+                else:
+                    tokens = tokenizer.tokenize(cue.text)
+                for token in tokens:
                     identity = (token.key, token.surface)
                     counts[identity] = counts.get(identity, 0) + 1
                     token_by_identity[identity] = token
@@ -202,6 +264,24 @@ class VocabularyDatabase:
                             "SELECT id FROM lexemes WHERE lexeme_key = ?", (token.key,)
                         ).fetchone()[0]
                     )
+                    analysis = accepted_expressions.get(
+                        (token.start, token.end, token.surface)
+                    )
+                    if analysis is not None:
+                        connection.execute(
+                            """UPDATE lexemes SET gloss = ?, dictionary_entry_id = ?,
+                                      dictionary_sense_index = ?, dictionary_confidence = ?,
+                                      dictionary_status = 'matched'
+                               WHERE id = ? AND (
+                                 dictionary_confidence IS NULL
+                                 OR dictionary_confidence < ?
+                               )""",
+                            (
+                                analysis.phrase_description, analysis.entry_id,
+                                analysis.sense_index, analysis.phrase_score,
+                                lexeme_id, analysis.phrase_score,
+                            ),
+                        )
                     connection.execute(
                         """INSERT INTO occurrences (lexeme_id, sentence_id, surface, count)
                            VALUES (?, ?, ?, ?)""",

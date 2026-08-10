@@ -36,6 +36,24 @@ Content vocabulary includes nouns, pronouns, verbs, adjectives, adverbs,
 prenominals, and interjections. Grammatical particles and auxiliary tokens are used
 to preserve inflected target spans but are not scheduled as standalone vocabulary.
 
+Before recording those tokens, the tokenizer generates longest-match hypotheses
+for exact JMdict entries tagged as expressions or interjections. A pinned local
+`multilingual-e5-small` model compares the aligned English subtitle with both the
+phrase senses and the component glosses. A phrase replaces its components only
+when it clears minimum similarity, winning-margin, and semantic-opacity gates;
+ambiguous cases remain safely split. A smaller margin is allowed only for an
+opaque multi-component expression that covers the whole utterance.
+
+For example, `どうも。` / "Thank you" is stored as the expression `どうも`, while
+`いい顔だぁ！` / "I really do love that look" remains `いい` + `顔`, and the
+transparent `どうするか` remains component vocabulary. Contextual homographs are
+also rejected when the same surface is a single tokenizer word in isolation.
+Every hypothesis and decision is retained in `expression_analyses` with its scores,
+margin, opacity, model revision, and winning sense. Embeddings are cached in the
+ignored `.vocabdeck/semantic-embeddings.sqlite3` file. The model is downloaded on
+first use; subsequent analysis is local, deterministic, and does not require an
+LLM or hosted inference service.
+
 ## Install
 
 Requirements: Python 3.9+, `ffmpeg`/`ffprobe`, desktop Anki, and the AnkiConnect add-on for direct synchronization.

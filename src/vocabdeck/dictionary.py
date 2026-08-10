@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Optional
+from typing import Optional, Tuple
 
 from jamdict import Jamdict
 
@@ -22,6 +22,7 @@ _POS_HINTS = {
     "副詞": ("adverb",),
     "連体詞": ("pre-noun", "prenominal"),
     "感動詞": ("interjection",),
+    "表現": ("expressions", "interjection", "adverb"),
 }
 
 # UniDic groups lexical 無い and the negative auxiliary under the same coarse
@@ -39,6 +40,17 @@ def _hiragana(value: str) -> str:
     return "".join(
         chr(ord(char) - 0x60) if "ァ" <= char <= "ヶ" else char for char in value
     )
+
+
+def _katakana(value: str) -> str:
+    return "".join(
+        chr(ord(char) + 0x60) if "ぁ" <= char <= "ゖ" else char for char in value
+    )
+
+
+@lru_cache(maxsize=1)
+def _dictionary() -> Jamdict:
+    return Jamdict()
 
 
 def _words(value: str) -> set:
@@ -69,9 +81,70 @@ class DictionaryMatch:
     confidence: float
 
 
+@dataclass(frozen=True)
+class ExpressionMatch:
+    lemma: str
+    reading: str
+    entry_id: int
+    senses: Tuple[str, ...]
+    sense_indices: Tuple[int, ...]
+
+
+class JMDictExpressionResolver:
+    """Find exact JMdict entries spanning multiple tokenizer tokens."""
+
+    def __init__(self) -> None:
+        self.dictionary = _dictionary()
+
+    @lru_cache(maxsize=100_000)
+    def resolve(self, surface: str, reading: str = "") -> Optional[ExpressionMatch]:
+        result = self.dictionary.lookup(
+            surface, lookup_chars=False, lookup_ne=False
+        )
+        best = None
+        for entry in result.entries:
+            spellings = [form.text for form in entry.kanji_forms]
+            readings = [form.text for form in entry.kana_forms]
+            if surface not in spellings and surface not in readings:
+                continue
+            entry_pos = " ".join(
+                str(pos).lower() for sense in entry.senses for pos in sense.pos
+            )
+            if "expressions (phrases" not in entry_pos and "interjection" not in entry_pos:
+                continue
+            selected_reading = reading or (
+                surface if surface in readings
+                else (readings[0] if readings else surface)
+            )
+            senses = []
+            sense_indices = []
+            for sense_index, sense in enumerate(entry.senses):
+                glosses = [
+                    gloss.text for gloss in sense.gloss
+                    if gloss.lang in ("", "eng")
+                ]
+                if glosses:
+                    description = "; ".join(glosses[:4])
+                    if description not in senses:
+                        senses.append(description)
+                        sense_indices.append(sense_index)
+            score = _priority(entry.kanji_forms + entry.kana_forms)
+            score += 0.25 if surface in spellings else 0.0
+            match = ExpressionMatch(
+                lemma=surface,
+                reading=_katakana(selected_reading),
+                entry_id=int(entry.idseq),
+                senses=tuple(senses),
+                sense_indices=tuple(sense_indices),
+            )
+            if best is None or score > best[0]:
+                best = (score, match)
+        return best[1] if best else None
+
+
 class JMDictResolver:
     def __init__(self) -> None:
-        self.dictionary = Jamdict()
+        self.dictionary = _dictionary()
 
     @lru_cache(maxsize=100_000)
     def resolve(

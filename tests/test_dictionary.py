@@ -1,6 +1,6 @@
 import unittest
 
-from vocabdeck.dictionary import JMDictResolver
+from vocabdeck.dictionary import JMDictExpressionResolver, JMDictResolver
 
 
 class DictionaryTest(unittest.TestCase):
@@ -32,6 +32,21 @@ class DictionaryTest(unittest.TestCase):
         self.assertIsNotNone(match)
         self.assertEqual(match.entry_id, 1587040)
         self.assertIn("to say", match.gloss)
+
+    def test_finds_exact_multi_token_expression(self):
+        match = JMDictExpressionResolver().resolve("どうも", "ドウモ")
+        self.assertIsNotNone(match)
+        self.assertEqual(match.entry_id, 1009000)
+        self.assertEqual(match.lemma, "どうも")
+        self.assertEqual(match.reading, "ドウモ")
+
+    def test_does_not_invent_compositional_expression(self):
+        self.assertIsNone(JMDictExpressionResolver().resolve("どうする", "ドウスル"))
+
+    def test_plain_compound_is_not_an_opaque_expression_candidate(self):
+        self.assertIsNone(
+            JMDictExpressionResolver().resolve("試験官", "シケンカン")
+        )
 
 
 if __name__ == "__main__":

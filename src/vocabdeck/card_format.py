@@ -13,6 +13,7 @@ _POS_LABELS = {
     "副詞": "Adverb",
     "連体詞": "Prenominal",
     "感動詞": "Interjection",
+    "表現": "Expression",
 }
 
 

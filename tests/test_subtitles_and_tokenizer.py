@@ -1,7 +1,27 @@
 import unittest
 
+from vocabdeck.semantics import ExpressionDecision
 from vocabdeck.subtitles import align_translation, merge_continuations, parse_srt_text
 from vocabdeck.tokenizer import JapaneseTokenizer
+
+
+class FixedExpressionScorer:
+    def __init__(self, decision="expression"):
+        self.decision = decision
+
+    def decide(
+        self, english, phrase_senses, component_glosses, standalone=False
+    ):
+        return ExpressionDecision(
+            decision=self.decision,
+            phrase_score=0.95,
+            component_score=0.20,
+            margin=0.75,
+            opacity=0.80,
+            phrase_description=phrase_senses[0],
+            component_description=" | ".join(component_glosses),
+            model="test-embedder",
+        )
 
 
 class SubtitleAndTokenizerTest(unittest.TestCase):
@@ -92,10 +112,55 @@ class SubtitleAndTokenizerTest(unittest.TestCase):
         self.assertEqual(text[span[0]:span[1]], "いた")
 
     def test_pronouns_are_teachable_content_words(self):
-        tokens = JapaneseTokenizer().tokenize("何で そう思う？")
+        tokens = JapaneseTokenizer().tokenize("何？")
         by_surface = {token.surface: token for token in tokens}
         self.assertEqual(by_surface["何"].lemma, "何")
+        self.assertEqual(by_surface["何"].reading, "ナニ")
         self.assertEqual(by_surface["何"].part_of_speech, "代名詞")
+
+    def test_nani_reading_before_common_particles(self):
+        tokenizer = JapaneseTokenizer()
+        for text in ("何が？", "何を？", "何に？"):
+            target = next(
+                token for token in tokenizer.tokenize(text) if token.lemma == "何"
+            )
+            self.assertEqual(target.reading, "ナニ")
+
+    def test_dictionary_expression_suppresses_component_occurrences(self):
+        result = JapaneseTokenizer(
+            expression_scorer=FixedExpressionScorer()
+        ).tokenize_with_context("どうも。", "Thank you.")
+        tokens = result.tokens
+        self.assertEqual(
+            [(token.surface, token.lemma, token.part_of_speech) for token in tokens],
+            [("どうも", "どうも", "表現")],
+        )
+
+    def test_compositional_words_remain_separate(self):
+        tokens = JapaneseTokenizer().tokenize("どうする？")
+        self.assertEqual(
+            [(token.lemma, token.part_of_speech) for token in tokens],
+            [("どう", "副詞"), ("する", "動詞")],
+        )
+
+    def test_contextual_homograph_is_not_recombined_as_expression(self):
+        result = JapaneseTokenizer(
+            expression_scorer=FixedExpressionScorer()
+        ).tokenize_with_context("私もします。", "I will do it too.")
+        self.assertNotIn("もし", {token.lemma for token in result.tokens})
+        self.assertEqual(result.expression_analyses, [])
+
+    def test_expression_target_span_covers_complete_phrase(self):
+        tokenizer = JapaneseTokenizer()
+        span = tokenizer.find_inflected_span("どうも。", "どうも", "ドウモ", "どうも")
+        self.assertEqual(span, (0, 3))
+
+    def test_expression_uses_contextual_surface_reading(self):
+        result = JapaneseTokenizer(
+            expression_scorer=FixedExpressionScorer()
+        ).tokenize_with_context("何のこと？", "What do you mean?")
+        target = result.tokens[0]
+        self.assertEqual((target.lemma, target.reading), ("何の", "ナンノ"))
 
     def test_kana_iitai_is_canonicalized_as_iu(self):
         tokens = JapaneseTokenizer().tokenize("何が いいたい？")
