@@ -135,6 +135,34 @@ class AuditTest(unittest.TestCase):
         self.assertEqual(report["summary"]["severity_counts"], {
             "high": 4, "medium": 2, "info": 0,
         })
+        first_criteria = {
+            item["code"]: item["status"]
+            for item in report["cards"][0]["audit_criteria"]
+        }
+        self.assertEqual(first_criteria, {
+            "translation_available": "passed",
+            "translation_alignment": "flagged",
+            "definition_available": "passed",
+            "gloss_support": "flagged",
+            "context_difficulty": "flagged",
+            "contextual_reading": "passed",
+            "expression_interpretation": "flagged",
+            "unique_example": "passed",
+        })
+        second_criteria = {
+            item["code"]: item["status"]
+            for item in report["cards"][1]["audit_criteria"]
+        }
+        self.assertEqual(second_criteria, {
+            "translation_available": "flagged",
+            "translation_alignment": "not_checked",
+            "definition_available": "flagged",
+            "gloss_support": "not_checked",
+            "context_difficulty": "passed",
+            "contextual_reading": "passed",
+            "expression_interpretation": "passed",
+            "unique_example": "passed",
+        })
 
     def test_renders_filterable_standalone_report(self):
         report = audit_queue(
@@ -146,7 +174,11 @@ class AuditTest(unittest.TestCase):
             render_audit_html(report, output)
             document = output.read_text(encoding="utf-8")
         self.assertIn("Vocabulary quality audit", document)
-        self.assertIn("Translation deserves review", document)
+        self.assertIn("Translation alignment", document)
+        self.assertIn("Reliable definition available", document)
+        self.assertIn("PASS", document)
+        self.assertIn("FLAG", document)
+        self.assertIn("N/A", document)
         self.assertIn("猫", document)
         self.assertIn('data-filter="flagged"', document)
         self.assertIn("Excluded candidates", document)

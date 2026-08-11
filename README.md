@@ -136,11 +136,12 @@ uv run vocabdeck audit \
   --output ".vocabdeck/audits/hxh-episodes-1-10.html"
 ```
 
-The standalone report flags missing or semantically weak subtitle translations,
-definitions that are poorly supported by the selected context, ambiguous or
-borderline multiword-expression decisions, alternate recorded readings, and
-examples containing unknown words harder than the target. It audits the same
-progressively planned queue used by `sync-anki`; it never changes learning state.
+The standalone report shows every quality criterion beneath each card as
+**PASS**, **FLAG**, or **N/A**. These cover subtitle availability and alignment,
+definition availability and contextual support, harder unknown context words,
+contextual reading consensus, multiword-expression interpretation, and unique
+example assignment. It audits the same progressively planned queue used by
+`sync-anki`; it never changes learning state.
 The report also lists structurally excluded candidates separately. Words without
 a reliable definition and one-kana reaction fragments never enter the eligible
 queue. Dictionary matches are versioned so older databases automatically recheck

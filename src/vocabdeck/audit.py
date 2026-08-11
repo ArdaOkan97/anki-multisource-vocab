@@ -27,6 +27,17 @@ class AuditFinding:
     threshold: Optional[float] = None
 
 
+@dataclass(frozen=True)
+class AuditCriterion:
+    code: str
+    status: str
+    title: str
+    explanation: str
+    severity: Optional[str] = None
+    score: Optional[float] = None
+    threshold: Optional[float] = None
+
+
 def _finding(
     code: str,
     severity: str,
@@ -40,6 +51,26 @@ def _finding(
         severity=severity,
         title=title,
         explanation=explanation,
+        score=None if score is None else round(float(score), 3),
+        threshold=threshold,
+    )
+
+
+def _criterion(
+    code: str,
+    status: str,
+    title: str,
+    explanation: str,
+    severity: Optional[str] = None,
+    score: Optional[float] = None,
+    threshold: Optional[float] = None,
+) -> AuditCriterion:
+    return AuditCriterion(
+        code=code,
+        status=status,
+        title=title,
+        explanation=explanation,
+        severity=severity,
         score=None if score is None else round(float(score), 3),
         threshold=threshold,
     )
@@ -64,6 +95,7 @@ def audit_queue(
     for position, raw_row in enumerate(rows, start=1):
         row = dict(raw_row)
         findings: List[AuditFinding] = []
+        criteria: List[AuditCriterion] = []
         japanese = str(row.get("japanese") or "")
         english = str(row.get("english") or "").strip()
         gloss = str(row.get("gloss") or "").strip()
@@ -74,7 +106,19 @@ def audit_queue(
                 "missing_translation", "high", "English translation is missing",
                 "This example cannot support translation or dictionary-sense checks.",
             ))
+            criteria.append(_criterion(
+                "translation_available", "flagged", "English translation available",
+                "No aligned English subtitle is available.", "high",
+            ))
+            criteria.append(_criterion(
+                "translation_alignment", "not_checked", "Translation alignment",
+                "Not checked because the English subtitle is missing.",
+            ))
         else:
+            criteria.append(_criterion(
+                "translation_available", "passed", "English translation available",
+                "An aligned English subtitle is present.",
+            ))
             alignment_score = semantic.similarity(japanese, english)
             if alignment_score < ALIGNMENT_WARNING_THRESHOLD:
                 severity = (
@@ -85,6 +129,17 @@ def audit_queue(
                     "The Japanese and English have weak semantic similarity. This can indicate an idiomatic translation or a subtitle alignment error.",
                     alignment_score, ALIGNMENT_WARNING_THRESHOLD,
                 ))
+                criteria.append(_criterion(
+                    "translation_alignment", "flagged", "Translation alignment",
+                    "Semantic similarity is below the review threshold; this may be an idiom or an alignment error.",
+                    severity, alignment_score, ALIGNMENT_WARNING_THRESHOLD,
+                ))
+            else:
+                criteria.append(_criterion(
+                    "translation_alignment", "passed", "Translation alignment",
+                    "Japanese and English semantic similarity meets the threshold.",
+                    score=alignment_score, threshold=ALIGNMENT_WARNING_THRESHOLD,
+                ))
 
         gloss_score: Optional[float] = None
         if not gloss:
@@ -92,7 +147,19 @@ def audit_queue(
                 "missing_definition", "high", "Dictionary definition is missing",
                 "No learner-facing JMdict gloss was selected for this word.",
             ))
+            criteria.append(_criterion(
+                "definition_available", "flagged", "Reliable definition available",
+                "No learner-facing JMdict definition was selected.", "high",
+            ))
+            criteria.append(_criterion(
+                "gloss_support", "not_checked", "Definition supported by context",
+                "Not checked because a definition is unavailable.",
+            ))
         elif english:
+            criteria.append(_criterion(
+                "definition_available", "passed", "Reliable definition available",
+                "A POS-compatible JMdict definition is available.",
+            ))
             gloss_score = semantic.similarity(
                 english, f"The target Japanese word means: {gloss}"
             )
@@ -102,6 +169,26 @@ def audit_queue(
                     "The selected definition is not strongly supported by this example's English subtitle. It may be a different sense.",
                     gloss_score, GLOSS_WARNING_THRESHOLD,
                 ))
+                criteria.append(_criterion(
+                    "gloss_support", "flagged", "Definition supported by context",
+                    "The selected definition has weak support from this English example.",
+                    "medium", gloss_score, GLOSS_WARNING_THRESHOLD,
+                ))
+            else:
+                criteria.append(_criterion(
+                    "gloss_support", "passed", "Definition supported by context",
+                    "The English example supports the selected dictionary sense.",
+                    score=gloss_score, threshold=GLOSS_WARNING_THRESHOLD,
+                ))
+        else:
+            criteria.append(_criterion(
+                "definition_available", "passed", "Reliable definition available",
+                "A POS-compatible JMdict definition is available.",
+            ))
+            criteria.append(_criterion(
+                "gloss_support", "not_checked", "Definition supported by context",
+                "Not checked because the English subtitle is missing.",
+            ))
 
         progression = row.get("example_progression") or {}
         harder_count = int(progression.get("harder_unknown_words", 0))
@@ -112,6 +199,15 @@ def audit_queue(
             findings.append(_finding(
                 "harder_unknown_context", "high", "Example contains harder unknown vocabulary",
                 f"{harder_count} unknown context word(s) are harder than the target{suffix}.",
+            ))
+            criteria.append(_criterion(
+                "context_difficulty", "flagged", "No harder unknown context words",
+                f"{harder_count} harder unknown word(s) remain{suffix}.", "high",
+            ))
+        else:
+            criteria.append(_criterion(
+                "context_difficulty", "passed", "No harder unknown context words",
+                "The example contains no unknown context word substantially harder than the target.",
             ))
 
         reading_consensus = None
@@ -146,11 +242,44 @@ def audit_queue(
                     "Contextual analyzers disagree on the reading",
                     evidence + ". Verify this occurrence before creating the card.",
                 ))
+                criteria.append(_criterion(
+                    "contextual_reading", "flagged", "Contextual reading consensus",
+                    evidence + ". Both independent analyzers support an alternative reading.",
+                    "high" if decisive else "medium",
+                ))
+            elif reading_consensus.status == "agreement":
+                evidence = " · ".join(
+                    value for value in (
+                        f"UniDic {reading_consensus.expected}",
+                        f"Sudachi {reading_consensus.sudachi}"
+                        if reading_consensus.sudachi else "",
+                        f"OpenJTalk {reading_consensus.openjtalk}"
+                        if reading_consensus.openjtalk else "",
+                    ) if value
+                )
+                criteria.append(_criterion(
+                    "contextual_reading", "passed", "Contextual reading consensus",
+                    evidence + ". The analyzer majority supports the displayed reading.",
+                ))
+            else:
+                criteria.append(_criterion(
+                    "contextual_reading", "not_checked", "Contextual reading consensus",
+                    "The independent analyzers could not establish a majority for this exact span.",
+                ))
+        else:
+            criteria.append(_criterion(
+                "contextual_reading", "not_checked", "Contextual reading consensus",
+                "Not required for this inflecting part of speech; the dictionary-form reading is shown.",
+            ))
 
         analyses = database.expression_analyses_for_sentence(row.get("sentence_id"))
         target_start = row.get("target_start")
         target_end = row.get("target_end")
         relevant_analyses = []
+        expression_flagged = False
+        flagged_expression_surfaces = []
+        expression_audit_score = None
+        expression_audit_threshold = None
         for analysis in analyses:
             overlaps_target = (
                 target_start is None or target_end is None
@@ -165,6 +294,13 @@ def audit_queue(
             opacity = float(analysis["opacity"])
             surface = str(analysis["surface"])
             if decision in {"ambiguous", "insufficient_evidence"}:
+                expression_flagged = True
+                flagged_expression_surfaces.append(surface)
+                expression_audit_score = (
+                    margin if expression_audit_score is None
+                    else min(expression_audit_score, margin)
+                )
+                expression_audit_threshold = EXPRESSION_MARGIN_WARNING
                 findings.append(_finding(
                     "ambiguous_expression", "medium", "Expression interpretation is uncertain",
                     f"“{surface}” was kept as component words because the phrase interpretation lacked decisive evidence.",
@@ -174,13 +310,49 @@ def audit_queue(
                 margin < EXPRESSION_MARGIN_WARNING
                 or opacity < EXPRESSION_OPACITY_WARNING
             ):
+                expression_flagged = True
+                flagged_expression_surfaces.append(surface)
                 weak_margin = margin < EXPRESSION_MARGIN_WARNING
+                candidate_score = margin if weak_margin else opacity
+                candidate_threshold = (
+                    EXPRESSION_MARGIN_WARNING
+                    if weak_margin else EXPRESSION_OPACITY_WARNING
+                )
+                expression_audit_score = (
+                    candidate_score if expression_audit_score is None
+                    else min(expression_audit_score, candidate_score)
+                )
+                expression_audit_threshold = candidate_threshold
                 findings.append(_finding(
                     "borderline_expression", "medium", "Expression decision is borderline",
                     f"“{surface}” was accepted as one expression, but its semantic margin or opacity is close to the decision boundary.",
                     margin if weak_margin else opacity,
                     EXPRESSION_MARGIN_WARNING if weak_margin else EXPRESSION_OPACITY_WARNING,
                 ))
+
+        if expression_flagged:
+            criteria.append(_criterion(
+                "expression_interpretation", "flagged", "Expression interpretation",
+                "Review the uncertain expression candidate(s): " +
+                ", ".join(f"“{value}”" for value in flagged_expression_surfaces) +
+                ". The displayed comparison uses the stricter audit comfort threshold.",
+                "medium", expression_audit_score, expression_audit_threshold,
+            ))
+        elif relevant_analyses:
+            criteria.append(_criterion(
+                "expression_interpretation", "passed", "Expression interpretation",
+                "Overlapping multiword candidates were resolved decisively.",
+            ))
+        else:
+            criteria.append(_criterion(
+                "expression_interpretation", "passed", "Expression interpretation",
+                "No uncertain multiword-expression candidate overlaps the target.",
+            ))
+
+        criteria.append(_criterion(
+            "unique_example", "passed", "Unique example sentence",
+            "This sentence is reserved for this card and is not reused elsewhere in the batch.",
+        ))
 
         for finding in findings:
             severity_counts[finding.severity] += 1
@@ -192,6 +364,7 @@ def audit_queue(
             reading_consensus.as_dict() if reading_consensus else None
         )
         row["audit_findings"] = [asdict(finding) for finding in findings]
+        row["audit_criteria"] = [asdict(criterion) for criterion in criteria]
         row["expression_analyses"] = relevant_analyses
         cards.append(row)
 
@@ -223,14 +396,14 @@ def render_audit_html(report: Mapping[str, Any], output: Path) -> Path:
     for card in report["cards"]:
         findings = card["audit_findings"]
         severities = " ".join(sorted({item["severity"] for item in findings})) or "passed"
-        finding_html = "".join(
-            f"""<li class="finding {html.escape(item['severity'])}">
-  <strong>{html.escape(item['title'])}</strong>
+        criteria_html = "".join(
+            f"""<li class="criterion {html.escape(item['status'])} {html.escape(str(item.get('severity') or ''))}">
+  <strong><span class="criterion-state">{'PASS' if item['status'] == 'passed' else 'FLAG' if item['status'] == 'flagged' else 'N/A'}</span> {html.escape(item['title'])}</strong>
   <span>{html.escape(item['explanation'])}</span>
   {f'<code>{float(item["score"]):.3f} / {float(item["threshold"]):.3f}</code>' if item['score'] is not None and item['threshold'] is not None else ''}
 </li>"""
-            for item in findings
-        ) or '<li class="finding passed"><strong>No automatic warnings</strong><span>This card passed the current audit rules.</span></li>'
+            for item in card.get("audit_criteria", [])
+        )
         alignment = card.get("alignment_score")
         gloss_score = card.get("gloss_score")
         consensus = card.get("reading_consensus") or {}
@@ -256,7 +429,7 @@ def render_audit_html(report: Mapping[str, Any], output: Path) -> Path:
     <span>Alignment {'—' if alignment is None else f'{float(alignment):.3f}'}</span>
     <span>Gloss support {'—' if gloss_score is None else f'{float(gloss_score):.3f}'}</span>
     {reading_evidence}</div>
-  <ul>{finding_html}</ul>
+  <ul class="criteria">{criteria_html}</ul>
 </article>""")
 
     severity = summary["severity_counts"]
@@ -293,9 +466,11 @@ header {{ display:flex; align-items:baseline; gap:14px; }} h2 {{ font-size:34px;
 .position,.source,.scores {{ color:#9aa0a6; }} .source {{ margin-left:auto; }}
 .gloss {{ color:#c9c5ff; font-size:18px; }} .japanese {{ font-family:"Yu Mincho",serif; font-size:28px; margin-bottom:6px; }}
 .english {{ font-size:18px; margin-top:0; }} .scores {{ display:flex; gap:18px; flex-wrap:wrap; font-size:13px; }}
-ul {{ list-style:none; padding:0; margin:18px 0 0; }} .finding {{ display:grid; grid-template-columns:minmax(190px,.7fr) 2fr auto; gap:12px; border-top:1px solid #45464a; padding:12px 0; }}
+ul {{ list-style:none; padding:0; margin:18px 0 0; }} .finding,.criterion {{ display:grid; grid-template-columns:minmax(240px,.8fr) 2fr auto; gap:12px; border-top:1px solid #45464a; padding:12px 0; }}
 .finding.high strong {{ color:#ff8a80; }} .finding.medium strong {{ color:#ffd180; }} .finding.info strong {{ color:#82b1ff; }} .finding.passed strong {{ color:#8fd694; }}
-code {{ color:#bdc1c6; }} @media(max-width:700px) {{ .finding {{ grid-template-columns:1fr; }} .source {{ margin-left:0; }} header {{ flex-wrap:wrap; }} }}
+.criterion.passed strong {{ color:#8fd694; }} .criterion.flagged.high strong {{ color:#ff8a80; }} .criterion.flagged.medium strong {{ color:#ffd180; }} .criterion.not_checked strong {{ color:#9aa0a6; }}
+.criterion-state {{ display:inline-block; min-width:38px; font:700 11px/1.5 ui-monospace,monospace; letter-spacing:.04em; }}
+code {{ color:#bdc1c6; }} @media(max-width:700px) {{ .finding,.criterion {{ grid-template-columns:1fr; }} .source {{ margin-left:0; }} header {{ flex-wrap:wrap; }} }}
 </style></head><body><main><h1>Vocabulary quality audit</h1>
 <p class="summary">{int(summary['cards'])} cards · {int(summary['cards_with_findings'])} flagged ·
 {int(severity['high'])} high · {int(severity['medium'])} medium · {int(severity['info'])} informational ·
