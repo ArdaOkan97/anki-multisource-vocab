@@ -278,8 +278,109 @@ class GlobalDeduplicationTest(unittest.TestCase):
             rows = self.db.next_unseen(source, limit=1)
 
         self.assertEqual(rows[0]["lemma"], "A")
+        self.assertIsInstance(rows[0]["sentence_id"], int)
+        self.assertLessEqual(
+            rows[0]["target_lexical_end"], rows[0]["target_end"]
+        )
         self.assertEqual(rows[0]["japanese"], "AB")
         self.assertEqual(rows[0]["example_progression"]["harder_unknown_words"], 0)
+
+    def test_queue_excludes_missing_definitions_and_single_kana_reactions(self):
+        source = self.db.add_source(
+            series="Eligibility Show", season=1, episode=1, title=None,
+            video_path=None, japanese_subtitle_path="eligibility.srt",
+            english_subtitle_path=None,
+        )
+
+        class EligibilityTokenizer:
+            def tokenize(self, text):
+                values = {
+                    "う": LexemeToken("う", "う", "ウ", "感動詞"),
+                    "なっ": LexemeToken("なっ", "なっ", "ナッ", "感動詞"),
+                    "猫": LexemeToken("猫", "猫", "ネコ", "名詞"),
+                }
+                return [values[text]]
+
+        self.db.ingest_cues(
+            source,
+            [Cue(1, 0, 800, "う"), Cue(2, 1000, 1800, "なっ"),
+             Cue(3, 2000, 2800, "猫")],
+            [], EligibilityTokenizer(),
+        )
+        self.db.connection.execute(
+            """UPDATE lexemes SET gloss = 'rabbit', dictionary_status = 'matched'
+               WHERE lemma = 'う'"""
+        )
+        self.db.connection.execute(
+            "UPDATE lexemes SET dictionary_status = 'missing' WHERE lemma = 'なっ'"
+        )
+        self.db.connection.execute(
+            """UPDATE lexemes SET gloss = 'cat', dictionary_status = 'matched'
+               WHERE lemma = '猫'"""
+        )
+        self.db.connection.commit()
+
+        self.assertEqual([row["lemma"] for row in self.db.next_unseen(source, 10)], ["猫"])
+        excluded = {
+            row["lemma"]: row["exclusion_reason"]
+            for row in self.db.excluded_candidates([source])
+        }
+        self.assertEqual(excluded, {
+            "う": "reaction_fragment", "なっ": "missing_definition",
+        })
+
+    def test_planner_keeps_lexical_span_separate_from_cloze_inflection(self):
+        source = self.db.add_source(
+            series="Lexical Span", season=1, episode=1, title=None,
+            video_path=None, japanese_subtitle_path="span.srt",
+            english_subtitle_path=None,
+        )
+        self.db.ingest_cues(
+            source, [Cue(1, 0, 800, "ここだろ？")], [], JapaneseTokenizer()
+        )
+        row = next(
+            item for item in self.db.next_unseen(source, limit=10)
+            if item["lemma"] == "ここ"
+        )
+        self.assertEqual(
+            (row["target_lexical_start"], row["target_lexical_end"]), (0, 2)
+        )
+        self.assertGreater(row["target_end"], row["target_lexical_end"])
+
+    def test_batch_and_existing_cards_never_share_an_example_sentence(self):
+        source = self.add_show("Unique Examples", ["AB", "C"])
+        rows = self.db.next_unseen(source, limit=3, metric="source")
+        sentence_ids = [int(row["sentence_id"]) for row in rows]
+        self.assertEqual(len(sentence_ids), len(set(sentence_ids)))
+        self.assertEqual(len(rows), 2)
+
+        reserved = rows[0]
+        self.db.record_anki_card(
+            int(reserved["lexeme_id"]), 900, 1900, source,
+            int(reserved["sentence_id"]),
+        )
+        self.db.mark_known_by_id(int(reserved["lexeme_id"]))
+        following = self.db.next_unseen(source, limit=3, metric="source")
+        self.assertNotIn(
+            int(reserved["sentence_id"]),
+            {int(row["sentence_id"]) for row in following},
+        )
+
+    def test_reimport_releases_stale_sentence_reservation(self):
+        source = self.add_show("Reserved Reimport", ["A"])
+        row = self.db.next_unseen(source, limit=1)[0]
+        self.db.record_anki_card(
+            int(row["lexeme_id"]), 901, 1901, source, int(row["sentence_id"])
+        )
+
+        self.db.ingest_cues(
+            source, [Cue(1, 0, 800, "A")], [], CharacterTokenizer()
+        )
+
+        reservation = self.db.connection.execute(
+            "SELECT example_sentence_id FROM anki_cards WHERE note_id = 901"
+        ).fetchone()[0]
+        self.assertIsNone(reservation)
 
     def test_unreviewed_shared_card_moves_when_switching_sources(self):
         hxh = self.add_show("Hunter x Hunter", list("ABCDEFXY"))

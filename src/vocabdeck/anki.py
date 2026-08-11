@@ -159,6 +159,8 @@ def sync_source(
                 "target_surface": row.get("target_surface"),
                 "target_start": row.get("target_start"),
                 "target_end": row.get("target_end"),
+                "target_lexical_start": row.get("target_lexical_start"),
+                "target_lexical_end": row.get("target_lexical_end"),
                 "example_progression": row.get("example_progression"),
                 "batch_planning": row.get("batch_planning"),
             },
@@ -187,7 +189,8 @@ def sync_source(
             client.invoke("updateNoteFields", note={"id": note_id, "fields": fields})
             client.invoke("changeDeck", cards=[card_id], deck=deck)
             database.record_anki_card(
-                int(row["lexeme_id"]), note_id, card_id, int(row["source_id"])
+                int(row["lexeme_id"]), note_id, card_id, int(row["source_id"]),
+                int(row["sentence_id"]),
             )
             moved += 1
             continue
@@ -205,7 +208,8 @@ def sync_source(
         )
         cards = client.invoke("findCards", query=f"nid:{note_id}")
         database.record_anki_card(
-            int(row["lexeme_id"]), note_id, int(cards[0]), int(row["source_id"])
+            int(row["lexeme_id"]), note_id, int(cards[0]), int(row["source_id"]),
+            int(row["sentence_id"]),
         )
         added += 1
     return {

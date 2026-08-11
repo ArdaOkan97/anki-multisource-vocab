@@ -159,6 +159,14 @@ def build_parser() -> argparse.ArgumentParser:
     preview.add_argument("--output", required=True, type=Path)
     preview.add_argument("--no-media", action="store_true")
 
+    audit = commands.add_parser(
+        "audit", help="Render a quality report for the next Anki batch"
+    )
+    _source_selector(audit)
+    audit.add_argument("--limit", type=int, default=100)
+    audit.add_argument("--metric", choices=METRICS, default="hybrid")
+    audit.add_argument("--output", required=True, type=Path)
+
     known = commands.add_parser("mark-known", help="Mark a canonical lexeme as globally studied")
     known.add_argument("lexeme_key")
     sync = commands.add_parser("sync-anki", help="Pull learned state and add the next source batch")
@@ -214,10 +222,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             print(json.dumps(results, ensure_ascii=False, indent=2))
         elif args.command == "queue":
             source_ids = _selected_source_ids(db, args)
+            db.enrich_dictionary(source_ids)
             rows = db.next_unseen_for_sources(source_ids, args.limit, args.metric)
             print(json.dumps(rows, ensure_ascii=False, indent=2))
         elif args.command == "compare-difficulty":
             source_ids = _selected_source_ids(db, args)
+            db.enrich_dictionary(source_ids)
             comparison = {}
             for metric in METRICS:
                 rows = db.next_unseen_for_sources(source_ids, args.limit, metric)
@@ -243,6 +253,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             rows = db.next_unseen_for_sources(source_ids, args.limit, args.metric)
             output = render_preview_html(rows, args.output, include_media=not args.no_media)
             print(str(output))
+        elif args.command == "audit":
+            from .audit import audit_queue, render_audit_html
+
+            source_ids = _selected_source_ids(db, args)
+            db.enrich_dictionary(source_ids)
+            report = audit_queue(db, source_ids, args.limit, args.metric)
+            output = render_audit_html(report, args.output)
+            print(json.dumps({"output": str(output), **report["summary"]}, indent=2))
         elif args.command == "mark-known":
             db.mark_known(args.lexeme_key)
             print(f"Marked known: {args.lexeme_key}")

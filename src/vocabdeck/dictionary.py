@@ -8,6 +8,8 @@ from typing import Optional, Tuple
 from jamdict import Jamdict
 
 
+DICTIONARY_RESOLVER_VERSION = 2
+
 _ENGLISH_WORD = re.compile(r"[a-z][a-z'-]+")
 _STOPWORDS = {
     "the", "a", "an", "to", "of", "and", "or", "be", "is", "are", "was", "were",
@@ -181,6 +183,11 @@ class JMDictResolver:
                 pos_match = any(
                     hint in pos_text for hint in _POS_HINTS.get(part_of_speech, ())
                 )
+                # UniDic reliably identifies reaction fragments as interjections.
+                # Do not let a same-reading noun such as 羽（は） or 兎（う）
+                # become its learner definition merely because JMdict contains it.
+                if part_of_speech == "感動詞" and not pos_match:
+                    continue
                 gloss_words = _words(" ".join(glosses))
                 overlap_count = len(context_words & gloss_words)
                 kana_usual = any(

@@ -17,10 +17,14 @@ dependencies = [
   "jamdict>=0.1a11.post2",
   "jamdict-data>=1.5",
   "sentence-transformers>=3.0.0,<6.0.0",
+  "sudachipy>=0.6.8,<0.7.0",
+  "sudachidict-core>=20240109",
+  "pyopenjtalk>=0.4.0,<0.5.0",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+reading-full = ["sudachidict-full>=20240109"]
 
 [project.scripts]
 vocabdeck = "vocabdeck.cli:main"

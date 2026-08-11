@@ -63,6 +63,12 @@ uv sync --extra dev
 uv run vocabdeck init
 ```
 
+Audits use UniDic, Sudachi, and OpenJTalk locally for contextual reading
+consensus. OpenJTalk downloads its pronunciation dictionary on first use. The
+default Sudachi core dictionary is sufficient for consensus; install the much
+larger full dictionary with `uv sync --extra reading-full` when broader proper
+name and rare-word coverage is worth the disk cost.
+
 ## Ingest an episode
 
 List embedded subtitle streams:
@@ -121,6 +127,29 @@ preview behaves like a review session: it shows one card at a time, blanks the
 target word, and keeps the expression, reading, full sentence, image, and audio
 hidden until **Show answer** is pressed. Space reveals the answer; the arrow keys
 move between cards.
+
+Audit the exact batch before sending it to Anki:
+
+```bash
+uv run vocabdeck audit \
+  --series "Hunter x Hunter" --season 1 --episodes 1-10 --limit 100 \
+  --output ".vocabdeck/audits/hxh-episodes-1-10.html"
+```
+
+The standalone report shows every quality criterion beneath each card as
+**PASS**, **FLAG**, or **N/A**. These cover subtitle availability and alignment,
+definition availability and contextual support, harder unknown context words,
+contextual reading consensus, multiword-expression interpretation, and unique
+example assignment. It audits the same progressively planned queue used by
+`sync-anki`; it never changes learning state.
+The report also lists structurally excluded candidates separately. Words without
+a reliable definition and one-kana reaction fragments never enter the eligible
+queue. Dictionary matches are versioned so older databases automatically recheck
+entries when stricter resolver rules are introduced.
+Reading warnings are evidence-based: the target's exact lexical span is checked
+with Sudachi and OpenJTalk, and a warning is emitted only when both independent
+analyzers agree on a reading different from UniDic. Merely having another valid
+reading elsewhere in the global dictionary is not a warning.
 
 Three explainable difficulty metrics are available:
 
@@ -185,6 +214,7 @@ review history.
 
 - **“Known” means introduced, not mastered.** The first answer is enough to prevent a duplicate new card elsewhere. Anki/FSRS remains responsible for whether the word is actually retained.
 - **One note, many occurrences.** A vocabulary card has one primary context, but its database record can point to every show, season, episode, timestamp, and subtitle line where it appeared.
+- **One sentence, one teaching card.** Once a sentence is selected for a card, it is reserved. Other words use a different occurrence or wait until another source supplies one.
 - **Decks are views, not the source of truth.** SQLite owns global identity and source history; Anki owns review scheduling and logs.
 - **Never delete or move reviewed cards during deduplication.** A reviewed card stays in its original deck. An unreviewed prefetched card may move when its source changes; other queues skip a learned lexeme.
 - **Batch lazily.** Creating thousands of duplicate suspended notes up front makes reconciliation fragile and pollutes the collection.

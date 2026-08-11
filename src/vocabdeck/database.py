@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Iterable, Iterator, List, Optional, Sequence
 
+from .dictionary import DICTIONARY_RESOLVER_VERSION
 from .subtitles import Cue, align_translation
 from .tokenizer import LexemeToken
 
@@ -50,6 +51,7 @@ CREATE TABLE IF NOT EXISTS lexemes (
     dictionary_sense_index INTEGER,
     dictionary_confidence REAL,
     dictionary_status TEXT,
+    dictionary_version INTEGER,
     known_at TEXT,
     created_at TEXT NOT NULL
 );
@@ -92,6 +94,7 @@ CREATE TABLE IF NOT EXISTS anki_cards (
     note_id INTEGER NOT NULL UNIQUE,
     card_id INTEGER,
     introduced_source_id INTEGER REFERENCES sources(id),
+    example_sentence_id INTEGER REFERENCES sentences(id) ON DELETE SET NULL,
     last_seen_reps INTEGER NOT NULL DEFAULT 0,
     synced_at TEXT NOT NULL
 );
@@ -123,10 +126,34 @@ class VocabularyDatabase:
             "dictionary_sense_index": "INTEGER",
             "dictionary_confidence": "REAL",
             "dictionary_status": "TEXT",
+            "dictionary_version": "INTEGER",
         }
         for name, sql_type in additions.items():
             if name not in existing:
                 self.connection.execute(f"ALTER TABLE lexemes ADD COLUMN {name} {sql_type}")
+        card_columns = {
+            row["name"] for row in self.connection.execute(
+                "PRAGMA table_info(anki_cards)"
+            )
+        }
+        if "example_sentence_id" not in card_columns:
+            self.connection.execute(
+                "ALTER TABLE anki_cards ADD COLUMN example_sentence_id INTEGER"
+            )
+        self.connection.execute(
+            """CREATE UNIQUE INDEX IF NOT EXISTS anki_cards_example_sentence
+               ON anki_cards(example_sentence_id)
+               WHERE example_sentence_id IS NOT NULL"""
+        )
+        # Expression senses were already selected by the stricter semantic
+        # resolver. Preserve them while allowing ordinary legacy matches to be
+        # rechecked by the current dictionary resolver.
+        self.connection.execute(
+            """UPDATE lexemes SET dictionary_version = ?
+               WHERE part_of_speech = '表現' AND dictionary_entry_id IS NOT NULL
+                 AND dictionary_version IS NULL""",
+            (DICTIONARY_RESOLVER_VERSION,),
+        )
         analysis_columns = {
             row["name"] for row in self.connection.execute(
                 "PRAGMA table_info(expression_analyses)"
@@ -271,7 +298,7 @@ class VocabularyDatabase:
                         connection.execute(
                             """UPDATE lexemes SET gloss = ?, dictionary_entry_id = ?,
                                       dictionary_sense_index = ?, dictionary_confidence = ?,
-                                      dictionary_status = 'matched'
+                                      dictionary_status = 'matched', dictionary_version = ?
                                WHERE id = ? AND (
                                  dictionary_confidence IS NULL
                                  OR dictionary_confidence < ?
@@ -279,7 +306,8 @@ class VocabularyDatabase:
                             (
                                 analysis.phrase_description, analysis.entry_id,
                                 analysis.sense_index, analysis.phrase_score,
-                                lexeme_id, analysis.phrase_score,
+                                DICTIONARY_RESOLVER_VERSION, lexeme_id,
+                                analysis.phrase_score,
                             ),
                         )
                     connection.execute(
@@ -347,6 +375,12 @@ class VocabularyDatabase:
                        JOIN sentences sx ON sx.id = o.sentence_id
                        JOIN lexemes l ON l.id = o.lexeme_id
                        WHERE sx.source_id IN ({markers})
+                         AND (l.dictionary_status IS NULL OR (
+                           l.dictionary_status = 'matched' AND l.gloss IS NOT NULL
+                         ))
+                         AND NOT (
+                           l.part_of_speech = '感動詞' AND LENGTH(l.lemma) <= 1
+                         )
                        GROUP BY o.lexeme_id
                    ), examples AS (
                        SELECT r.lexeme_id, r.source_count, r.rank_score,
@@ -448,6 +482,14 @@ class VocabularyDatabase:
         markers = ",".join("?" for _ in source_ids)
         tokenizer = JapaneseTokenizer()
         examples_by_lexeme: Dict[int, List[dict]] = {}
+        reserved_sentence_owners = {
+            int(row["example_sentence_id"]): int(row["lexeme_id"])
+            for row in self.connection.execute(
+                """SELECT lexeme_id, example_sentence_id FROM anki_cards
+                   WHERE example_sentence_id IS NOT NULL"""
+            )
+        }
+        used_sentence_ids = set(reserved_sentence_owners)
 
         def load_examples(row: dict) -> List[dict]:
             lexeme_id = int(row["lexeme_id"])
@@ -476,12 +518,15 @@ class VocabularyDatabase:
                     int(value) for value in candidate.pop("word_ids_csv").split(",")
                 }
                 candidate["lemma"] = row["lemma"]
+                lexical_surface = str(candidate["surface"])
                 span = tokenizer.find_inflected_span(
                     candidate["japanese"], row["lemma"], row["reading"],
-                    candidate["surface"],
+                    lexical_surface,
                 )
                 if span:
                     candidate["target_start"], candidate["target_end"] = span
+                    candidate["target_lexical_start"] = span[0]
+                    candidate["target_lexical_end"] = span[0] + len(lexical_surface)
                     candidate["surface"] = candidate["japanese"][span[0]:span[1]]
                 examples.append(candidate)
             examples_by_lexeme[lexeme_id] = examples
@@ -494,6 +539,10 @@ class VocabularyDatabase:
             for rank_index, row in enumerate(remaining):
                 best_example = None
                 for candidate in load_examples(row):
+                    sentence_id = int(candidate["sentence_id"])
+                    owner = reserved_sentence_owners.get(sentence_id)
+                    if sentence_id in used_sentence_ids and owner != int(row["lexeme_id"]):
+                        continue
                     score, details = example_score(
                         candidate,
                         int(row["lexeme_id"]),
@@ -521,7 +570,7 @@ class VocabularyDatabase:
             _, _, rank_index, row, candidate, details, planner = best_plan
             remaining.pop(rank_index)
             for field in (
-                "japanese", "english", "start_ms", "end_ms", "source_id",
+                "sentence_id", "japanese", "english", "start_ms", "end_ms", "source_id",
                 "cue_index", "series", "season", "episode", "video_path",
             ):
                 row[field] = candidate[field]
@@ -530,10 +579,13 @@ class VocabularyDatabase:
             row["target_surface"] = candidate["surface"]
             row["target_start"] = candidate.get("target_start")
             row["target_end"] = candidate.get("target_end")
+            row["target_lexical_start"] = candidate.get("target_lexical_start")
+            row["target_lexical_end"] = candidate.get("target_lexical_end")
             row["example_progression"] = details
             row["batch_planning"] = planner
             selected.append(row)
             known_ids.add(int(row["lexeme_id"]))
+            used_sentence_ids.add(int(candidate["sentence_id"]))
         return selected
 
     def enrich_dictionary(
@@ -541,8 +593,11 @@ class VocabularyDatabase:
     ) -> Dict[str, int]:
         from .dictionary import JMDictResolver
 
-        where = "1 = 1" if force else "l.dictionary_status IS NULL"
-        parameters: tuple = ()
+        where = "1 = 1" if force else (
+            "(l.dictionary_status IS NULL OR "
+            "COALESCE(l.dictionary_version, 0) < ?)"
+        )
+        parameters: tuple = () if force else (DICTIONARY_RESOLVER_VERSION,)
         if source_ids is not None:
             if not source_ids:
                 return {"matched": 0, "missing": 0}
@@ -552,7 +607,7 @@ class VocabularyDatabase:
                 "JOIN sentences sx ON sx.id = ox.sentence_id "
                 f"WHERE ox.lexeme_id = l.id AND sx.source_id IN ({markers}))"
             )
-            parameters = tuple(source_ids)
+            parameters = (*parameters, *source_ids)
         rows = list(
             self.connection.execute(
                 f"""SELECT l.id, l.lemma, l.reading, l.part_of_speech,
@@ -578,18 +633,20 @@ class VocabularyDatabase:
                     connection.execute(
                         """UPDATE lexemes SET gloss = NULL, dictionary_entry_id = NULL,
                                   dictionary_sense_index = NULL, dictionary_confidence = NULL,
-                                  dictionary_status = 'missing' WHERE id = ?""",
-                        (row["id"],),
+                                  dictionary_status = 'missing', dictionary_version = ?
+                           WHERE id = ?""",
+                        (DICTIONARY_RESOLVER_VERSION, row["id"]),
                     )
                     missing += 1
                 else:
                     connection.execute(
                         """UPDATE lexemes SET gloss = ?, dictionary_entry_id = ?,
                                   dictionary_sense_index = ?, dictionary_confidence = ?,
-                                  dictionary_status = 'matched' WHERE id = ?""",
+                                  dictionary_status = 'matched', dictionary_version = ?
+                           WHERE id = ?""",
                         (
                             match.gloss, match.entry_id, match.sense_index,
-                            match.confidence, row["id"],
+                            match.confidence, DICTIONARY_RESOLVER_VERSION, row["id"],
                         ),
                     )
                     matched += 1
@@ -612,19 +669,25 @@ class VocabularyDatabase:
             )
 
     def record_anki_card(
-        self, lexeme_id: int, note_id: int, card_id: int, source_id: int
+        self, lexeme_id: int, note_id: int, card_id: int, source_id: int,
+        example_sentence_id: Optional[int] = None,
     ) -> None:
         with self.transaction() as connection:
             connection.execute(
                 """INSERT INTO anki_cards
-                   (lexeme_id, note_id, card_id, introduced_source_id, synced_at)
-                   VALUES (?, ?, ?, ?, ?)
+                   (lexeme_id, note_id, card_id, introduced_source_id,
+                    example_sentence_id, synced_at)
+                   VALUES (?, ?, ?, ?, ?, ?)
                    ON CONFLICT(lexeme_id) DO UPDATE SET
                      note_id=excluded.note_id,
                      card_id=excluded.card_id,
                      introduced_source_id=excluded.introduced_source_id,
+                     example_sentence_id=excluded.example_sentence_id,
                      synced_at=excluded.synced_at""",
-                (lexeme_id, note_id, card_id, source_id, utc_now()),
+                (
+                    lexeme_id, note_id, card_id, source_id,
+                    example_sentence_id, utc_now(),
+                ),
             )
 
     def tracked_anki_cards(self) -> List[sqlite3.Row]:
@@ -671,6 +734,70 @@ class VocabularyDatabase:
                 (series, season, *episodes),
             )
         return [int(row[0]) for row in rows]
+
+    def lexeme_labels(self, lexeme_ids: Sequence[int]) -> List[str]:
+        if not lexeme_ids:
+            return []
+        markers = ",".join("?" for _ in lexeme_ids)
+        rows = self.connection.execute(
+            f"SELECT id, lemma, reading FROM lexemes WHERE id IN ({markers})",
+            tuple(int(value) for value in lexeme_ids),
+        )
+        by_id = {
+            int(row["id"]): f"{row['lemma']}（{row['reading']}）" for row in rows
+        }
+        return [by_id[value] for value in map(int, lexeme_ids) if value in by_id]
+
+    def expression_analyses_for_sentence(
+        self, sentence_id: Optional[int]
+    ) -> List[sqlite3.Row]:
+        if sentence_id is None:
+            return []
+        return list(self.connection.execute(
+            """SELECT * FROM expression_analyses
+               WHERE sentence_id = ? ORDER BY start_char, end_char""",
+            (int(sentence_id),),
+        ))
+
+    def excluded_candidates(
+        self, source_ids: Sequence[int], limit: int = 100
+    ) -> List[dict]:
+        if not source_ids:
+            return []
+        markers = ",".join("?" for _ in source_ids)
+        rows = self.connection.execute(
+            f"""WITH excluded AS (
+                   SELECT l.id AS lexeme_id, l.lexeme_key, l.lemma, l.reading,
+                          l.part_of_speech, l.gloss, l.dictionary_status,
+                          s.id AS sentence_id, s.japanese, s.english,
+                          src.series, src.season, src.episode,
+                          SUM(o.count) OVER (PARTITION BY l.id) AS source_count,
+                          ROW_NUMBER() OVER (
+                            PARTITION BY l.id
+                            ORDER BY CASE WHEN s.english IS NULL OR s.english = ''
+                                          THEN 1 ELSE 0 END,
+                                     LENGTH(s.japanese), s.cue_index
+                          ) AS occurrence_rank,
+                          CASE
+                            WHEN l.part_of_speech = '感動詞' AND LENGTH(l.lemma) <= 1
+                              THEN 'reaction_fragment'
+                            ELSE 'missing_definition'
+                          END AS exclusion_reason
+                   FROM lexemes l
+                   JOIN occurrences o ON o.lexeme_id = l.id
+                   JOIN sentences s ON s.id = o.sentence_id
+                   JOIN sources src ON src.id = s.source_id
+                   WHERE s.source_id IN ({markers})
+                     AND (
+                       l.dictionary_status = 'missing' OR l.gloss IS NULL
+                       OR (l.part_of_speech = '感動詞' AND LENGTH(l.lemma) <= 1)
+                     )
+                 )
+                 SELECT * FROM excluded WHERE occurrence_rank = 1
+                 ORDER BY source_count DESC, lemma LIMIT ?""",
+            (*source_ids, int(limit)),
+        )
+        return [dict(row) for row in rows]
 
     def stats(self) -> Dict[str, int]:
         result: Dict[str, int] = {}
