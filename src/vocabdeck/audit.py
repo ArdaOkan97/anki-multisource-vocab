@@ -5,6 +5,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence
 
+from .readings import ContextualReadingValidator
 from .semantics import MultilingualE5Small, TextEmbedder
 
 
@@ -13,6 +14,7 @@ ALIGNMENT_HIGH_THRESHOLD = 0.72
 GLOSS_WARNING_THRESHOLD = 0.70
 EXPRESSION_MARGIN_WARNING = 0.06
 EXPRESSION_OPACITY_WARNING = 0.20
+READING_CHECK_POS = {"名詞", "代名詞", "副詞", "連体詞", "感動詞", "表現"}
 
 
 @dataclass(frozen=True)
@@ -49,10 +51,12 @@ def audit_queue(
     limit: int = 100,
     metric: str = "hybrid",
     embedder: Optional[TextEmbedder] = None,
+    reading_validator: Optional[ContextualReadingValidator] = None,
 ) -> Dict[str, Any]:
     """Audit the exact progressive batch that would next be sent to Anki."""
     rows = database.next_unseen_for_sources(source_ids, limit, metric)
     semantic = embedder or MultilingualE5Small()
+    contextual_readings = reading_validator or ContextualReadingValidator()
     cards: List[Dict[str, Any]] = []
     severity_counts = {"high": 0, "medium": 0, "info": 0}
     code_counts: Dict[str, int] = {}
@@ -110,13 +114,38 @@ def audit_queue(
                 f"{harder_count} unknown context word(s) are harder than the target{suffix}.",
             ))
 
-        variants = database.reading_variants(str(row["lemma"]), str(row["reading"]))
-        if variants:
-            findings.append(_finding(
-                "alternate_reading", "info", "Same spelling has another recorded reading",
-                "Other global identities: " + ", ".join(variants) +
-                ". Confirm that this occurrence uses the displayed reading.",
-            ))
+        reading_consensus = None
+        if str(row.get("part_of_speech") or "") in READING_CHECK_POS:
+            reading_consensus = contextual_readings.validate(
+                japanese, row.get("target_lexical_start"),
+                row.get("target_lexical_end"),
+                str(row["reading"]),
+            )
+            if reading_consensus.status == "disagreement":
+                secondary = [
+                    value for value in (
+                        reading_consensus.sudachi, reading_consensus.openjtalk,
+                    ) if value
+                ]
+                decisive = (
+                    len(secondary) == 2
+                    and secondary[0] == secondary[1]
+                    and secondary[0] != reading_consensus.expected
+                )
+                evidence = ", ".join(
+                    value for value in (
+                        f"UniDic {reading_consensus.expected}",
+                        f"Sudachi {reading_consensus.sudachi}"
+                        if reading_consensus.sudachi else "",
+                        f"OpenJTalk {reading_consensus.openjtalk}"
+                        if reading_consensus.openjtalk else "",
+                    ) if value
+                )
+                findings.append(_finding(
+                    "reading_disagreement", "high" if decisive else "medium",
+                    "Contextual analyzers disagree on the reading",
+                    evidence + ". Verify this occurrence before creating the card.",
+                ))
 
         analyses = database.expression_analyses_for_sentence(row.get("sentence_id"))
         target_start = row.get("target_start")
@@ -159,6 +188,9 @@ def audit_queue(
         row["audit_position"] = position
         row["alignment_score"] = None if alignment_score is None else round(alignment_score, 3)
         row["gloss_score"] = None if gloss_score is None else round(gloss_score, 3)
+        row["reading_consensus"] = (
+            reading_consensus.as_dict() if reading_consensus else None
+        )
         row["audit_findings"] = [asdict(finding) for finding in findings]
         row["expression_analyses"] = relevant_analyses
         cards.append(row)
@@ -201,6 +233,17 @@ def render_audit_html(report: Mapping[str, Any], output: Path) -> Path:
         ) or '<li class="finding passed"><strong>No automatic warnings</strong><span>This card passed the current audit rules.</span></li>'
         alignment = card.get("alignment_score")
         gloss_score = card.get("gloss_score")
+        consensus = card.get("reading_consensus") or {}
+        reading_evidence = ""
+        if consensus:
+            values = [f"UniDic {consensus.get('expected') or '—'}"]
+            if consensus.get("sudachi"):
+                values.append(f"Sudachi {consensus['sudachi']}")
+            if consensus.get("openjtalk"):
+                values.append(f"OpenJTalk {consensus['openjtalk']}")
+            reading_evidence = (
+                f'<span>Reading {html.escape(" · ".join(values))}</span>'
+            )
         cards_html.append(f"""<article class="card" data-severity="{severities}">
   <header><span class="position">#{int(card['audit_position'])}</span>
     <h2><ruby>{html.escape(str(card['lemma']))}<rt>{html.escape(str(card['reading']))}</rt></ruby></h2>
@@ -211,7 +254,8 @@ def render_audit_html(report: Mapping[str, Any], output: Path) -> Path:
   <p class="english">{html.escape(str(card.get('english') or 'No English subtitle'))}</p>
   <div class="scores"><span>Difficulty {float(card['difficulty_score']):.1f}</span>
     <span>Alignment {'—' if alignment is None else f'{float(alignment):.3f}'}</span>
-    <span>Gloss support {'—' if gloss_score is None else f'{float(gloss_score):.3f}'}</span></div>
+    <span>Gloss support {'—' if gloss_score is None else f'{float(gloss_score):.3f}'}</span>
+    {reading_evidence}</div>
   <ul>{finding_html}</ul>
 </article>""")
 

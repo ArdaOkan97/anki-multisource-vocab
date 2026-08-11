@@ -63,6 +63,12 @@ uv sync --extra dev
 uv run vocabdeck init
 ```
 
+Audits use UniDic, Sudachi, and OpenJTalk locally for contextual reading
+consensus. OpenJTalk downloads its pronunciation dictionary on first use. The
+default Sudachi core dictionary is sufficient for consensus; install the much
+larger full dictionary with `uv sync --extra reading-full` when broader proper
+name and rare-word coverage is worth the disk cost.
+
 ## Ingest an episode
 
 List embedded subtitle streams:
@@ -139,6 +145,10 @@ The report also lists structurally excluded candidates separately. Words without
 a reliable definition and one-kana reaction fragments never enter the eligible
 queue. Dictionary matches are versioned so older databases automatically recheck
 entries when stricter resolver rules are introduced.
+Reading warnings are evidence-based: the target's exact lexical span is checked
+with Sudachi and OpenJTalk, and a warning is emitted only when both independent
+analyzers agree on a reading different from UniDic. Merely having another valid
+reading elsewhere in the global dictionary is not a warning.
 
 Three explainable difficulty metrics are available:
 

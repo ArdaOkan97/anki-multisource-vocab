@@ -159,6 +159,8 @@ def sync_source(
                 "target_surface": row.get("target_surface"),
                 "target_start": row.get("target_start"),
                 "target_end": row.get("target_end"),
+                "target_lexical_start": row.get("target_lexical_start"),
+                "target_lexical_end": row.get("target_lexical_end"),
                 "example_progression": row.get("example_progression"),
                 "batch_planning": row.get("batch_planning"),
             },

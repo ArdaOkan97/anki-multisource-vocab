@@ -518,12 +518,15 @@ class VocabularyDatabase:
                     int(value) for value in candidate.pop("word_ids_csv").split(",")
                 }
                 candidate["lemma"] = row["lemma"]
+                lexical_surface = str(candidate["surface"])
                 span = tokenizer.find_inflected_span(
                     candidate["japanese"], row["lemma"], row["reading"],
-                    candidate["surface"],
+                    lexical_surface,
                 )
                 if span:
                     candidate["target_start"], candidate["target_end"] = span
+                    candidate["target_lexical_start"] = span[0]
+                    candidate["target_lexical_end"] = span[0] + len(lexical_surface)
                     candidate["surface"] = candidate["japanese"][span[0]:span[1]]
                 examples.append(candidate)
             examples_by_lexeme[lexeme_id] = examples
@@ -576,6 +579,8 @@ class VocabularyDatabase:
             row["target_surface"] = candidate["surface"]
             row["target_start"] = candidate.get("target_start")
             row["target_end"] = candidate.get("target_end")
+            row["target_lexical_start"] = candidate.get("target_lexical_start")
+            row["target_lexical_end"] = candidate.get("target_lexical_end")
             row["example_progression"] = details
             row["batch_planning"] = planner
             selected.append(row)
@@ -742,14 +747,6 @@ class VocabularyDatabase:
             int(row["id"]): f"{row['lemma']}（{row['reading']}）" for row in rows
         }
         return [by_id[value] for value in map(int, lexeme_ids) if value in by_id]
-
-    def reading_variants(self, lemma: str, reading: str) -> List[str]:
-        rows = self.connection.execute(
-            """SELECT DISTINCT reading FROM lexemes
-               WHERE lemma = ? AND reading != ? ORDER BY reading""",
-            (lemma, reading),
-        )
-        return [f"{lemma}（{row['reading']}）" for row in rows]
 
     def expression_analyses_for_sentence(
         self, sentence_id: Optional[int]

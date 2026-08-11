@@ -4,6 +4,7 @@ from pathlib import Path
 
 from vocabdeck.audit import audit_queue, render_audit_html
 from vocabdeck.cli import build_parser
+from vocabdeck.readings import ReadingConsensus
 
 
 class FakeEmbedder:
@@ -15,6 +16,22 @@ class FakeEmbedder:
         if query == "A dog arrived.":
             return 0.52
         raise AssertionError((query, passage))
+
+
+class FakeReadingValidator:
+    def validate(self, text, start, end, expected):
+        return ReadingConsensus(
+            "agreement", expected, expected, expected,
+            ("sudachi-test", "openjtalk"),
+        )
+
+
+class DisagreeingReadingValidator:
+    def validate(self, text, start, end, expected):
+        return ReadingConsensus(
+            "disagreement", expected, "ビョウ", "ビョウ",
+            ("sudachi-test", "openjtalk"),
+        )
 
 
 class FakeDatabase:
@@ -35,6 +52,8 @@ class FakeDatabase:
                 "episode": 2,
                 "target_start": 0,
                 "target_end": 1,
+                "target_lexical_start": 0,
+                "target_lexical_end": 1,
                 "example_progression": {
                     "harder_unknown_words": 1,
                     "harder_unknown_ids": [9],
@@ -55,15 +74,14 @@ class FakeDatabase:
                 "episode": 2,
                 "target_start": 0,
                 "target_end": 1,
+                "target_lexical_start": 0,
+                "target_lexical_end": 1,
                 "example_progression": {},
             },
         ]
 
     def lexeme_labels(self, lexeme_ids):
         return ["到着（トウチャク）"] if lexeme_ids else []
-
-    def reading_variants(self, lemma, reading):
-        return ["猫（ビョウ）"] if lemma == "猫" else []
 
     def expression_analyses_for_sentence(self, sentence_id):
         if sentence_id != 11:
@@ -94,7 +112,8 @@ class FakeDatabase:
 class AuditTest(unittest.TestCase):
     def test_flags_actionable_quality_risks(self):
         report = audit_queue(
-            FakeDatabase(), [1], limit=2, embedder=FakeEmbedder()
+            FakeDatabase(), [1], limit=2, embedder=FakeEmbedder(),
+            reading_validator=FakeReadingValidator(),
         )
         first_codes = {
             item["code"] for item in report["cards"][0]["audit_findings"]
@@ -103,7 +122,6 @@ class AuditTest(unittest.TestCase):
             "weak_subtitle_alignment",
             "weak_gloss_support",
             "harder_unknown_context",
-            "alternate_reading",
             "ambiguous_expression",
         })
         second_codes = {
@@ -115,12 +133,13 @@ class AuditTest(unittest.TestCase):
         self.assertEqual(report["summary"]["cards_with_findings"], 2)
         self.assertEqual(report["summary"]["excluded_candidates"], 1)
         self.assertEqual(report["summary"]["severity_counts"], {
-            "high": 4, "medium": 2, "info": 1,
+            "high": 4, "medium": 2, "info": 0,
         })
 
     def test_renders_filterable_standalone_report(self):
         report = audit_queue(
-            FakeDatabase(), [1], limit=2, embedder=FakeEmbedder()
+            FakeDatabase(), [1], limit=2, embedder=FakeEmbedder(),
+            reading_validator=FakeReadingValidator(),
         )
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "audit.html"
@@ -132,6 +151,19 @@ class AuditTest(unittest.TestCase):
         self.assertIn('data-filter="flagged"', document)
         self.assertIn("Excluded candidates", document)
         self.assertIn("Not eligible for Anki", document)
+        self.assertIn("UniDic ネコ · Sudachi ネコ · OpenJTalk ネコ", document)
+
+    def test_flags_only_evidence_backed_reading_disagreement(self):
+        report = audit_queue(
+            FakeDatabase(), [1], limit=1, embedder=FakeEmbedder(),
+            reading_validator=DisagreeingReadingValidator(),
+        )
+        finding = next(
+            item for item in report["cards"][0]["audit_findings"]
+            if item["code"] == "reading_disagreement"
+        )
+        self.assertEqual(finding["severity"], "high")
+        self.assertIn("Sudachi ビョウ", finding["explanation"])
 
     def test_cli_accepts_episode_range(self):
         args = build_parser().parse_args([

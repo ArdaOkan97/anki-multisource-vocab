@@ -279,6 +279,9 @@ class GlobalDeduplicationTest(unittest.TestCase):
 
         self.assertEqual(rows[0]["lemma"], "A")
         self.assertIsInstance(rows[0]["sentence_id"], int)
+        self.assertLessEqual(
+            rows[0]["target_lexical_end"], rows[0]["target_end"]
+        )
         self.assertEqual(rows[0]["japanese"], "AB")
         self.assertEqual(rows[0]["example_progression"]["harder_unknown_words"], 0)
 
@@ -325,6 +328,24 @@ class GlobalDeduplicationTest(unittest.TestCase):
         self.assertEqual(excluded, {
             "う": "reaction_fragment", "なっ": "missing_definition",
         })
+
+    def test_planner_keeps_lexical_span_separate_from_cloze_inflection(self):
+        source = self.db.add_source(
+            series="Lexical Span", season=1, episode=1, title=None,
+            video_path=None, japanese_subtitle_path="span.srt",
+            english_subtitle_path=None,
+        )
+        self.db.ingest_cues(
+            source, [Cue(1, 0, 800, "ここだろ？")], [], JapaneseTokenizer()
+        )
+        row = next(
+            item for item in self.db.next_unseen(source, limit=10)
+            if item["lemma"] == "ここ"
+        )
+        self.assertEqual(
+            (row["target_lexical_start"], row["target_lexical_end"]), (0, 2)
+        )
+        self.assertGreater(row["target_end"], row["target_lexical_end"])
 
     def test_batch_and_existing_cards_never_share_an_example_sentence(self):
         source = self.add_show("Unique Examples", ["AB", "C"])
