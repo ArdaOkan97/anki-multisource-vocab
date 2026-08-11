@@ -135,6 +135,10 @@ class AuditTest(unittest.TestCase):
         self.assertEqual(report["summary"]["severity_counts"], {
             "high": 4, "medium": 2, "info": 0,
         })
+        self.assertEqual(
+            report["summary"]["criterion_counts"]["translation_available"],
+            {"passed": 1, "flagged": 1, "not_checked": 0},
+        )
         first_criteria = {
             item["code"]: item["status"]
             for item in report["cards"][0]["audit_criteria"]

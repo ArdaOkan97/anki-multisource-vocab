@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import csv
 import html
+import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence
@@ -15,6 +17,16 @@ GLOSS_WARNING_THRESHOLD = 0.70
 EXPRESSION_MARGIN_WARNING = 0.06
 EXPRESSION_OPACITY_WARNING = 0.20
 READING_CHECK_POS = {"名詞", "代名詞", "副詞", "連体詞", "感動詞", "表現"}
+AUDIT_CRITERION_CODES = (
+    "translation_available",
+    "translation_alignment",
+    "definition_available",
+    "gloss_support",
+    "context_difficulty",
+    "contextual_reading",
+    "expression_interpretation",
+    "unique_example",
+)
 
 
 @dataclass(frozen=True)
@@ -86,11 +98,34 @@ def audit_queue(
 ) -> Dict[str, Any]:
     """Audit the exact progressive batch that would next be sent to Anki."""
     rows = database.next_unseen_for_sources(source_ids, limit, metric)
+    return audit_rows(
+        database,
+        rows,
+        metric=metric,
+        source_ids=source_ids,
+        excluded_limit=limit,
+        embedder=embedder,
+        reading_validator=reading_validator,
+    )
+
+
+def audit_rows(
+    database: Any,
+    rows: Sequence[Mapping[str, Any]],
+    *,
+    metric: str = "hybrid",
+    source_ids: Optional[Sequence[int]] = None,
+    excluded_limit: int = 0,
+    embedder: Optional[TextEmbedder] = None,
+    reading_validator: Optional[ContextualReadingValidator] = None,
+) -> Dict[str, Any]:
+    """Audit a previously materialized plan without recomputing its ordering."""
     semantic = embedder or MultilingualE5Small()
     contextual_readings = reading_validator or ContextualReadingValidator()
     cards: List[Dict[str, Any]] = []
     severity_counts = {"high": 0, "medium": 0, "info": 0}
     code_counts: Dict[str, int] = {}
+    criterion_counts: Dict[str, Dict[str, int]] = {}
 
     for position, raw_row in enumerate(rows, start=1):
         row = dict(raw_row)
@@ -357,6 +392,11 @@ def audit_queue(
         for finding in findings:
             severity_counts[finding.severity] += 1
             code_counts[finding.code] = code_counts.get(finding.code, 0) + 1
+        for criterion in criteria:
+            statuses = criterion_counts.setdefault(
+                criterion.code, {"passed": 0, "flagged": 0, "not_checked": 0}
+            )
+            statuses[criterion.status] += 1
         row["audit_position"] = position
         row["alignment_score"] = None if alignment_score is None else round(alignment_score, 3)
         row["gloss_score"] = None if gloss_score is None else round(gloss_score, 3)
@@ -368,10 +408,9 @@ def audit_queue(
         row["expression_analyses"] = relevant_analyses
         cards.append(row)
 
-    excluded = (
-        database.excluded_candidates(source_ids, limit)
-        if hasattr(database, "excluded_candidates") else []
-    )
+    excluded = []
+    if source_ids is not None and hasattr(database, "excluded_candidates"):
+        excluded = database.excluded_candidates(source_ids, excluded_limit)
 
     return {
         "summary": {
@@ -381,6 +420,7 @@ def audit_queue(
             "findings": sum(severity_counts.values()),
             "severity_counts": severity_counts,
             "code_counts": dict(sorted(code_counts.items())),
+            "criterion_counts": dict(sorted(criterion_counts.items())),
             "metric": metric,
         },
         "cards": cards,
@@ -388,21 +428,151 @@ def audit_queue(
     }
 
 
+def attach_reviews(
+    report: Dict[str, Any], reviews: Sequence[Mapping[str, Any]]
+) -> Dict[str, Any]:
+    """Attach persisted human decisions to their automatic criteria."""
+    by_key = {
+        (int(review["position"]), str(review["criterion_code"])): dict(review)
+        for review in reviews
+    }
+    reviewed = 0
+    agreements = 0
+    by_criterion: Dict[str, Dict[str, int]] = {}
+    for card in report["cards"]:
+        position = int(card["audit_position"])
+        for criterion in card["audit_criteria"]:
+            review = by_key.get((position, str(criterion["code"])))
+            criterion["review"] = review
+            if review is None:
+                continue
+            reviewed += 1
+            criterion_counts = by_criterion.setdefault(str(criterion["code"]), {
+                "reviewed": 0,
+                "agreements": 0,
+                "automatic_pass_review_flag": 0,
+                "automatic_flag_review_pass": 0,
+                "uncertain": 0,
+            })
+            criterion_counts["reviewed"] += 1
+            automatic = {
+                "flagged": "flag", "passed": "pass",
+            }.get(criterion["status"])
+            if automatic is not None and review["verdict"] == automatic:
+                agreements += 1
+                criterion_counts["agreements"] += 1
+            elif review["verdict"] == "uncertain":
+                criterion_counts["uncertain"] += 1
+            elif automatic == "pass" and review["verdict"] == "flag":
+                criterion_counts["automatic_pass_review_flag"] += 1
+            elif automatic == "flag" and review["verdict"] == "pass":
+                criterion_counts["automatic_flag_review_pass"] += 1
+    report["summary"]["reviewed_criteria"] = reviewed
+    report["summary"]["review_agreements"] = agreements
+    report["summary"]["review_by_criterion"] = dict(sorted(by_criterion.items()))
+    return report
+
+
+def write_audit_json(report: Mapping[str, Any], output: Path) -> Path:
+    output = output.expanduser().resolve()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    return output
+
+
+def write_audit_csv(report: Mapping[str, Any], output: Path) -> Path:
+    """Write one calibration row per card criterion for filtering and labeling."""
+    output = output.expanduser().resolve()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    fields = [
+        "position", "lexeme_key", "lemma", "reading", "gloss", "part_of_speech",
+        "series", "season", "episode", "sentence_id", "japanese", "english",
+        "difficulty_score", "criterion", "automatic_status", "score", "threshold",
+        "threshold_distance", "review_priority", "review_verdict", "review_note",
+    ]
+    with output.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer.writeheader()
+        for card in report["cards"]:
+            for criterion in card["audit_criteria"]:
+                review = criterion.get("review") or {}
+                score = criterion.get("score")
+                threshold = criterion.get("threshold")
+                distance = (
+                    round(float(score) - float(threshold), 3)
+                    if score is not None and threshold is not None else None
+                )
+                if criterion["status"] == "flagged":
+                    priority = "flagged"
+                elif distance is not None and distance <= 0.03:
+                    priority = "near_threshold"
+                elif criterion["status"] == "not_checked":
+                    priority = "not_applicable"
+                else:
+                    priority = "pass_control"
+                writer.writerow({
+                    "position": card["audit_position"],
+                    "lexeme_key": card["lexeme_key"],
+                    "lemma": card["lemma"],
+                    "reading": card["reading"],
+                    "gloss": card.get("gloss") or "",
+                    "part_of_speech": card.get("part_of_speech") or "",
+                    "series": card["series"],
+                    "season": card["season"],
+                    "episode": card["episode"],
+                    "sentence_id": card["sentence_id"],
+                    "japanese": card["japanese"],
+                    "english": card.get("english") or "",
+                    "difficulty_score": card["difficulty_score"],
+                    "criterion": criterion["code"],
+                    "automatic_status": criterion["status"],
+                    "score": score,
+                    "threshold": threshold,
+                    "threshold_distance": distance,
+                    "review_priority": priority,
+                    "review_verdict": review.get("verdict", ""),
+                    "review_note": review.get("note", ""),
+                })
+    return output
+
+
 def render_audit_html(report: Mapping[str, Any], output: Path) -> Path:
     output = output.expanduser().resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
     summary = report["summary"]
     cards_html = []
+
+    def render_criterion(item: Mapping[str, Any]) -> str:
+        state = (
+            "PASS" if item["status"] == "passed"
+            else "FLAG" if item["status"] == "flagged" else "N/A"
+        )
+        score = (
+            f'<code>{float(item["score"]):.3f} / {float(item["threshold"]):.3f}</code>'
+            if item.get("score") is not None and item.get("threshold") is not None
+            else ""
+        )
+        review = item.get("review") or {}
+        review_html = ""
+        if review:
+            note = f" — {review['note']}" if review.get("note") else ""
+            review_html = (
+                f'<span class="review">REVIEW {html.escape(str(review["verdict"]).upper())}'
+                f'{html.escape(note)}</span>'
+            )
+        return f"""<li class="criterion {html.escape(str(item['status']))} {html.escape(str(item.get('severity') or ''))}">
+  <strong><span class="criterion-state">{state}</span> {html.escape(str(item['title']))}</strong>
+  <span>{html.escape(str(item['explanation']))}{review_html}</span>
+  {score}
+</li>"""
+
     for card in report["cards"]:
         findings = card["audit_findings"]
         severities = " ".join(sorted({item["severity"] for item in findings})) or "passed"
         criteria_html = "".join(
-            f"""<li class="criterion {html.escape(item['status'])} {html.escape(str(item.get('severity') or ''))}">
-  <strong><span class="criterion-state">{'PASS' if item['status'] == 'passed' else 'FLAG' if item['status'] == 'flagged' else 'N/A'}</span> {html.escape(item['title'])}</strong>
-  <span>{html.escape(item['explanation'])}</span>
-  {f'<code>{float(item["score"]):.3f} / {float(item["threshold"]):.3f}</code>' if item['score'] is not None and item['threshold'] is not None else ''}
-</li>"""
-            for item in card.get("audit_criteria", [])
+            render_criterion(item) for item in card.get("audit_criteria", [])
         )
         alignment = card.get("alignment_score")
         gloss_score = card.get("gloss_score")
@@ -433,6 +603,22 @@ def render_audit_html(report: Mapping[str, Any], output: Path) -> Path:
 </article>""")
 
     severity = summary["severity_counts"]
+    review_rows = []
+    for code, counts in summary.get("review_by_criterion", {}).items():
+        review_rows.append(
+            f"<tr><td>{html.escape(str(code))}</td>"
+            f"<td>{int(counts['reviewed'])}</td>"
+            f"<td>{int(counts['agreements'])}</td>"
+            f"<td>{int(counts['automatic_pass_review_flag'])}</td>"
+            f"<td>{int(counts['automatic_flag_review_pass'])}</td>"
+            f"<td>{int(counts['uncertain'])}</td></tr>"
+        )
+    review_summary = ""
+    if review_rows:
+        review_summary = f"""<section class="review-summary"><h2>Reviewer calibration</h2>
+<table><thead><tr><th>Criterion</th><th>Reviewed</th><th>Agreements</th>
+<th>Missed flags</th><th>False alarms</th><th>Uncertain</th></tr></thead>
+<tbody>{''.join(review_rows)}</tbody></table></section>"""
     excluded_html = []
     exclusion_titles = {
         "reaction_fragment": "Reaction fragment",
@@ -470,11 +656,14 @@ ul {{ list-style:none; padding:0; margin:18px 0 0; }} .finding,.criterion {{ dis
 .finding.high strong {{ color:#ff8a80; }} .finding.medium strong {{ color:#ffd180; }} .finding.info strong {{ color:#82b1ff; }} .finding.passed strong {{ color:#8fd694; }}
 .criterion.passed strong {{ color:#8fd694; }} .criterion.flagged.high strong {{ color:#ff8a80; }} .criterion.flagged.medium strong {{ color:#ffd180; }} .criterion.not_checked strong {{ color:#9aa0a6; }}
 .criterion-state {{ display:inline-block; min-width:38px; font:700 11px/1.5 ui-monospace,monospace; letter-spacing:.04em; }}
+.review {{ display:block; margin-top:6px; color:#82b1ff; font:700 12px/1.5 ui-monospace,monospace; }}
+table {{ width:100%; border-collapse:collapse; margin:12px 0 24px; }} th,td {{ text-align:left; border-bottom:1px solid #45464a; padding:9px; }} th {{ color:#bdc1c6; }}
 code {{ color:#bdc1c6; }} @media(max-width:700px) {{ .finding,.criterion {{ grid-template-columns:1fr; }} .source {{ margin-left:0; }} header {{ flex-wrap:wrap; }} }}
 </style></head><body><main><h1>Vocabulary quality audit</h1>
 <p class="summary">{int(summary['cards'])} cards · {int(summary['cards_with_findings'])} flagged ·
 {int(severity['high'])} high · {int(severity['medium'])} medium · {int(severity['info'])} informational ·
 {int(summary.get('excluded_candidates', 0))} excluded</p>
+{review_summary}
 <nav class="filters"><button class="active" data-filter="all">All</button><button data-filter="flagged">Flagged</button>
 <button data-filter="high">High</button><button data-filter="medium">Medium</button><button data-filter="passed">Passed</button>
 <button data-filter="excluded">Excluded</button></nav>

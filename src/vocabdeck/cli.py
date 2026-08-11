@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import re
 import sys
@@ -9,8 +10,10 @@ from typing import Optional, Sequence
 
 from .database import VocabularyDatabase
 from .anki import sync_source
+from .audit import AUDIT_CRITERION_CODES
 from .difficulty import METRICS
 from .media import extract_subtitle_stream, probe_subtitle_streams
+from .manifest import build_manifest
 from .preview import render_preview_html
 from .subtitles import merge_continuations, read_srt
 from .tokenizer import JapaneseTokenizer
@@ -122,6 +125,16 @@ def build_parser() -> argparse.ArgumentParser:
     probe = commands.add_parser("probe", help="List embedded subtitle tracks")
     probe.add_argument("video", type=Path)
 
+    build_manifest_command = commands.add_parser(
+        "build-manifest", help="Discover consistently named episode video/SRT pairs"
+    )
+    build_manifest_command.add_argument("directory", type=Path)
+    build_manifest_command.add_argument("--series", required=True)
+    build_manifest_command.add_argument("--season", type=int, default=1)
+    build_manifest_command.add_argument("--episodes", required=True, type=_episode_selection)
+    build_manifest_command.add_argument("--english-track", type=int, default=2)
+    build_manifest_command.add_argument("--output", required=True, type=Path)
+
     ingest = commands.add_parser("ingest", help="Ingest one episode from SRT files or embedded tracks")
     ingest.add_argument("--series", required=True)
     ingest.add_argument("--season", required=True, type=int)
@@ -138,6 +151,10 @@ def build_parser() -> argparse.ArgumentParser:
     manifest = commands.add_parser("ingest-manifest", help="Ingest a selected episode range from JSON")
     manifest.add_argument("manifest", type=Path)
     manifest.add_argument("--episodes", required=True, type=_episode_selection)
+    manifest.add_argument(
+        "--skip-existing", action="store_true",
+        help="resume an import without replacing episodes already in the database",
+    )
 
     queue = commands.add_parser("queue", help="Preview globally unseen words for selected episodes")
     _source_selector(queue)
@@ -166,6 +183,52 @@ def build_parser() -> argparse.ArgumentParser:
     audit.add_argument("--limit", type=int, default=100)
     audit.add_argument("--metric", choices=METRICS, default="hybrid")
     audit.add_argument("--output", required=True, type=Path)
+    audit.add_argument("--json-output", type=Path)
+    audit.add_argument("--csv-output", type=Path)
+
+    plan_calibration = commands.add_parser(
+        "plan-calibration", help="Materialize a stable large review batch"
+    )
+    _source_selector(plan_calibration)
+    plan_calibration.add_argument("--name", required=True)
+    plan_calibration.add_argument("--limit", required=True, type=int)
+    plan_calibration.add_argument("--metric", choices=METRICS, default="hybrid")
+    plan_calibration.add_argument("--replace", action="store_true")
+
+    audit_calibration = commands.add_parser(
+        "audit-calibration", help="Audit a materialized calibration batch"
+    )
+    audit_calibration.add_argument("--name", required=True)
+    audit_calibration.add_argument("--output", required=True, type=Path)
+    audit_calibration.add_argument("--json-output", type=Path)
+    audit_calibration.add_argument("--csv-output", type=Path)
+
+    label_calibration = commands.add_parser(
+        "label-calibration", help="Record a reviewer verdict for one criterion"
+    )
+    label_calibration.add_argument("--name", required=True)
+    label_calibration.add_argument("--position", required=True, type=int)
+    label_calibration.add_argument(
+        "--criterion", required=True, choices=AUDIT_CRITERION_CODES
+    )
+    label_calibration.add_argument(
+        "--verdict", required=True, choices=("pass", "flag", "uncertain")
+    )
+    label_calibration.add_argument("--note")
+
+    import_reviews = commands.add_parser(
+        "import-calibration-reviews",
+        help="Import non-empty reviewer verdicts from an exported audit CSV",
+    )
+    import_reviews.add_argument("--name", required=True)
+    import_reviews.add_argument("--input", required=True, type=Path)
+
+    coverage = commands.add_parser(
+        "coverage", help="Report cumulative eligible vocabulary by episode"
+    )
+    coverage.add_argument("--series", required=True)
+    coverage.add_argument("--season", required=True, type=int)
+    coverage.add_argument("--output", type=Path)
 
     known = commands.add_parser("mark-known", help="Mark a canonical lexeme as globally studied")
     known.add_argument("lexeme_key")
@@ -181,6 +244,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "probe":
         print(json.dumps(probe_subtitle_streams(args.video), ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "build-manifest":
+        output = build_manifest(
+            args.directory, args.output, series=args.series, season=args.season,
+            episodes=args.episodes, english_track=args.english_track,
+        )
+        print(str(output))
         return 0
 
     db = _database(args.db)
@@ -204,6 +274,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             for item in data["episodes"]:
                 episode = int(item["episode"])
                 if episode not in selected:
+                    continue
+                if args.skip_existing and db.source_ids(
+                    data["series"], int(data.get("season", 1)), [episode]
+                ):
+                    results.append({"episode": episode, "skipped": True})
                     continue
                 video = _resolve_path(manifest_path.parent, item.get("video"))
                 japanese = item.get("japanese", {})
@@ -254,13 +329,93 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             output = render_preview_html(rows, args.output, include_media=not args.no_media)
             print(str(output))
         elif args.command == "audit":
-            from .audit import audit_queue, render_audit_html
+            from .audit import (
+                audit_queue, render_audit_html, write_audit_csv, write_audit_json,
+            )
 
             source_ids = _selected_source_ids(db, args)
             db.enrich_dictionary(source_ids)
             report = audit_queue(db, source_ids, args.limit, args.metric)
             output = render_audit_html(report, args.output)
+            if args.json_output:
+                write_audit_json(report, args.json_output)
+            if args.csv_output:
+                write_audit_csv(report, args.csv_output)
             print(json.dumps({"output": str(output), **report["summary"]}, indent=2))
+        elif args.command == "plan-calibration":
+            source_ids = _selected_source_ids(db, args)
+            dictionary = db.enrich_dictionary(source_ids)
+            result = db.create_calibration_batch(
+                args.name, source_ids, args.limit, args.metric,
+                replace=args.replace,
+            )
+            result["dictionary"] = dictionary
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        elif args.command == "audit-calibration":
+            from .audit import (
+                attach_reviews, audit_rows, render_audit_html,
+                write_audit_csv, write_audit_json,
+            )
+
+            batch = db.calibration_batch(args.name)
+            report = audit_rows(
+                db, batch["cards"], metric=batch["metric"],
+                source_ids=batch["source_ids"],
+                excluded_limit=min(batch["requested_limit"], 1000),
+            )
+            attach_reviews(report, db.calibration_reviews(args.name))
+            output = render_audit_html(report, args.output)
+            if args.json_output:
+                write_audit_json(report, args.json_output)
+            if args.csv_output:
+                write_audit_csv(report, args.csv_output)
+            print(json.dumps({
+                "name": args.name, "output": str(output), **report["summary"],
+            }, indent=2))
+        elif args.command == "label-calibration":
+            db.record_calibration_review(
+                args.name, args.position, args.criterion, args.verdict, args.note,
+            )
+            print(json.dumps({
+                "name": args.name,
+                "position": args.position,
+                "criterion": args.criterion,
+                "verdict": args.verdict,
+            }, ensure_ascii=False))
+        elif args.command == "import-calibration-reviews":
+            imported = 0
+            with args.input.expanduser().resolve().open(
+                encoding="utf-8", newline=""
+            ) as handle:
+                for row in csv.DictReader(handle):
+                    verdict = str(row.get("review_verdict") or "").strip()
+                    if not verdict:
+                        continue
+                    db.record_calibration_review(
+                        args.name,
+                        int(row["position"]),
+                        str(row["criterion"]),
+                        verdict,
+                        str(row.get("review_note") or "").strip() or None,
+                    )
+                    imported += 1
+            print(json.dumps({"name": args.name, "imported": imported}, indent=2))
+        elif args.command == "coverage":
+            source_ids = db.source_ids(args.series, args.season)
+            db.enrich_dictionary(source_ids)
+            growth = db.vocabulary_growth(args.series, args.season)
+            document = json.dumps(growth, ensure_ascii=False, indent=2)
+            if args.output:
+                output = args.output.expanduser().resolve()
+                output.parent.mkdir(parents=True, exist_ok=True)
+                output.write_text(document + "\n", encoding="utf-8")
+                print(json.dumps({
+                    "output": str(output),
+                    "episodes": len(growth),
+                    "final": growth[-1] if growth else None,
+                }, ensure_ascii=False, indent=2))
+            else:
+                print(document)
         elif args.command == "mark-known":
             db.mark_known(args.lexeme_key)
             print(f"Marked known: {args.lexeme_key}")

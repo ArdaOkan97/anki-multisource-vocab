@@ -1,4 +1,6 @@
 import unittest
+from types import SimpleNamespace
+from unittest.mock import Mock
 
 from vocabdeck.dictionary import JMDictExpressionResolver, JMDictResolver
 
@@ -54,6 +56,15 @@ class DictionaryTest(unittest.TestCase):
     def test_plain_compound_is_not_an_opaque_expression_candidate(self):
         self.assertIsNone(
             JMDictExpressionResolver().resolve("試験官", "シケンカン")
+        )
+
+    def test_plain_lookup_skips_unused_character_and_name_dictionaries(self):
+        resolver = JMDictResolver()
+        resolver.dictionary = Mock()
+        resolver.dictionary.lookup.return_value = SimpleNamespace(entries=[])
+        self.assertIsNone(resolver.resolve("不存在", "フソンザイ", "名詞"))
+        resolver.dictionary.lookup.assert_called_once_with(
+            "不存在", lookup_chars=False, lookup_ne=False
         )
 
 

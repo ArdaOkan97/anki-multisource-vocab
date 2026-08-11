@@ -151,6 +151,62 @@ with Sudachi and OpenJTalk, and a warning is emitted only when both independent
 analyzers agree on a reading different from UniDic. Merely having another valid
 reading elsewhere in the global dictionary is not a warning.
 
+### Large calibration batches
+
+For a large corpus, first generate a manifest from consistently named video/SRT
+pairs and ingest it into a separate database:
+
+```bash
+uv run vocabdeck build-manifest "/path/to/episode-directory" \
+  --series "Hunter x Hunter" --season 1 --episodes 1-148 \
+  --english-track 2 --output ".vocabdeck/hxh-episodes-1-148.json"
+uv run vocabdeck --db ".vocabdeck/hxh-full.sqlite3" ingest-manifest \
+  ".vocabdeck/hxh-episodes-1-148.json" --episodes 1-148 --skip-existing
+uv run vocabdeck --db ".vocabdeck/hxh-full.sqlite3" coverage \
+  --series "Hunter x Hunter" --season 1 \
+  --output ".vocabdeck/audits/hxh-coverage.json"
+```
+
+Materialize the planned ordering before reviewing it. A calibration batch is a
+stable checkpoint: it does not mark words known and will not change if Anki state
+changes later.
+
+```bash
+uv run vocabdeck --db ".vocabdeck/hxh-full.sqlite3" plan-calibration \
+  --name "hxh-5000-v1" --series "Hunter x Hunter" --season 1 \
+  --episodes 1-148 --limit 5000
+uv run vocabdeck --db ".vocabdeck/hxh-full.sqlite3" audit-calibration \
+  --name "hxh-5000-v1" --output ".vocabdeck/audits/hxh-5000-v1.html" \
+  --json-output ".vocabdeck/audits/hxh-5000-v1.json" \
+  --csv-output ".vocabdeck/audits/hxh-5000-v1.csv"
+```
+
+Reviewer decisions are stored per card and criterion and appear in subsequent
+HTML, JSON, and CSV exports:
+
+```bash
+uv run vocabdeck --db ".vocabdeck/hxh-full.sqlite3" label-calibration \
+  --name "hxh-5000-v1" --position 12 --criterion translation_alignment \
+  --verdict pass --note "Idiomatic but correctly aligned"
+```
+
+For bulk review, fill the `review_verdict` and `review_note` columns in the
+exported CSV, then import every non-empty verdict. The `review_priority` column
+puts automatic flags and near-threshold passes ahead of random pass controls:
+
+```bash
+uv run vocabdeck --db ".vocabdeck/hxh-full.sqlite3" \
+  import-calibration-reviews --name "hxh-5000-v1" \
+  --input ".vocabdeck/audits/hxh-5000-v1.csv"
+```
+
+Re-exporting the audit reports agreement counts and both important error types
+per criterion: automatic passes rejected by the reviewer and automatic flags
+accepted by the reviewer.
+
+Large plans use a bounded rolling window. This keeps planning responsive while
+still allowing sentence comprehensibility to reorder nearby vocabulary.
+
 Three explainable difficulty metrics are available:
 
 - `source`: repeated words in the selected episodes first; immersive, but show-specific vocabulary can arrive too early.
