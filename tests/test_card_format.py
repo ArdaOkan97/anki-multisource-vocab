@@ -1,10 +1,28 @@
 import unittest
 
 from vocabdeck.anki import BACK, FRONT
-from vocabdeck.card_format import blank_target, highlight_target, hiragana, learner_pos
+from vocabdeck.card_format import (
+    blank_target, highlight_target, hiragana, learner_pos, learner_target_span,
+)
 
 
 class CardFormatTest(unittest.TestCase):
+    def test_learner_span_excludes_attached_polite_copula(self):
+        target, start, end = learner_target_span({
+            "japanese": "いいですね？",
+            "lemma": "いい",
+            "target_surface": "いいです",
+            "target_start": 0,
+            "target_end": 4,
+            "target_lexical_start": 0,
+            "target_lexical_end": 2,
+        })
+        self.assertEqual((target, start, end), ("いい", 0, 2))
+        self.assertEqual(
+            blank_target("いいですね？", target, start, end),
+            '<span class="target-blank">（　）</span>ですね？',
+        )
+
     def test_blanks_only_first_target_and_escapes_input(self):
         result = blank_target("猫と猫 < 3", "猫")
         self.assertEqual(

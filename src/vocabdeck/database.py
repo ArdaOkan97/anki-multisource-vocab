@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Iterable, Iterator, List, Optional, Sequence
+from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence
 
 from .dictionary import DICTIONARY_RESOLVER_VERSION
 from .subtitles import Cue, align_translation
@@ -64,6 +65,15 @@ CREATE TABLE IF NOT EXISTS occurrences (
     PRIMARY KEY(lexeme_id, sentence_id, surface)
 );
 
+CREATE INDEX IF NOT EXISTS occurrences_sentence
+ON occurrences(sentence_id, lexeme_id);
+
+CREATE INDEX IF NOT EXISTS sentences_source
+ON sentences(source_id, cue_index);
+
+CREATE INDEX IF NOT EXISTS lexemes_dictionary_status
+ON lexemes(dictionary_status, known_at);
+
 CREATE TABLE IF NOT EXISTS expression_analyses (
     sentence_id INTEGER NOT NULL REFERENCES sentences(id) ON DELETE CASCADE,
     start_char INTEGER NOT NULL,
@@ -98,7 +108,42 @@ CREATE TABLE IF NOT EXISTS anki_cards (
     last_seen_reps INTEGER NOT NULL DEFAULT 0,
     synced_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS calibration_batches (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    source_ids_json TEXT NOT NULL,
+    metric TEXT NOT NULL,
+    requested_limit INTEGER NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS calibration_cards (
+    batch_id INTEGER NOT NULL REFERENCES calibration_batches(id) ON DELETE CASCADE,
+    position INTEGER NOT NULL,
+    lexeme_id INTEGER NOT NULL REFERENCES lexemes(id) ON DELETE CASCADE,
+    sentence_id INTEGER NOT NULL REFERENCES sentences(id) ON DELETE CASCADE,
+    card_json TEXT NOT NULL,
+    PRIMARY KEY(batch_id, position),
+    UNIQUE(batch_id, lexeme_id),
+    UNIQUE(batch_id, sentence_id)
+);
+
+CREATE TABLE IF NOT EXISTS calibration_reviews (
+    batch_id INTEGER NOT NULL REFERENCES calibration_batches(id) ON DELETE CASCADE,
+    position INTEGER NOT NULL,
+    criterion_code TEXT NOT NULL,
+    verdict TEXT NOT NULL CHECK(verdict IN ('pass', 'flag', 'uncertain')),
+    note TEXT,
+    reviewed_at TEXT NOT NULL,
+    PRIMARY KEY(batch_id, position, criterion_code),
+    FOREIGN KEY(batch_id, position)
+      REFERENCES calibration_cards(batch_id, position) ON DELETE CASCADE
+);
 """
+
+
+PLANNING_WINDOW = 500
 
 
 def utc_now() -> str:
@@ -229,6 +274,18 @@ class VocabularyDatabase:
             # Queue rows point at selected example sentences, so remove them before
             # replacing an episode's sentence set.
             connection.execute("DELETE FROM source_queue WHERE source_id = ?", (source_id,))
+            # A materialized calibration plan is only stable while its source
+            # sentences retain their identities. Reimport invalidates the whole
+            # affected batch rather than silently leaving a partial checkpoint.
+            connection.execute(
+                """DELETE FROM calibration_batches WHERE id IN (
+                     SELECT DISTINCT cc.batch_id
+                     FROM calibration_cards cc
+                     JOIN sentences sx ON sx.id = cc.sentence_id
+                     WHERE sx.source_id = ?
+                   )""",
+                (source_id,),
+            )
             connection.execute("DELETE FROM sentences WHERE source_id = ?", (source_id,))
             for cue in japanese:
                 translation = align_translation(cue, english)
@@ -454,9 +511,10 @@ class VocabularyDatabase:
             int(row["lexeme_id"]): float(row["difficulty_score"])
             for row in ranked
         }
-        # Joint planning over a bounded lexical shortlist keeps batch generation
-        # responsive without allowing a rare word with a trivial subtitle to
-        # leapfrog arbitrarily far ahead of broadly useful vocabulary.
+        # Load enough candidates to fill the requested batch, but compare only a
+        # bounded rolling window at each position. This preserves progressive
+        # local choice without making a 5,000-card calibration plan quadratic in
+        # the entire corpus.
         pool_size = min(len(ranked), max(100, limit * 5))
         return self._plan_progressive_batch(
             ranked[:pool_size], source_ids, limit, lexical_difficulties
@@ -536,35 +594,49 @@ class VocabularyDatabase:
         selected = []
         for position in range(min(limit, len(remaining))):
             best_plan = None
-            for rank_index, row in enumerate(remaining):
-                best_example = None
-                for candidate in load_examples(row):
-                    sentence_id = int(candidate["sentence_id"])
-                    owner = reserved_sentence_owners.get(sentence_id)
-                    if sentence_id in used_sentence_ids and owner != int(row["lexeme_id"]):
+            window_end = min(len(remaining), PLANNING_WINDOW)
+            scan_ranges = [(0, window_end)]
+            if window_end < len(remaining):
+                scan_ranges.append((window_end, len(remaining)))
+            for scan_start, scan_end in scan_ranges:
+                for rank_index in range(scan_start, scan_end):
+                    row = remaining[rank_index]
+                    best_example = None
+                    for candidate in load_examples(row):
+                        sentence_id = int(candidate["sentence_id"])
+                        owner = reserved_sentence_owners.get(sentence_id)
+                        if (
+                            sentence_id in used_sentence_ids
+                            and owner != int(row["lexeme_id"])
+                        ):
+                            continue
+                        score, details = example_score(
+                            candidate,
+                            int(row["lexeme_id"]),
+                            known_ids,
+                            position,
+                            lexical_difficulties,
+                            float(row["difficulty_score"]),
+                        )
+                        if best_example is None or score < best_example[0]:
+                            best_example = (score, candidate, details)
+                    if best_example is None:
                         continue
-                    score, details = example_score(
-                        candidate,
-                        int(row["lexeme_id"]),
-                        known_ids,
-                        position,
-                        lexical_difficulties,
-                        float(row["difficulty_score"]),
+                    example_value, candidate, details = best_example
+                    joint_value, planner = joint_planning_score(
+                        float(row["difficulty_score"]), example_value, position
                     )
-                    if best_example is None or score < best_example[0]:
-                        best_example = (score, candidate, details)
-                if best_example is None:
-                    continue
-                example_value, candidate, details = best_example
-                joint_value, planner = joint_planning_score(
-                    float(row["difficulty_score"]), example_value, position
-                )
-                plan = (
-                    joint_value, float(row["difficulty_score"]), rank_index,
-                    row, candidate, details, planner,
-                )
-                if best_plan is None or plan[:3] < best_plan[:3]:
-                    best_plan = plan
+                    plan = (
+                        joint_value, float(row["difficulty_score"]), rank_index,
+                        row, candidate, details, planner,
+                    )
+                    if best_plan is None or plan[:3] < best_plan[:3]:
+                        best_plan = plan
+                # The ordinary path evaluates only the bounded window. Expand
+                # across the rest of the corpus solely when every nearby word
+                # has lost all usable examples to sentence reservations.
+                if best_plan is not None:
+                    break
             if best_plan is None:
                 break
             _, _, rank_index, row, candidate, details, planner = best_plan
@@ -587,6 +659,148 @@ class VocabularyDatabase:
             known_ids.add(int(row["lexeme_id"]))
             used_sentence_ids.add(int(candidate["sentence_id"]))
         return selected
+
+    def create_calibration_batch(
+        self,
+        name: str,
+        source_ids: Sequence[int],
+        limit: int,
+        metric: str = "hybrid",
+        *,
+        replace: bool = False,
+    ) -> Dict[str, Any]:
+        """Materialize a stable, resumable plan without changing known state."""
+        existing = self.connection.execute(
+            "SELECT id FROM calibration_batches WHERE name = ?", (name,)
+        ).fetchone()
+        if existing is not None and not replace:
+            raise ValueError(
+                f"Calibration batch already exists: {name}. Use --replace to rebuild it."
+            )
+        rows = self.next_unseen_for_sources(source_ids, limit, metric)
+        with self.transaction() as connection:
+            if existing is not None:
+                connection.execute(
+                    "DELETE FROM calibration_batches WHERE id = ?", (int(existing["id"]),)
+                )
+            cursor = connection.execute(
+                """INSERT INTO calibration_batches
+                   (name, source_ids_json, metric, requested_limit, created_at)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (
+                    name,
+                    json.dumps(list(map(int, source_ids)), separators=(",", ":")),
+                    metric,
+                    int(limit),
+                    utc_now(),
+                ),
+            )
+            batch_id = int(cursor.lastrowid)
+            for position, row in enumerate(rows, start=1):
+                connection.execute(
+                    """INSERT INTO calibration_cards
+                       (batch_id, position, lexeme_id, sentence_id, card_json)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (
+                        batch_id,
+                        position,
+                        int(row["lexeme_id"]),
+                        int(row["sentence_id"]),
+                        json.dumps(row, ensure_ascii=False, separators=(",", ":")),
+                    ),
+                )
+        return {
+            "name": name,
+            "cards": len(rows),
+            "requested_limit": int(limit),
+            "metric": metric,
+            "complete": len(rows) == int(limit),
+        }
+
+    def calibration_batch(self, name: str) -> Dict[str, Any]:
+        batch = self.connection.execute(
+            "SELECT * FROM calibration_batches WHERE name = ?", (name,)
+        ).fetchone()
+        if batch is None:
+            raise KeyError(f"Unknown calibration batch: {name}")
+        cards = [
+            json.loads(row["card_json"])
+            for row in self.connection.execute(
+                """SELECT card_json FROM calibration_cards
+                   WHERE batch_id = ? ORDER BY position""",
+                (int(batch["id"]),),
+            )
+        ]
+        return {
+            "id": int(batch["id"]),
+            "name": str(batch["name"]),
+            "source_ids": json.loads(batch["source_ids_json"]),
+            "metric": str(batch["metric"]),
+            "requested_limit": int(batch["requested_limit"]),
+            "created_at": str(batch["created_at"]),
+            "cards": cards,
+        }
+
+    def record_calibration_review(
+        self,
+        name: str,
+        position: int,
+        criterion_code: str,
+        verdict: str,
+        note: Optional[str] = None,
+    ) -> None:
+        from .audit import AUDIT_CRITERION_CODES
+
+        if verdict not in {"pass", "flag", "uncertain"}:
+            raise ValueError(f"Unsupported review verdict: {verdict}")
+        if criterion_code not in AUDIT_CRITERION_CODES:
+            raise ValueError(f"Unsupported audit criterion: {criterion_code}")
+        batch = self.connection.execute(
+            "SELECT id FROM calibration_batches WHERE name = ?", (name,)
+        ).fetchone()
+        if batch is None:
+            raise KeyError(f"Unknown calibration batch: {name}")
+        batch_id = int(batch["id"])
+        card = self.connection.execute(
+            """SELECT 1 FROM calibration_cards
+               WHERE batch_id = ? AND position = ?""",
+            (batch_id, int(position)),
+        ).fetchone()
+        if card is None:
+            raise KeyError(f"Position {position} is not in calibration batch {name}")
+        with self.transaction() as connection:
+            connection.execute(
+                """INSERT INTO calibration_reviews
+                   (batch_id, position, criterion_code, verdict, note, reviewed_at)
+                   VALUES (?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(batch_id, position, criterion_code) DO UPDATE SET
+                     verdict=excluded.verdict,
+                     note=excluded.note,
+                     reviewed_at=excluded.reviewed_at""",
+                (
+                    batch_id,
+                    int(position),
+                    criterion_code,
+                    verdict,
+                    note,
+                    utc_now(),
+                ),
+            )
+
+    def calibration_reviews(self, name: str) -> List[dict]:
+        batch = self.connection.execute(
+            "SELECT id FROM calibration_batches WHERE name = ?", (name,)
+        ).fetchone()
+        if batch is None:
+            raise KeyError(f"Unknown calibration batch: {name}")
+        return [
+            dict(row) for row in self.connection.execute(
+                """SELECT position, criterion_code, verdict, note, reviewed_at
+                   FROM calibration_reviews WHERE batch_id = ?
+                   ORDER BY position, criterion_code""",
+                (int(batch["id"]),),
+            )
+        ]
 
     def enrich_dictionary(
         self, source_ids: Optional[Sequence[int]] = None, force: bool = False
@@ -735,6 +949,56 @@ class VocabularyDatabase:
             )
         return [int(row[0]) for row in rows]
 
+    def vocabulary_growth(self, series: str, season: int) -> List[dict]:
+        """Return cumulative raw and Anki-eligible vocabulary by episode."""
+        episode_rows = list(self.connection.execute(
+            """SELECT src.episode, COUNT(DISTINCT s.id) AS sentences
+               FROM sources src
+               LEFT JOIN sentences s ON s.source_id = src.id
+               WHERE src.series = ? AND src.season = ?
+               GROUP BY src.episode ORDER BY src.episode""",
+            (series, int(season)),
+        ))
+        first_seen = list(self.connection.execute(
+            """SELECT o.lexeme_id, MIN(src.episode) AS first_episode,
+                      CASE WHEN l.dictionary_status = 'matched' AND l.gloss IS NOT NULL
+                                 AND NOT (l.part_of_speech = '感動詞'
+                                          AND LENGTH(l.lemma) <= 1)
+                           THEN 1 ELSE 0 END AS eligible
+               FROM occurrences o
+               JOIN sentences s ON s.id = o.sentence_id
+               JOIN sources src ON src.id = s.source_id
+               JOIN lexemes l ON l.id = o.lexeme_id
+               WHERE src.series = ? AND src.season = ?
+               GROUP BY o.lexeme_id""",
+            (series, int(season)),
+        ))
+        new_raw: Dict[int, int] = {}
+        new_eligible: Dict[int, int] = {}
+        for row in first_seen:
+            episode = int(row["first_episode"])
+            new_raw[episode] = new_raw.get(episode, 0) + 1
+            if int(row["eligible"]):
+                new_eligible[episode] = new_eligible.get(episode, 0) + 1
+        cumulative_raw = 0
+        cumulative_eligible = 0
+        growth = []
+        for row in episode_rows:
+            episode = int(row["episode"])
+            raw = new_raw.get(episode, 0)
+            eligible = new_eligible.get(episode, 0)
+            cumulative_raw += raw
+            cumulative_eligible += eligible
+            growth.append({
+                "episode": episode,
+                "sentences": int(row["sentences"]),
+                "new_lexemes": raw,
+                "new_eligible": eligible,
+                "cumulative_lexemes": cumulative_raw,
+                "cumulative_eligible": cumulative_eligible,
+            })
+        return growth
+
     def lexeme_labels(self, lexeme_ids: Sequence[int]) -> List[str]:
         if not lexeme_ids:
             return []
@@ -747,6 +1011,79 @@ class VocabularyDatabase:
             int(row["id"]): f"{row['lemma']}（{row['reading']}）" for row in rows
         }
         return [by_id[value] for value in map(int, lexeme_ids) if value in by_id]
+
+    def sentence_lexeme_ids(self, sentence_id: int) -> set:
+        return {
+            int(row[0]) for row in self.connection.execute(
+                "SELECT DISTINCT lexeme_id FROM occurrences WHERE sentence_id = ?",
+                (int(sentence_id),),
+            )
+        }
+
+    def fully_known_alternative_examples(
+        self,
+        row: Mapping[str, object],
+        source_ids: Sequence[int],
+        known_ids: set,
+        used_sentence_ids: set,
+    ) -> List[dict]:
+        """Return unused occurrences whose context is already fully known."""
+        from .tokenizer import JapaneseTokenizer
+
+        if not source_ids:
+            return []
+        markers = ",".join("?" for _ in source_ids)
+        candidates = list(self.connection.execute(
+            f"""SELECT s.id AS sentence_id, s.japanese, s.english,
+                       s.start_ms, s.end_ms, s.source_id, s.cue_index,
+                       src.series, src.season, src.episode, src.video_path,
+                       target.surface,
+                       GROUP_CONCAT(DISTINCT all_words.lexeme_id) AS word_ids_csv
+                FROM occurrences target
+                JOIN sentences s ON s.id = target.sentence_id
+                JOIN sources src ON src.id = s.source_id
+                JOIN occurrences all_words ON all_words.sentence_id = s.id
+                WHERE target.lexeme_id = ? AND s.source_id IN ({markers})
+                GROUP BY s.id, target.surface
+                ORDER BY CASE WHEN s.english IS NULL OR s.english = '' THEN 1 ELSE 0 END,
+                         LENGTH(s.japanese), s.cue_index""",
+            (int(row["lexeme_id"]), *source_ids),
+        ))
+        tokenizer = JapaneseTokenizer()
+        alternatives = []
+        for candidate_row in candidates:
+            candidate = dict(candidate_row)
+            sentence_id = int(candidate["sentence_id"])
+            if sentence_id in used_sentence_ids or sentence_id == int(row["sentence_id"]):
+                continue
+            word_ids = {
+                int(value) for value in candidate.pop("word_ids_csv").split(",")
+            }
+            other_ids = word_ids - {int(row["lexeme_id"])}
+            if other_ids - known_ids:
+                continue
+            lexical_surface = str(candidate["surface"])
+            span = tokenizer.find_inflected_span(
+                str(candidate["japanese"]), str(row["lemma"]),
+                str(row["reading"]), lexical_surface,
+            )
+            if not span:
+                continue
+            candidate["target_start"], candidate["target_end"] = span
+            candidate["target_lexical_start"] = span[0]
+            candidate["target_lexical_end"] = span[0] + len(lexical_surface)
+            candidate["target_surface"] = str(candidate["japanese"])[span[0]:span[1]]
+            candidate["sentence_word_count"] = len(word_ids)
+            candidate["sentence_unknown_word_count"] = 1
+            candidate["example_progression"] = {
+                "content_words": len(word_ids),
+                "unknown_other_words": 0,
+                "unknown_other_ids": [],
+                "harder_unknown_words": 0,
+                "harder_unknown_ids": [],
+            }
+            alternatives.append(candidate)
+        return alternatives
 
     def expression_analyses_for_sentence(
         self, sentence_id: Optional[int]

@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from vocabdeck.audit import audit_queue, render_audit_html
+from vocabdeck.audit import audit_queue, render_audit_html, select_clean_cards
 from vocabdeck.cli import build_parser
 from vocabdeck.readings import ReadingConsensus
 
@@ -110,6 +110,60 @@ class FakeDatabase:
 
 
 class AuditTest(unittest.TestCase):
+    def test_clean_selection_rechecks_context_after_dropping_word(self):
+        class SelectionDatabase:
+            def sentence_lexeme_ids(self, sentence_id):
+                return {1} if sentence_id == 10 else {1, 2}
+
+        report = {"cards": [
+            {
+                "audit_position": 1, "lexeme_id": 1, "lexeme_key": "難|ナン",
+                "lemma": "難", "reading": "ナン", "sentence_id": 10,
+                "japanese": "難", "english": "hard", "difficulty_score": 20.0,
+                "audit_findings": [{"code": "weak_subtitle_alignment"}],
+                "example_progression": {},
+            },
+            {
+                "audit_position": 2, "lexeme_id": 2, "lexeme_key": "易|イ",
+                "lemma": "易", "reading": "イ", "sentence_id": 20,
+                "japanese": "難易", "english": "difficulty", "difficulty_score": 10.0,
+                "audit_findings": [], "example_progression": {},
+            },
+        ]}
+        selection = select_clean_cards(SelectionDatabase(), report, 1)
+        self.assertFalse(selection["summary"]["complete"])
+        self.assertEqual(
+            selection["rejected"][1]["reasons"],
+            ["rejected_word_became_harder_context"],
+        )
+
+    def test_clean_selection_restores_easier_unknown_without_rejecting(self):
+        class SelectionDatabase:
+            def sentence_lexeme_ids(self, sentence_id):
+                return {1} if sentence_id == 10 else {1, 2}
+
+        report = {"cards": [
+            {
+                "audit_position": 1, "lexeme_id": 1, "lexeme_key": "易|イ",
+                "lemma": "易", "reading": "イ", "sentence_id": 10,
+                "japanese": "易", "english": "easy", "difficulty_score": 10.0,
+                "audit_findings": [{"code": "ambiguous_expression"}],
+                "example_progression": {},
+            },
+            {
+                "audit_position": 2, "lexeme_id": 2, "lexeme_key": "難|ナン",
+                "lemma": "難", "reading": "ナン", "sentence_id": 20,
+                "japanese": "難易", "english": "difficulty", "difficulty_score": 20.0,
+                "audit_findings": [], "example_progression": {},
+            },
+        ]}
+        selection = select_clean_cards(SelectionDatabase(), report, 1)
+        self.assertTrue(selection["summary"]["complete"])
+        self.assertEqual(
+            selection["accepted"][0]["example_progression"]["unknown_other_ids"],
+            [1],
+        )
+
     def test_flags_actionable_quality_risks(self):
         report = audit_queue(
             FakeDatabase(), [1], limit=2, embedder=FakeEmbedder(),
@@ -135,6 +189,10 @@ class AuditTest(unittest.TestCase):
         self.assertEqual(report["summary"]["severity_counts"], {
             "high": 4, "medium": 2, "info": 0,
         })
+        self.assertEqual(
+            report["summary"]["criterion_counts"]["translation_available"],
+            {"passed": 1, "flagged": 1, "not_checked": 0},
+        )
         first_criteria = {
             item["code"]: item["status"]
             for item in report["cards"][0]["audit_criteria"]

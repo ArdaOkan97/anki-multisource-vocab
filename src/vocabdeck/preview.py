@@ -4,7 +4,9 @@ import html
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from .card_format import blank_target, highlight_target, hiragana, learner_pos
+from .card_format import (
+    blank_target, highlight_target, hiragana, learner_pos, learner_target_span,
+)
 from .media import render_card_media
 
 
@@ -29,9 +31,7 @@ def render_preview_html(
       <audio controls preload="none" src="{audio_src}"></audio>
       <img loading="lazy" src="{image_src}" alt="Source frame">"""
         progression = row.get("example_progression") or {}
-        target = str(row.get("target_surface") or row["lemma"])
-        target_start = row.get("target_start")
-        target_end = row.get("target_end")
+        target, target_start, target_end = learner_target_span(row)
         cloze = blank_target(
             str(row["japanese"]), target, target_start, target_end
         )

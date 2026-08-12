@@ -156,7 +156,12 @@ class JMDictResolver:
         if override:
             gloss, entry_id, sense_index = override
             return DictionaryMatch(gloss, entry_id, sense_index, 5.0)
-        result = self.dictionary.lookup(lemma)
+        # Only JMdict word entries are used below. Kanjidic character expansion
+        # and JMnedict proper-name lookup are both discarded and make corpus-wide
+        # enrichment dramatically slower.
+        result = self.dictionary.lookup(
+            lemma, lookup_chars=False, lookup_ne=False
+        )
         wanted_reading = _hiragana(reading)
         context_words = _words(english_context)
         best = None

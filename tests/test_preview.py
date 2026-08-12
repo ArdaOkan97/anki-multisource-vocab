@@ -39,6 +39,29 @@ class PreviewTest(unittest.TestCase):
         self.assertIn("cat", document)
         self.assertIn("Test Show S01E02", document)
 
+    def test_cloze_keeps_grammar_outside_lexical_blank(self):
+        row = {
+            "lexeme_key": "いい|イイ", "lemma": "いい", "reading": "イイ",
+            "part_of_speech": "形容詞", "gloss": "good",
+            "japanese": "いいですね？", "english": "Are we clear?",
+            "target_surface": "いいです", "target_start": 0, "target_end": 4,
+            "target_lexical_start": 0, "target_lexical_end": 2,
+            "difficulty_score": 10, "series": "Test", "season": 1,
+            "episode": 1, "video_path": "", "start_ms": 0, "end_ms": 1000,
+            "example_progression": {},
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "preview.html"
+            document = render_preview_html(
+                [row], output, include_media=False
+            ).read_text(encoding="utf-8")
+        self.assertIn(
+            '<span class="target-blank">（　）</span>ですね？', document
+        )
+        self.assertIn(
+            '<span class="target-answer">いい</span>ですね？', document
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

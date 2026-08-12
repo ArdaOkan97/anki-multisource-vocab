@@ -8,7 +8,9 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence
 
-from .card_format import blank_target, highlight_target, hiragana, learner_pos
+from .card_format import (
+    blank_target, highlight_target, hiragana, learner_pos, learner_target_span,
+)
 from .database import VocabularyDatabase
 from .media import render_card_media
 
@@ -166,9 +168,7 @@ def sync_source(
             },
             ensure_ascii=False,
         )
-        target = str(row.get("target_surface") or row["lemma"])
-        target_start = row.get("target_start")
-        target_end = row.get("target_end")
+        target, target_start, target_end = learner_target_span(row)
         fields = {
             "LexemeKey": str(row["lexeme_key"]), "Expression": str(row["lemma"]),
             "Reading": hiragana(str(row["reading"])),
