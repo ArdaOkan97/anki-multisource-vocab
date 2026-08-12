@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import html
-from typing import Optional
+from typing import Mapping, Optional, Tuple
 
 
 _POS_LABELS = {
@@ -35,6 +35,26 @@ def _valid_span(
         and end is not None
         and 0 <= start < end <= len(sentence)
         and sentence[start:end] == target
+    )
+
+
+def learner_target_span(
+    row: Mapping[str, object]
+) -> Tuple[str, Optional[int], Optional[int]]:
+    """Prefer the exact lexical span over attached inflection or grammar."""
+    sentence = str(row["japanese"])
+    lexical_start = row.get("target_lexical_start")
+    lexical_end = row.get("target_lexical_end")
+    if (
+        isinstance(lexical_start, int)
+        and isinstance(lexical_end, int)
+        and 0 <= lexical_start < lexical_end <= len(sentence)
+    ):
+        return sentence[lexical_start:lexical_end], lexical_start, lexical_end
+    return (
+        str(row.get("target_surface") or row["lemma"]),
+        row.get("target_start") if isinstance(row.get("target_start"), int) else None,
+        row.get("target_end") if isinstance(row.get("target_end"), int) else None,
     )
 
 
