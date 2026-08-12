@@ -473,6 +473,111 @@ def attach_reviews(
     return report
 
 
+def select_clean_cards(
+    database: Any,
+    report: Mapping[str, Any],
+    limit: int,
+    *,
+    difficulty_tolerance: float = 2.0,
+    source_ids: Optional[Sequence[int]] = None,
+    metric: str = "hybrid",
+    embedder: Optional[TextEmbedder] = None,
+    reading_validator: Optional[ContextualReadingValidator] = None,
+) -> Dict[str, Any]:
+    """Keep the earliest warning-free cards and account for rejected words.
+
+    The progressive planner treats every earlier planned target as newly known.
+    When a card is removed by the quality gate, later examples containing that
+    target become unknown again. Recheck that delta before accepting them.
+    """
+    accepted = []
+    rejected = []
+    rejected_difficulties: Dict[int, float] = {}
+    accepted_ids = {
+        int(row[0]) for row in database.connection.execute(
+            "SELECT id FROM lexemes WHERE known_at IS NOT NULL"
+        )
+    } if hasattr(database, "connection") else set()
+    used_sentence_ids = set()
+    semantic = embedder
+    contextual_readings = reading_validator
+    for original in report["cards"]:
+        if len(accepted) >= int(limit):
+            break
+        card = dict(original)
+        lexeme_id = int(card["lexeme_id"])
+        difficulty = float(card["difficulty_score"])
+        reasons = [item["code"] for item in card.get("audit_findings", [])]
+        sentence_ids = database.sentence_lexeme_ids(int(card["sentence_id"]))
+        restored_unknown = sentence_ids & set(rejected_difficulties)
+        restored_harder = {
+            value for value in restored_unknown
+            if rejected_difficulties[value] > difficulty + difficulty_tolerance
+        }
+        if restored_harder:
+            reasons.append("rejected_word_became_harder_context")
+        replacement = None
+        if reasons and source_ids is not None and hasattr(
+            database, "fully_known_alternative_examples"
+        ):
+            semantic = semantic or MultilingualE5Small()
+            contextual_readings = (
+                contextual_readings or ContextualReadingValidator()
+            )
+            for alternative in database.fully_known_alternative_examples(
+                card, source_ids, accepted_ids, used_sentence_ids
+            ):
+                alternate_card = dict(card)
+                alternate_card.update(alternative)
+                alternate_report = audit_rows(
+                    database, [alternate_card], metric=metric,
+                    embedder=semantic, reading_validator=contextual_readings,
+                )
+                if not alternate_report["cards"][0]["audit_findings"]:
+                    replacement = alternate_report["cards"][0]
+                    replacement["replaced_sentence_id"] = card["sentence_id"]
+                    reasons = []
+                    card = replacement
+                    break
+        if reasons:
+            rejected.append({
+                "audit_position": card["audit_position"],
+                "lexeme_id": lexeme_id,
+                "lexeme_key": card["lexeme_key"],
+                "lemma": card["lemma"],
+                "reading": card["reading"],
+                "japanese": card["japanese"],
+                "english": card.get("english"),
+                "reasons": sorted(set(reasons)),
+            })
+            rejected_difficulties[lexeme_id] = difficulty
+            continue
+        progression = dict(card.get("example_progression") or {})
+        if restored_unknown:
+            existing_unknown = set(progression.get("unknown_other_ids") or [])
+            all_unknown = existing_unknown | restored_unknown
+            progression["unknown_other_ids"] = sorted(all_unknown)
+            progression["unknown_other_words"] = len(all_unknown)
+        card["example_progression"] = progression
+        card["clean_position"] = len(accepted) + 1
+        accepted.append(card)
+        accepted_ids.add(lexeme_id)
+        used_sentence_ids.add(int(card["sentence_id"]))
+    return {
+        "accepted": accepted,
+        "rejected": rejected,
+        "summary": {
+            "requested": int(limit),
+            "accepted": len(accepted),
+            "rejected_before_limit": len(rejected),
+            "complete": len(accepted) == int(limit),
+            "alternate_examples": sum(
+                "replaced_sentence_id" in card for card in accepted
+            ),
+        },
+    }
+
+
 def write_audit_json(report: Mapping[str, Any], output: Path) -> Path:
     output = output.expanduser().resolve()
     output.parent.mkdir(parents=True, exist_ok=True)

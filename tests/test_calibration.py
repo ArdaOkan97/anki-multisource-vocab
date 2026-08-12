@@ -7,6 +7,7 @@ from pathlib import Path
 from vocabdeck.audit import (
     attach_reviews,
     audit_rows,
+    select_clean_cards,
     write_audit_csv,
     write_audit_json,
 )
@@ -139,6 +140,47 @@ class CalibrationTest(unittest.TestCase):
         )
         with self.assertRaisesRegex(KeyError, "Unknown calibration batch"):
             self.db.calibration_batch("sample")
+
+    def test_quality_gate_replaces_flagged_sentence_before_dropping_word(self):
+        self.db.ingest_cues(
+            self.source_id,
+            [Cue(1, 0, 800, "猫"), Cue(2, 1000, 1800, "猫")],
+            [Cue(1, 0, 800, "Cat"), Cue(2, 1000, 1800, "A cat")],
+            CharacterTokenizer(),
+        )
+        lexeme = self.db.connection.execute(
+            "SELECT * FROM lexemes WHERE lemma = '猫'"
+        ).fetchone()
+        sentences = list(self.db.connection.execute(
+            "SELECT * FROM sentences WHERE source_id = ? ORDER BY cue_index",
+            (self.source_id,),
+        ))
+        original = {
+            "audit_position": 1,
+            "lexeme_id": int(lexeme["id"]),
+            "lexeme_key": lexeme["lexeme_key"],
+            "lemma": "猫", "reading": "猫", "part_of_speech": "名詞",
+            "gloss": "cat", "difficulty_score": 10.0,
+            "sentence_id": int(sentences[0]["id"]),
+            "japanese": sentences[0]["japanese"],
+            "english": sentences[0]["english"],
+            "source_id": self.source_id, "series": "Test", "season": 1,
+            "episode": 1, "video_path": None, "start_ms": 0, "end_ms": 800,
+            "target_start": 0, "target_end": 1,
+            "target_lexical_start": 0, "target_lexical_end": 1,
+            "target_surface": "猫", "example_progression": {},
+            "audit_findings": [{"code": "weak_subtitle_alignment"}],
+        }
+        selection = select_clean_cards(
+            self.db, {"cards": [original]}, 1, source_ids=[self.source_id],
+            embedder=ConstantEmbedder(),
+            reading_validator=AgreeingReadingValidator(),
+        )
+        self.assertTrue(selection["summary"]["complete"])
+        self.assertEqual(selection["summary"]["alternate_examples"], 1)
+        self.assertEqual(
+            selection["accepted"][0]["sentence_id"], int(sentences[1]["id"])
+        )
 
 
 class ManifestTest(unittest.TestCase):

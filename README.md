@@ -207,6 +207,22 @@ accepted by the reviewer.
 Large plans use a bounded rolling window. This keeps planning responsive while
 still allowing sentence comprehensibility to reorder nearby vocabulary.
 
+For a conservative learning preview, reject every questionable sample and look
+for an unused occurrence whose surrounding vocabulary is already known. The word
+is postponed only when no clean alternative exists:
+
+```bash
+uv run vocabdeck --db ".vocabdeck/hxh-full.sqlite3" export-clean-preview \
+  --series "Hunter x Hunter" --season 1 --episodes 1-10 --limit 200 \
+  --output ".vocabdeck/previews/hxh-episodes-1-10-clean-200.html" \
+  --audit-output ".vocabdeck/audits/hxh-episodes-1-10-clean-200.html" \
+  --selection-output ".vocabdeck/audits/hxh-episodes-1-10-clean-200-selection.json"
+```
+
+The selection JSON explains every postponed word. After dropping a word, the
+gate restores it to unknown status in later sentences and rejects any downstream
+card where it would become harder than the new target.
+
 Three explainable difficulty metrics are available:
 
 - `source`: repeated words in the selected episodes first; immersive, but show-specific vocabulary can arrive too early.

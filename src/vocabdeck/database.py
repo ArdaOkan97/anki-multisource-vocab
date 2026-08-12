@@ -5,7 +5,7 @@ import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence
+from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence
 
 from .dictionary import DICTIONARY_RESOLVER_VERSION
 from .subtitles import Cue, align_translation
@@ -1011,6 +1011,79 @@ class VocabularyDatabase:
             int(row["id"]): f"{row['lemma']}（{row['reading']}）" for row in rows
         }
         return [by_id[value] for value in map(int, lexeme_ids) if value in by_id]
+
+    def sentence_lexeme_ids(self, sentence_id: int) -> set:
+        return {
+            int(row[0]) for row in self.connection.execute(
+                "SELECT DISTINCT lexeme_id FROM occurrences WHERE sentence_id = ?",
+                (int(sentence_id),),
+            )
+        }
+
+    def fully_known_alternative_examples(
+        self,
+        row: Mapping[str, object],
+        source_ids: Sequence[int],
+        known_ids: set,
+        used_sentence_ids: set,
+    ) -> List[dict]:
+        """Return unused occurrences whose context is already fully known."""
+        from .tokenizer import JapaneseTokenizer
+
+        if not source_ids:
+            return []
+        markers = ",".join("?" for _ in source_ids)
+        candidates = list(self.connection.execute(
+            f"""SELECT s.id AS sentence_id, s.japanese, s.english,
+                       s.start_ms, s.end_ms, s.source_id, s.cue_index,
+                       src.series, src.season, src.episode, src.video_path,
+                       target.surface,
+                       GROUP_CONCAT(DISTINCT all_words.lexeme_id) AS word_ids_csv
+                FROM occurrences target
+                JOIN sentences s ON s.id = target.sentence_id
+                JOIN sources src ON src.id = s.source_id
+                JOIN occurrences all_words ON all_words.sentence_id = s.id
+                WHERE target.lexeme_id = ? AND s.source_id IN ({markers})
+                GROUP BY s.id, target.surface
+                ORDER BY CASE WHEN s.english IS NULL OR s.english = '' THEN 1 ELSE 0 END,
+                         LENGTH(s.japanese), s.cue_index""",
+            (int(row["lexeme_id"]), *source_ids),
+        ))
+        tokenizer = JapaneseTokenizer()
+        alternatives = []
+        for candidate_row in candidates:
+            candidate = dict(candidate_row)
+            sentence_id = int(candidate["sentence_id"])
+            if sentence_id in used_sentence_ids or sentence_id == int(row["sentence_id"]):
+                continue
+            word_ids = {
+                int(value) for value in candidate.pop("word_ids_csv").split(",")
+            }
+            other_ids = word_ids - {int(row["lexeme_id"])}
+            if other_ids - known_ids:
+                continue
+            lexical_surface = str(candidate["surface"])
+            span = tokenizer.find_inflected_span(
+                str(candidate["japanese"]), str(row["lemma"]),
+                str(row["reading"]), lexical_surface,
+            )
+            if not span:
+                continue
+            candidate["target_start"], candidate["target_end"] = span
+            candidate["target_lexical_start"] = span[0]
+            candidate["target_lexical_end"] = span[0] + len(lexical_surface)
+            candidate["target_surface"] = str(candidate["japanese"])[span[0]:span[1]]
+            candidate["sentence_word_count"] = len(word_ids)
+            candidate["sentence_unknown_word_count"] = 1
+            candidate["example_progression"] = {
+                "content_words": len(word_ids),
+                "unknown_other_words": 0,
+                "unknown_other_ids": [],
+                "harder_unknown_words": 0,
+                "harder_unknown_ids": [],
+            }
+            alternatives.append(candidate)
+        return alternatives
 
     def expression_analyses_for_sentence(
         self, sentence_id: Optional[int]

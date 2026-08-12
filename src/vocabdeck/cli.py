@@ -186,6 +186,19 @@ def build_parser() -> argparse.ArgumentParser:
     audit.add_argument("--json-output", type=Path)
     audit.add_argument("--csv-output", type=Path)
 
+    clean_preview = commands.add_parser(
+        "export-clean-preview",
+        help="Render only warning-free cards, dropping questionable samples",
+    )
+    _source_selector(clean_preview)
+    clean_preview.add_argument("--limit", type=int, default=200)
+    clean_preview.add_argument("--candidate-limit", type=int)
+    clean_preview.add_argument("--metric", choices=METRICS, default="hybrid")
+    clean_preview.add_argument("--output", required=True, type=Path)
+    clean_preview.add_argument("--audit-output", required=True, type=Path)
+    clean_preview.add_argument("--selection-output", required=True, type=Path)
+    clean_preview.add_argument("--no-media", action="store_true")
+
     plan_calibration = commands.add_parser(
         "plan-calibration", help="Materialize a stable large review batch"
     )
@@ -342,6 +355,48 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             if args.csv_output:
                 write_audit_csv(report, args.csv_output)
             print(json.dumps({"output": str(output), **report["summary"]}, indent=2))
+        elif args.command == "export-clean-preview":
+            from .audit import (
+                audit_queue, audit_rows, render_audit_html, select_clean_cards,
+                write_audit_json,
+            )
+
+            source_ids = _selected_source_ids(db, args)
+            db.enrich_dictionary(source_ids)
+            candidate_limit = args.candidate_limit or max(
+                args.limit + 100, args.limit * 2
+            )
+            candidate_report = audit_queue(
+                db, source_ids, candidate_limit, args.metric
+            )
+            selection = select_clean_cards(
+                db, candidate_report, args.limit,
+                source_ids=source_ids, metric=args.metric,
+            )
+            if not selection["summary"]["complete"]:
+                raise RuntimeError(
+                    f"Only {selection['summary']['accepted']} clean cards were found "
+                    f"among {candidate_limit} candidates"
+                )
+            accepted_report = audit_rows(
+                db, selection["accepted"], metric=args.metric,
+                source_ids=source_ids, excluded_limit=0,
+            )
+            if accepted_report["summary"]["cards_with_findings"]:
+                raise RuntimeError("Accepted cards failed the final quality recheck")
+            preview_output = render_preview_html(
+                selection["accepted"], args.output,
+                include_media=not args.no_media,
+            )
+            audit_output = render_audit_html(accepted_report, args.audit_output)
+            selection_document = {
+                **selection["summary"],
+                "preview": str(preview_output),
+                "audit": str(audit_output),
+                "rejected": selection["rejected"],
+            }
+            write_audit_json(selection_document, args.selection_output)
+            print(json.dumps(selection_document, ensure_ascii=False, indent=2))
         elif args.command == "plan-calibration":
             source_ids = _selected_source_ids(db, args)
             dictionary = db.enrich_dictionary(source_ids)
