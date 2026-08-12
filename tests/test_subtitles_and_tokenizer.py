@@ -10,7 +10,8 @@ class FixedExpressionScorer:
         self.decision = decision
 
     def decide(
-        self, english, phrase_senses, component_glosses, standalone=False
+        self, english, phrase_senses, component_glosses, standalone=False,
+        particle_inclusive=False,
     ):
         return ExpressionDecision(
             decision=self.decision,
@@ -161,6 +162,27 @@ class SubtitleAndTokenizerTest(unittest.TestCase):
         ).tokenize_with_context("何のこと？", "What do you mean?")
         target = result.tokens[0]
         self.assertEqual((target.lemma, target.reading), ("何の", "ナンノ"))
+
+    def test_particle_inclusive_expression_suppresses_component(self):
+        result = JapaneseTokenizer(
+            expression_scorer=FixedExpressionScorer("expression")
+        ).tokenize_with_context("何で？", "Why?")
+        self.assertEqual(
+            [(token.lemma, token.reading, token.part_of_speech)
+             for token in result.tokens],
+            [("何で", "ナンデ", "表現")],
+        )
+        self.assertEqual(result.expression_analyses[0].surface, "何で")
+
+    def test_rejected_particle_expression_keeps_content_component(self):
+        result = JapaneseTokenizer(
+            expression_scorer=FixedExpressionScorer("components")
+        ).tokenize_with_context("何で書く？", "What will you write with?")
+        self.assertEqual(
+            [(token.lemma, token.reading) for token in result.tokens],
+            [("何", "ナン"), ("書く", "カク")],
+        )
+        self.assertEqual(result.expression_analyses[0].decision, "components")
 
     def test_kana_iitai_is_canonicalized_as_iu(self):
         tokens = JapaneseTokenizer().tokenize("何が いいたい？")

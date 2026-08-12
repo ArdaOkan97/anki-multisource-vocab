@@ -21,7 +21,8 @@ class FixedExpressionScorer:
         self.decision = decision
 
     def decide(
-        self, english, phrase_senses, component_glosses, standalone=False
+        self, english, phrase_senses, component_glosses, standalone=False,
+        particle_inclusive=False,
     ):
         phrase_score = 0.95 if self.decision == "expression" else 0.20
         component_score = 0.20 if self.decision == "expression" else 0.95

@@ -118,12 +118,14 @@ class ExpressionSemanticScorer:
         minimum_margin: float = 0.04,
         minimum_multi_component_margin: float = 0.02,
         minimum_opacity: float = 0.16,
+        minimum_particle_opacity: float = 0.14,
     ) -> None:
         self.embedder = embedder or MultilingualE5Small()
         self.minimum_phrase_score = minimum_phrase_score
         self.minimum_margin = minimum_margin
         self.minimum_multi_component_margin = minimum_multi_component_margin
         self.minimum_opacity = minimum_opacity
+        self.minimum_particle_opacity = minimum_particle_opacity
 
     def decide(
         self,
@@ -131,6 +133,7 @@ class ExpressionSemanticScorer:
         phrase_senses: Sequence[str],
         component_glosses: Sequence[str],
         standalone: bool = False,
+        particle_inclusive: bool = False,
     ) -> ExpressionDecision:
         phrase_descriptions = [value for value in phrase_senses if value]
         component_values = [value for value in component_glosses if value]
@@ -166,11 +169,16 @@ class ExpressionSemanticScorer:
             if len(component_values) > 1 and standalone
             else self.minimum_margin
         )
+        required_opacity = (
+            self.minimum_particle_opacity
+            if particle_inclusive
+            else self.minimum_opacity
+        )
         decision = (
             "expression"
             if phrase_score >= self.minimum_phrase_score
             and margin >= required_margin
-            and opacity >= self.minimum_opacity
+            and opacity >= required_opacity
             else "components"
             if component_score > phrase_score
             else "ambiguous"

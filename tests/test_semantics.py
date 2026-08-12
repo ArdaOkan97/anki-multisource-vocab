@@ -118,6 +118,33 @@ class ExpressionSemanticScorerTest(unittest.TestCase):
         self.assertEqual(result.decision, "ambiguous")
         self.assertAlmostEqual(result.opacity, 0.10)
 
+    def test_particle_expression_uses_narrower_opacity_boundary(self):
+        english = "Why?"
+        phrase = "why?; what for?"
+        component = (
+            "Meaning composed from: what | particle marking means, instrument, "
+            "material, location, or cause"
+        )
+        scorer = ExpressionSemanticScorer(
+            FakeEmbedder({
+                (english, phrase): 0.93,
+                (english, component): 0.82,
+                (phrase, component): 0.844,
+            })
+        )
+
+        ordinary = scorer.decide(
+            english, [phrase], ["what", component.split(" | ", 1)[1]],
+            standalone=True,
+        )
+        particle = scorer.decide(
+            english, [phrase], ["what", component.split(" | ", 1)[1]],
+            standalone=True, particle_inclusive=True,
+        )
+
+        self.assertEqual(ordinary.decision, "ambiguous")
+        self.assertEqual(particle.decision, "expression")
+
     def test_opaque_multi_component_phrase_allows_smaller_margin(self):
         english = "I'm very sorry!"
         phrase = "I'm sorry; I feel regretful"

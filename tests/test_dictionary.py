@@ -58,6 +58,23 @@ class DictionaryTest(unittest.TestCase):
             JMDictExpressionResolver().resolve("試験官", "シケンカン")
         )
 
+    def test_particle_inclusive_adverb_is_an_expression_candidate(self):
+        match = JMDictExpressionResolver().resolve(
+            "何で", "ナンデ", particle_inclusive=True
+        )
+        self.assertIsNotNone(match)
+        self.assertEqual(match.entry_id, 1611020)
+        self.assertEqual(match.reading, "ナンデ")
+        self.assertIn("why?", match.senses[0])
+
+    def test_contextual_reading_selects_matching_exact_entry(self):
+        match = JMDictExpressionResolver().resolve(
+            "何の", "ナンノ", particle_inclusive=True
+        )
+        self.assertIsNotNone(match)
+        self.assertEqual(match.entry_id, 1920245)
+        self.assertEqual(match.reading, "ナンノ")
+
     def test_plain_lookup_skips_unused_character_and_name_dictionaries(self):
         resolver = JMDictResolver()
         resolver.dictionary = Mock()
