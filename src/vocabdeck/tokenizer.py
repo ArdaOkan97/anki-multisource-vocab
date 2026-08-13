@@ -118,6 +118,37 @@ class JapaneseTokenizer:
         self._dictionary = JMDictResolver()
         self._expression_scorer = expression_scorer
 
+    def _lexical_identity(
+        self, feature: object, surface: str, pos: str
+    ) -> Tuple[str, str]:
+        """Choose a teachable dictionary identity without losing kana spellings.
+
+        UniDic's orthBase is normally the best learner-facing form (for example,
+        する instead of 為る). Some productive potential verbs are exceptional:
+        威張れる has orthBase 威張れる but the true lemma 威張る. Fall back to
+        UniDic's lemma/lForm only when orthBase has no matching JMdict verb and
+        the lemma does.
+        """
+        lemma = _feature(feature, "orthBase", "lemma", default=surface)
+        reading = _feature(
+            feature, "kanaBase", "pronBase", "kana", default=surface
+        )
+        if pos != "動詞":
+            return lemma, reading
+        dictionary_lemma = _feature(feature, "lemma", default=lemma)
+        dictionary_reading = _feature(
+            feature, "lForm", default=reading
+        )
+        if (dictionary_lemma, dictionary_reading) == (lemma, reading):
+            return lemma, reading
+        if self._dictionary.resolve(lemma, reading, pos) is not None:
+            return lemma, reading
+        if self._dictionary.resolve(
+            dictionary_lemma, dictionary_reading, pos
+        ) is not None:
+            return dictionary_lemma, dictionary_reading
+        return lemma, reading
+
     def _morphs(self, text: str) -> List[Dict[str, Any]]:
         words = []
         cursor = 0
@@ -132,10 +163,7 @@ class JapaneseTokenizer:
             cursor = end
             feature = word.feature
             pos = _feature(feature, "pos1", default=str(feature).split(",", 1)[0])
-            lemma = _feature(feature, "orthBase", "lemma", default=surface)
-            reading = _feature(
-                feature, "kanaBase", "pronBase", "kana", default=surface
-            )
+            lemma, reading = self._lexical_identity(feature, surface, pos)
             surface_reading = _feature(
                 feature, "kana", "pron", default=reading
             )
@@ -338,12 +366,11 @@ class JapaneseTokenizer:
             end = start + len(word_surface)
             cursor = end
             feature = word.feature
-            lemma = _feature(feature, "orthBase", "lemma", default=word_surface)
-            reading = _feature(
-                feature, "kanaBase", "pronBase", "kana", default=word_surface
-            )
             pos = _feature(
                 feature, "pos1", default=str(feature).split(",", 1)[0]
+            )
+            lemma, reading = self._lexical_identity(
+                feature, word_surface, pos
             )
             lemma, reading, pos = _contextual_identity(
                 text, end, lemma, reading, pos

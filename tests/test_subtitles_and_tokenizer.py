@@ -1,5 +1,6 @@
 import unittest
 
+from vocabdeck.dictionary import JMDictResolver
 from vocabdeck.semantics import ExpressionDecision
 from vocabdeck.subtitles import align_translation, merge_continuations, parse_srt_text
 from vocabdeck.tokenizer import JapaneseTokenizer
@@ -93,6 +94,29 @@ class SubtitleAndTokenizerTest(unittest.TestCase):
         by_surface = {token.surface: token for token in tokens}
         self.assertEqual((by_surface["し"].lemma, by_surface["し"].reading), ("する", "スル"))
         self.assertNotIn("レオ", by_surface)
+
+    def test_potential_verb_falls_back_to_dictionary_lemma(self):
+        text = "威張れることじゃねえよな。"
+        tokenizer = JapaneseTokenizer()
+        target = next(
+            token for token in tokenizer.tokenize(text)
+            if token.surface == "威張れる"
+        )
+
+        self.assertEqual((target.lemma, target.reading), ("威張る", "イバル"))
+        self.assertEqual(text[target.start:target.end], "威張れる")
+        self.assertEqual(
+            tokenizer.find_inflected_span(
+                text, "威張る", "イバル", "威張れる"
+            ),
+            (0, 4),
+        )
+        match = JMDictResolver().resolve(
+            target.lemma, target.reading, target.part_of_speech,
+            "That isn't something to brag about.",
+        )
+        self.assertIsNotNone(match)
+        self.assertIn("to put on airs", match.gloss)
 
     def test_tracks_exact_span_for_inflected_iru_after_unrelated_i(self):
         text = "おい 誰か いねえか～？"
