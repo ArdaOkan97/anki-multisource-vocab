@@ -63,19 +63,29 @@ def example_score(
         for lexeme_id in unknown_other
         if lexical_difficulties is not None and lexeme_id in lexical_difficulties
     }
+    # A content word absent from the ranked pool usually has no reliable
+    # dictionary entry (or was otherwise structurally excluded). Its difficulty
+    # cannot safely be assumed to be low, so conservative exports must treat it
+    # as harder context rather than silently ignoring it.
+    unscored_unknown_ids = (
+        unknown_other - set(unknown_difficulties)
+        if lexical_difficulties is not None
+        else set()
+    )
     harder_unknown_gaps = {
         lexeme_id: difficulty - float(target_difficulty) - _DIFFICULTY_TOLERANCE
         for lexeme_id, difficulty in unknown_difficulties.items()
         if target_difficulty is not None
         and difficulty > float(target_difficulty) + _DIFFICULTY_TOLERANCE
     }
+    harder_unknown_ids = set(harder_unknown_gaps) | unscored_unknown_ids
     difficulty_burden = sum(harder_unknown_gaps.values())
 
     # Unknown context dominates. An unknown that is harder than the word being
     # introduced is especially costly, but remains a soft constraint for source
     # material where no cleaner example exists.
     score = len(unknown_other) * 10.0
-    score += len(harder_unknown_gaps) * _HARDER_UNKNOWN_BASE_PENALTY
+    score += len(harder_unknown_ids) * _HARDER_UNKNOWN_BASE_PENALTY
     score += difficulty_burden * _HARDER_UNKNOWN_GAP_WEIGHT
     score += 25.0 if missing_translation else 0.0
     score += 15.0 if fragment else 0.0
@@ -93,8 +103,10 @@ def example_score(
         "content_words": word_count,
         "known_other_words": len(other_ids & known_ids),
         "unknown_other_words": len(unknown_other),
-        "harder_unknown_words": len(harder_unknown_gaps),
-        "harder_unknown_ids": sorted(harder_unknown_gaps),
+        "harder_unknown_words": len(harder_unknown_ids),
+        "harder_unknown_ids": sorted(harder_unknown_ids),
+        "unscored_unknown_words": len(unscored_unknown_ids),
+        "unscored_unknown_ids": sorted(unscored_unknown_ids),
         "max_unknown_difficulty_gap": round(
             max(harder_unknown_gaps.values(), default=0.0), 3
         ),
