@@ -14,6 +14,7 @@ from .semantics import MultilingualE5Small, TextEmbedder
 ALIGNMENT_WARNING_THRESHOLD = 0.78
 ALIGNMENT_HIGH_THRESHOLD = 0.72
 GLOSS_WARNING_THRESHOLD = 0.70
+SHORT_GLOSS_WARNING_THRESHOLD = 0.82
 EXPRESSION_MARGIN_WARNING = 0.06
 EXPRESSION_OPACITY_WARNING = 0.20
 READING_CHECK_POS = {"名詞", "代名詞", "副詞", "連体詞", "感動詞", "表現"}
@@ -21,6 +22,7 @@ AUDIT_CRITERION_CODES = (
     "translation_available",
     "translation_alignment",
     "definition_available",
+    "contextual_interpretation",
     "gloss_support",
     "context_difficulty",
     "contextual_reading",
@@ -134,6 +136,14 @@ def audit_rows(
         japanese = str(row.get("japanese") or "")
         english = str(row.get("english") or "").strip()
         gloss = str(row.get("gloss") or "").strip()
+        global_pos = str(
+            row.get("global_part_of_speech")
+            or row.get("part_of_speech") or ""
+        )
+        contextual_pos = str(row.get("contextual_part_of_speech") or "")
+        contextual_status = str(
+            row.get("contextual_dictionary_status") or ""
+        )
 
         alignment_score: Optional[float] = None
         if not english:
@@ -176,6 +186,52 @@ def audit_rows(
                     score=alignment_score, threshold=ALIGNMENT_WARNING_THRESHOLD,
                 ))
 
+        if not contextual_pos:
+            criteria.append(_criterion(
+                "contextual_interpretation", "not_checked",
+                "Contextual part of speech and sense",
+                "Occurrence-level interpretation is unavailable for this legacy row.",
+            ))
+        elif contextual_pos != global_pos:
+            findings.append(_finding(
+                "contextual_pos_mismatch", "high",
+                "Occurrence uses a different part of speech",
+                f"The global card is {global_pos}, but this occurrence is {contextual_pos}. A global gloss must not be reused across those roles.",
+            ))
+            criteria.append(_criterion(
+                "contextual_interpretation", "flagged",
+                "Contextual part of speech and sense",
+                f"Global {global_pos} does not match occurrence {contextual_pos}.",
+                "high",
+            ))
+        elif contextual_status != "matched":
+            findings.append(_finding(
+                "missing_contextual_sense", "high",
+                "No POS-compatible contextual sense",
+                "JMdict has no sense compatible with this occurrence's grammatical role.",
+            ))
+            criteria.append(_criterion(
+                "contextual_interpretation", "flagged",
+                "Contextual part of speech and sense",
+                "No exact POS-compatible JMdict sense was selected for this occurrence.",
+                "high",
+            ))
+        else:
+            criteria.append(_criterion(
+                "contextual_interpretation", "passed",
+                "Contextual part of speech and sense",
+                f"The occurrence is {contextual_pos} and has a matching JMdict sense.",
+            ))
+
+        target_surface = str(row.get("target_surface") or "")
+        standalone_target = bool(target_surface) and (
+            japanese.strip(" \t\r\n。？！?!…～〜＜＞《》≪≫「」『』（）()")
+            == target_surface
+        )
+        gloss_threshold = (
+            SHORT_GLOSS_WARNING_THRESHOLD
+            if standalone_target else GLOSS_WARNING_THRESHOLD
+        )
         gloss_score: Optional[float] = None
         if not gloss:
             findings.append(_finding(
@@ -198,22 +254,22 @@ def audit_rows(
             gloss_score = semantic.similarity(
                 english, f"The target Japanese word means: {gloss}"
             )
-            if gloss_score < GLOSS_WARNING_THRESHOLD:
+            if gloss_score < gloss_threshold:
                 findings.append(_finding(
                     "weak_gloss_support", "medium", "Definition has weak context support",
                     "The selected definition is not strongly supported by this example's English subtitle. It may be a different sense.",
-                    gloss_score, GLOSS_WARNING_THRESHOLD,
+                    gloss_score, gloss_threshold,
                 ))
                 criteria.append(_criterion(
                     "gloss_support", "flagged", "Definition supported by context",
                     "The selected definition has weak support from this English example.",
-                    "medium", gloss_score, GLOSS_WARNING_THRESHOLD,
+                    "medium", gloss_score, gloss_threshold,
                 ))
             else:
                 criteria.append(_criterion(
                     "gloss_support", "passed", "Definition supported by context",
                     "The English example supports the selected dictionary sense.",
-                    score=gloss_score, threshold=GLOSS_WARNING_THRESHOLD,
+                    score=gloss_score, threshold=gloss_threshold,
                 ))
         else:
             criteria.append(_criterion(

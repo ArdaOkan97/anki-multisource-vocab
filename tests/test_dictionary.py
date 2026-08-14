@@ -43,6 +43,20 @@ class DictionaryTest(unittest.TestCase):
         self.assertEqual(ha_match.entry_id, 2069620)
         self.assertNotIn("feather", ha_match.gloss)
 
+    def test_strict_contextual_pos_distinguishes_are_senses(self):
+        resolver = JMDictResolver()
+        pronoun = resolver.resolve(
+            "あれ", "アレ", "代名詞", "Look at that.", strict_pos=True
+        )
+        interjection = resolver.resolve(
+            "あれ", "アレ", "感動詞", "What?", strict_pos=True
+        )
+
+        self.assertEqual(pronoun.entry_id, 1000580)
+        self.assertIn("that", pronoun.gloss)
+        self.assertEqual(interjection.entry_id, 2847612)
+        self.assertIn("huh?", interjection.gloss)
+
     def test_finds_exact_multi_token_expression(self):
         match = JMDictExpressionResolver().resolve("どうも", "ドウモ")
         self.assertIsNotNone(match)

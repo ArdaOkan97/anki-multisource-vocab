@@ -139,6 +139,16 @@ class GlobalDeduplicationTest(unittest.TestCase):
         self.db.ingest_cues(source, cues, [], CharacterTokenizer())
         self.assertEqual(self.db.connection.execute("SELECT corpus_count FROM lexemes").fetchone()[0], 2)
 
+    def test_legacy_database_without_occurrence_senses_still_queues(self):
+        source = self.add_show("Legacy Show", ["猫"])
+        self.db.connection.execute("DELETE FROM occurrence_senses")
+        self.db.connection.commit()
+
+        rows = self.db.next_unseen(source, 10)
+
+        self.assertEqual([row["lemma"] for row in rows], ["猫"])
+        self.assertIsNone(rows[0].get("contextual_part_of_speech"))
+
     def test_episode_range_forms_one_queue(self):
         episode_1 = self.add_show("Range Show", ["猫"])
         source_2 = self.db.add_source(
@@ -155,6 +165,48 @@ class GlobalDeduplicationTest(unittest.TestCase):
         noun = LexemeToken("そう", "そう", "ソウ", "名詞")
         adverb = LexemeToken("そう", "そう", "ソウ", "副詞")
         self.assertEqual(noun.key, adverb.key)
+
+    def test_occurrences_keep_contextual_pos_and_sense_after_global_merge(self):
+        source = self.db.add_source(
+            series="Context Show", season=1, episode=1, title=None,
+            video_path=None, japanese_subtitle_path="context.srt",
+            english_subtitle_path="context.en.srt",
+        )
+        self.db.ingest_cues(
+            source,
+            [
+                Cue(1, 0, 900, "あれを見て。"),
+                Cue(2, 1000, 1900, "あれ？"),
+            ],
+            [
+                Cue(1, 0, 900, "Look at that."),
+                Cue(2, 1000, 1900, "What?"),
+            ],
+            JapaneseTokenizer(),
+        )
+
+        lexemes = list(self.db.connection.execute(
+            "SELECT id FROM lexemes WHERE lemma = 'あれ' AND reading = 'アレ'"
+        ))
+        self.assertEqual(len(lexemes), 1)
+        senses = list(self.db.connection.execute(
+            """SELECT s.japanese, os.part_of_speech, os.gloss,
+                      os.dictionary_entry_id
+                 FROM occurrence_senses os
+                 JOIN sentences s ON s.id = os.sentence_id
+                WHERE os.lexeme_id = ? AND os.surface = 'あれ'
+                ORDER BY s.cue_index""",
+            (int(lexemes[0]["id"]),),
+        ))
+        self.assertEqual(
+            [(row["japanese"], row["part_of_speech"]) for row in senses],
+            [("あれを見て。", "代名詞"), ("あれ？", "感動詞")],
+        )
+        self.assertIn("that", senses[0]["gloss"])
+        self.assertIn("huh?", senses[1]["gloss"])
+        self.assertNotEqual(
+            senses[0]["dictionary_entry_id"], senses[1]["dictionary_entry_id"]
+        )
 
     def test_pronoun_occurrence_counts_as_unknown_sentence_context(self):
         source = self.db.add_source(

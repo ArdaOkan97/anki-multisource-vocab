@@ -68,6 +68,25 @@ CREATE TABLE IF NOT EXISTS occurrences (
 CREATE INDEX IF NOT EXISTS occurrences_sentence
 ON occurrences(sentence_id, lexeme_id);
 
+CREATE TABLE IF NOT EXISTS occurrence_senses (
+    sentence_id INTEGER NOT NULL REFERENCES sentences(id) ON DELETE CASCADE,
+    start_char INTEGER NOT NULL,
+    end_char INTEGER NOT NULL,
+    lexeme_id INTEGER NOT NULL REFERENCES lexemes(id) ON DELETE CASCADE,
+    surface TEXT NOT NULL,
+    part_of_speech TEXT NOT NULL,
+    gloss TEXT,
+    dictionary_entry_id INTEGER,
+    dictionary_sense_index INTEGER,
+    dictionary_confidence REAL,
+    dictionary_status TEXT NOT NULL,
+    dictionary_version INTEGER NOT NULL,
+    PRIMARY KEY(sentence_id, start_char, end_char, lexeme_id)
+);
+
+CREATE INDEX IF NOT EXISTS occurrence_senses_lexeme
+ON occurrence_senses(lexeme_id, sentence_id);
+
 CREATE INDEX IF NOT EXISTS sentences_source
 ON sentences(source_id, cue_index);
 
@@ -268,8 +287,11 @@ class VocabularyDatabase:
         english: Sequence[Cue],
         tokenizer: object,
     ) -> Dict[str, int]:
+        from .dictionary import JMDictResolver
+
         sentence_count = 0
         occurrence_count = 0
+        contextual_resolver = JMDictResolver()
         with self.transaction() as connection:
             # Queue rows point at selected example sentences, so remove them before
             # replacing an episode's sentence set.
@@ -373,6 +395,52 @@ class VocabularyDatabase:
                         (lexeme_id, sentence_id, token.surface, count),
                     )
                     occurrence_count += count
+                lexeme_ids = {
+                    identity: int(connection.execute(
+                        "SELECT id FROM lexemes WHERE lexeme_key = ?", (identity[0],)
+                    ).fetchone()[0])
+                    for identity in counts
+                }
+                for token in tokens:
+                    identity = (token.key, token.surface)
+                    lexeme_id = lexeme_ids[identity]
+                    analysis = accepted_expressions.get(
+                        (token.start, token.end, token.surface)
+                    )
+                    if analysis is not None:
+                        gloss = analysis.phrase_description
+                        entry_id = analysis.entry_id
+                        sense_index = analysis.sense_index
+                        confidence = analysis.phrase_score
+                        status = "matched"
+                    else:
+                        match = contextual_resolver.resolve(
+                            token.lemma, token.reading, token.part_of_speech,
+                            translation or "", strict_pos=True,
+                        )
+                        gloss = match.gloss if match is not None else None
+                        entry_id = match.entry_id if match is not None else None
+                        sense_index = (
+                            match.sense_index if match is not None else None
+                        )
+                        confidence = (
+                            match.confidence if match is not None else None
+                        )
+                        status = "matched" if match is not None else "missing"
+                    connection.execute(
+                        """INSERT OR REPLACE INTO occurrence_senses
+                           (sentence_id, start_char, end_char, lexeme_id, surface,
+                            part_of_speech, gloss, dictionary_entry_id,
+                            dictionary_sense_index, dictionary_confidence,
+                            dictionary_status, dictionary_version)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        (
+                            sentence_id, token.start, token.end, lexeme_id,
+                            token.surface, token.part_of_speech, gloss, entry_id,
+                            sense_index, confidence, status,
+                            DICTIONARY_RESOLVER_VERSION,
+                        ),
+                    )
             connection.execute(
                 """UPDATE lexemes
                    SET corpus_count = COALESCE((
@@ -558,14 +626,29 @@ class VocabularyDatabase:
                     f"""SELECT s.id AS sentence_id, s.japanese, s.english,
                                s.start_ms, s.end_ms, s.source_id, s.cue_index,
                                src.series, src.season, src.episode, src.video_path,
-                               target.surface,
+                               target_occurrence.surface,
+                               target.start_char AS occurrence_start,
+                               target.end_char AS occurrence_end,
+                               target.part_of_speech AS contextual_part_of_speech,
+                               target.gloss AS contextual_gloss,
+                               target.dictionary_entry_id AS contextual_dictionary_entry_id,
+                               target.dictionary_sense_index AS contextual_dictionary_sense_index,
+                               target.dictionary_confidence AS contextual_dictionary_confidence,
+                               target.dictionary_status AS contextual_dictionary_status,
                                GROUP_CONCAT(DISTINCT all_words.lexeme_id) AS word_ids_csv
-                        FROM occurrences target
-                        JOIN sentences s ON s.id = target.sentence_id
+                        FROM occurrences target_occurrence
+                        LEFT JOIN occurrence_senses target
+                          ON target.lexeme_id = target_occurrence.lexeme_id
+                         AND target.sentence_id = target_occurrence.sentence_id
+                         AND target.surface = target_occurrence.surface
+                        JOIN sentences s ON s.id = target_occurrence.sentence_id
                         JOIN sources src ON src.id = s.source_id
                         JOIN occurrences all_words ON all_words.sentence_id = s.id
-                        WHERE target.lexeme_id = ? AND s.source_id IN ({markers})
-                        GROUP BY s.id, target.surface""",
+                        WHERE target_occurrence.lexeme_id = ?
+                          AND s.source_id IN ({markers})
+                        GROUP BY s.id, target.start_char, target.end_char,
+                                 target_occurrence.lexeme_id,
+                                 target_occurrence.surface""",
                     (lexeme_id, *source_ids),
                 )
             )
@@ -577,14 +660,21 @@ class VocabularyDatabase:
                 }
                 candidate["lemma"] = row["lemma"]
                 lexical_surface = str(candidate["surface"])
+                occurrence_start = candidate.pop("occurrence_start")
+                occurrence_end = candidate.pop("occurrence_end")
+                if occurrence_start is not None and occurrence_end is not None:
+                    candidate["target_lexical_start"] = int(occurrence_start)
+                    candidate["target_lexical_end"] = int(occurrence_end)
                 span = tokenizer.find_inflected_span(
                     candidate["japanese"], row["lemma"], row["reading"],
                     lexical_surface,
                 )
                 if span:
                     candidate["target_start"], candidate["target_end"] = span
-                    candidate["target_lexical_start"] = span[0]
-                    candidate["target_lexical_end"] = span[0] + len(lexical_surface)
+                    candidate.setdefault("target_lexical_start", span[0])
+                    candidate.setdefault(
+                        "target_lexical_end", span[0] + len(lexical_surface)
+                    )
                     candidate["surface"] = candidate["japanese"][span[0]:span[1]]
                 examples.append(candidate)
             examples_by_lexeme[lexeme_id] = examples
@@ -653,6 +743,29 @@ class VocabularyDatabase:
             row["target_end"] = candidate.get("target_end")
             row["target_lexical_start"] = candidate.get("target_lexical_start")
             row["target_lexical_end"] = candidate.get("target_lexical_end")
+            row["global_part_of_speech"] = row["part_of_speech"]
+            for field in (
+                "contextual_part_of_speech", "contextual_gloss",
+                "contextual_dictionary_entry_id",
+                "contextual_dictionary_sense_index",
+                "contextual_dictionary_confidence",
+                "contextual_dictionary_status",
+            ):
+                row[field] = candidate.get(field)
+            if (
+                row.get("contextual_dictionary_status") == "matched"
+                and row.get("contextual_part_of_speech") == row["part_of_speech"]
+            ):
+                row["gloss"] = row.get("contextual_gloss")
+                row["dictionary_entry_id"] = row.get(
+                    "contextual_dictionary_entry_id"
+                )
+                row["dictionary_sense_index"] = row.get(
+                    "contextual_dictionary_sense_index"
+                )
+                row["dictionary_confidence"] = row.get(
+                    "contextual_dictionary_confidence"
+                )
             row["example_progression"] = details
             row["batch_planning"] = planner
             selected.append(row)
@@ -1037,14 +1150,28 @@ class VocabularyDatabase:
             f"""SELECT s.id AS sentence_id, s.japanese, s.english,
                        s.start_ms, s.end_ms, s.source_id, s.cue_index,
                        src.series, src.season, src.episode, src.video_path,
-                       target.surface,
+                       target_occurrence.surface,
+                       target.start_char AS occurrence_start,
+                       target.end_char AS occurrence_end,
+                       target.part_of_speech AS contextual_part_of_speech,
+                       target.gloss AS contextual_gloss,
+                       target.dictionary_entry_id AS contextual_dictionary_entry_id,
+                       target.dictionary_sense_index AS contextual_dictionary_sense_index,
+                       target.dictionary_confidence AS contextual_dictionary_confidence,
+                       target.dictionary_status AS contextual_dictionary_status,
                        GROUP_CONCAT(DISTINCT all_words.lexeme_id) AS word_ids_csv
-                FROM occurrences target
-                JOIN sentences s ON s.id = target.sentence_id
+                FROM occurrences target_occurrence
+                LEFT JOIN occurrence_senses target
+                  ON target.lexeme_id = target_occurrence.lexeme_id
+                 AND target.sentence_id = target_occurrence.sentence_id
+                 AND target.surface = target_occurrence.surface
+                JOIN sentences s ON s.id = target_occurrence.sentence_id
                 JOIN sources src ON src.id = s.source_id
                 JOIN occurrences all_words ON all_words.sentence_id = s.id
-                WHERE target.lexeme_id = ? AND s.source_id IN ({markers})
-                GROUP BY s.id, target.surface
+                WHERE target_occurrence.lexeme_id = ?
+                  AND s.source_id IN ({markers})
+                GROUP BY s.id, target.start_char, target.end_char,
+                         target_occurrence.lexeme_id, target_occurrence.surface
                 ORDER BY CASE WHEN s.english IS NULL OR s.english = '' THEN 1 ELSE 0 END,
                          LENGTH(s.japanese), s.cue_index""",
             (int(row["lexeme_id"]), *source_ids),
@@ -1063,6 +1190,11 @@ class VocabularyDatabase:
             if other_ids - known_ids:
                 continue
             lexical_surface = str(candidate["surface"])
+            occurrence_start = candidate.pop("occurrence_start")
+            occurrence_end = candidate.pop("occurrence_end")
+            if occurrence_start is not None and occurrence_end is not None:
+                candidate["target_lexical_start"] = int(occurrence_start)
+                candidate["target_lexical_end"] = int(occurrence_end)
             span = tokenizer.find_inflected_span(
                 str(candidate["japanese"]), str(row["lemma"]),
                 str(row["reading"]), lexical_surface,
@@ -1070,11 +1202,31 @@ class VocabularyDatabase:
             if not span:
                 continue
             candidate["target_start"], candidate["target_end"] = span
-            candidate["target_lexical_start"] = span[0]
-            candidate["target_lexical_end"] = span[0] + len(lexical_surface)
+            candidate.setdefault("target_lexical_start", span[0])
+            candidate.setdefault(
+                "target_lexical_end", span[0] + len(lexical_surface)
+            )
             candidate["target_surface"] = str(candidate["japanese"])[span[0]:span[1]]
             candidate["sentence_word_count"] = len(word_ids)
             candidate["sentence_unknown_word_count"] = 1
+            global_pos = str(
+                row.get("global_part_of_speech")
+                or row.get("part_of_speech") or ""
+            )
+            if (
+                candidate.get("contextual_dictionary_status") == "matched"
+                and candidate.get("contextual_part_of_speech") == global_pos
+            ):
+                candidate["gloss"] = candidate.get("contextual_gloss")
+                candidate["dictionary_entry_id"] = candidate.get(
+                    "contextual_dictionary_entry_id"
+                )
+                candidate["dictionary_sense_index"] = candidate.get(
+                    "contextual_dictionary_sense_index"
+                )
+                candidate["dictionary_confidence"] = candidate.get(
+                    "contextual_dictionary_confidence"
+                )
             candidate["example_progression"] = {
                 "content_words": len(word_ids),
                 "unknown_other_words": 0,

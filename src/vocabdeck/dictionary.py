@@ -8,7 +8,7 @@ from typing import Optional, Tuple
 from jamdict import Jamdict
 
 
-DICTIONARY_RESOLVER_VERSION = 2
+DICTIONARY_RESOLVER_VERSION = 3
 
 _ENGLISH_WORD = re.compile(r"[a-z][a-z'-]+")
 _STOPWORDS = {
@@ -162,7 +162,12 @@ class JMDictResolver:
 
     @lru_cache(maxsize=100_000)
     def resolve(
-        self, lemma: str, reading: str, part_of_speech: str, english_context: str = ""
+        self,
+        lemma: str,
+        reading: str,
+        part_of_speech: str,
+        english_context: str = "",
+        strict_pos: bool = False,
     ) -> Optional[DictionaryMatch]:
         override = _CORE_GLOSS_OVERRIDES.get((lemma, part_of_speech))
         if override:
@@ -200,6 +205,8 @@ class JMDictResolver:
                 pos_match = any(
                     hint in pos_text for hint in _POS_HINTS.get(part_of_speech, ())
                 )
+                if strict_pos and _POS_HINTS.get(part_of_speech) and not pos_match:
+                    continue
                 # UniDic reliably identifies reaction fragments as interjections.
                 # Do not let a same-reading noun such as 羽（は） or 兎（う）
                 # become its learner definition merely because JMdict contains it.

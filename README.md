@@ -286,6 +286,7 @@ review history.
 
 - **“Known” means introduced, not mastered.** The first answer is enough to prevent a duplicate new card elsewhere. Anki/FSRS remains responsible for whether the word is actually retained.
 - **One note, many occurrences.** A vocabulary card has one primary context, but its database record can point to every show, season, episode, timestamp, and subtitle line where it appeared.
+- **One global word, contextual senses.** Identical spelling and reading remain globally deduplicated, while each occurrence retains its own part of speech and JMdict sense. A pronoun gloss is never reused for an interjection merely because both are written `あれ`.
 - **One sentence, one teaching card.** Once a sentence is selected for a card, it is reserved. Other words use a different occurrence or wait until another source supplies one.
 - **Decks are views, not the source of truth.** SQLite owns global identity and source history; Anki owns review scheduling and logs.
 - **Never delete or move reviewed cards during deduplication.** A reviewed card stays in its original deck. An unreviewed prefetched card may move when its source changes; other queues skip a learned lexeme.
@@ -297,6 +298,10 @@ review history.
 2. Add furigana formatting and optional isolated-word TTS. Source audio already supplies authentic sentence reading.
 3. Add an Anki add-on companion that triggers synchronization after review and offers a source switcher inside Anki. Until then, the CLI is the synchronization boundary.
 4. Add conflict recovery for cards manually deleted, moved, or merged inside Anki, plus backups and an audit command.
+
+The longer-term companion-app concept—including separate grammar progress,
+tap-to-explain constructions, and accessible sentence color coding—is documented
+in [docs/future-app.md](docs/future-app.md).
 
 ## Tests
 
