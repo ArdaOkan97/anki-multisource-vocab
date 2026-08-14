@@ -93,6 +93,24 @@ class ProgressionTest(unittest.TestCase):
         self.assertEqual(details["harder_unknown_words"], 0)
         self.assertEqual(details["unknown_difficulty_burden"], 0.0)
 
+    def test_unrankable_unknown_context_is_conservatively_harder(self):
+        example = {
+            "word_ids": {10, 99},
+            "japanese": "威張れることじゃねえよな。",
+            "english": "That isn't something to brag about.",
+            "surface": "ねえ",
+            "lemma": "ない",
+        }
+
+        _, details = example_score(
+            example, 10, set(), 0, {10: 16.3}, 16.3
+        )
+
+        self.assertEqual(details["harder_unknown_words"], 1)
+        self.assertEqual(details["harder_unknown_ids"], [99])
+        self.assertEqual(details["unscored_unknown_words"], 1)
+        self.assertEqual(details["unscored_unknown_ids"], [99])
+
     def test_missing_translation_is_strongly_penalized(self):
         translated = {
             "word_ids": {10, 1},

@@ -99,7 +99,12 @@ class JMDictExpressionResolver:
         self.dictionary = _dictionary()
 
     @lru_cache(maxsize=100_000)
-    def resolve(self, surface: str, reading: str = "") -> Optional[ExpressionMatch]:
+    def resolve(
+        self,
+        surface: str,
+        reading: str = "",
+        particle_inclusive: bool = False,
+    ) -> Optional[ExpressionMatch]:
         result = self.dictionary.lookup(
             surface, lookup_chars=False, lookup_ne=False
         )
@@ -109,12 +114,19 @@ class JMDictExpressionResolver:
             readings = [form.text for form in entry.kana_forms]
             if surface not in spellings and surface not in readings:
                 continue
+            wanted_reading = _hiragana(reading)
+            if wanted_reading and readings and wanted_reading not in readings:
+                continue
             entry_pos = " ".join(
                 str(pos).lower() for sense in entry.senses for pos in sense.pos
             )
-            if "expressions (phrases" not in entry_pos and "interjection" not in entry_pos:
+            if (
+                "expressions (phrases" not in entry_pos
+                and "interjection" not in entry_pos
+                and not particle_inclusive
+            ):
                 continue
-            selected_reading = reading or (
+            selected_reading = wanted_reading or (
                 surface if surface in readings
                 else (readings[0] if readings else surface)
             )

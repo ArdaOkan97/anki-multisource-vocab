@@ -64,6 +64,20 @@ _EDGE_PUNCTUATION = " \t\r\n。？！?!…～〜＜＞《》≪≫「」『』�
 _CONTENT_POS = {
     "名詞", "代名詞", "動詞", "形容詞", "形状詞", "副詞", "連体詞", "感動詞",
 }
+_PARTICLE_GLOSSES = {
+    "で": "particle marking means, instrument, material, location, or cause",
+    "に": "particle marking destination, time, location, purpose, or recipient",
+    "の": "particle marking possession, attribution, or nominalization",
+    "は": "topic or contrast particle",
+    "も": "particle meaning also, too, or even",
+    "を": "direct-object or route particle",
+    "が": "subject or focus particle",
+    "へ": "direction particle meaning toward",
+    "と": "quotation, accompaniment, or conditional particle",
+    "から": "particle meaning from, since, or because",
+    "まで": "particle meaning until, as far as, or even",
+    "か": "question or alternative particle",
+}
 
 
 def _feature(feature: object, *names: str, default: str = "") -> str:
@@ -104,6 +118,37 @@ class JapaneseTokenizer:
         self._dictionary = JMDictResolver()
         self._expression_scorer = expression_scorer
 
+    def _lexical_identity(
+        self, feature: object, surface: str, pos: str
+    ) -> Tuple[str, str]:
+        """Choose a teachable dictionary identity without losing kana spellings.
+
+        UniDic's orthBase is normally the best learner-facing form (for example,
+        する instead of 為る). Some productive potential verbs are exceptional:
+        威張れる has orthBase 威張れる but the true lemma 威張る. Fall back to
+        UniDic's lemma/lForm only when orthBase has no matching JMdict verb and
+        the lemma does.
+        """
+        lemma = _feature(feature, "orthBase", "lemma", default=surface)
+        reading = _feature(
+            feature, "kanaBase", "pronBase", "kana", default=surface
+        )
+        if pos != "動詞":
+            return lemma, reading
+        dictionary_lemma = _feature(feature, "lemma", default=lemma)
+        dictionary_reading = _feature(
+            feature, "lForm", default=reading
+        )
+        if (dictionary_lemma, dictionary_reading) == (lemma, reading):
+            return lemma, reading
+        if self._dictionary.resolve(lemma, reading, pos) is not None:
+            return lemma, reading
+        if self._dictionary.resolve(
+            dictionary_lemma, dictionary_reading, pos
+        ) is not None:
+            return dictionary_lemma, dictionary_reading
+        return lemma, reading
+
     def _morphs(self, text: str) -> List[Dict[str, Any]]:
         words = []
         cursor = 0
@@ -118,10 +163,7 @@ class JapaneseTokenizer:
             cursor = end
             feature = word.feature
             pos = _feature(feature, "pos1", default=str(feature).split(",", 1)[0])
-            lemma = _feature(feature, "orthBase", "lemma", default=surface)
-            reading = _feature(
-                feature, "kanaBase", "pronBase", "kana", default=surface
-            )
+            lemma, reading = self._lexical_identity(feature, surface, pos)
             surface_reading = _feature(
                 feature, "kana", "pron", default=reading
             )
@@ -196,7 +238,10 @@ class JapaneseTokenizer:
         surface_reading = "".join(
             str(word["surface_reading"]) for word in span
         )
-        match = self._expressions.resolve(surface, surface_reading)
+        particle_inclusive = any(word["pos"] == "助詞" for word in span)
+        match = self._expressions.resolve(
+            surface, surface_reading, particle_inclusive=particle_inclusive
+        )
         if match is None:
             return None
         token = LexemeToken(
@@ -238,8 +283,15 @@ class JapaneseTokenizer:
                 expression_token, match = candidate
                 component_glosses = []
                 for component_index in range(index, end_index):
+                    word = words[component_index]
                     token = components.get(component_index)
                     if token is None:
+                        if word["pos"] == "助詞":
+                            particle_gloss = _PARTICLE_GLOSSES.get(
+                                str(word["lemma"])
+                            )
+                            if particle_gloss is not None:
+                                component_glosses.append(particle_gloss)
                         continue
                     dictionary_match = self._dictionary.resolve(
                         token.lemma, token.reading, token.part_of_speech, english
@@ -251,6 +303,10 @@ class JapaneseTokenizer:
                     match.senses,
                     component_glosses,
                     standalone=text.strip(_EDGE_PUNCTUATION) == expression_token.surface,
+                    particle_inclusive=any(
+                        words[value]["pos"] == "助詞"
+                        for value in range(index, end_index)
+                    ),
                 )
                 selected_sense_index = match.sense_indices[
                     match.senses.index(decision.phrase_description)
@@ -310,12 +366,11 @@ class JapaneseTokenizer:
             end = start + len(word_surface)
             cursor = end
             feature = word.feature
-            lemma = _feature(feature, "orthBase", "lemma", default=word_surface)
-            reading = _feature(
-                feature, "kanaBase", "pronBase", "kana", default=word_surface
-            )
             pos = _feature(
                 feature, "pos1", default=str(feature).split(",", 1)[0]
+            )
+            lemma, reading = self._lexical_identity(
+                feature, word_surface, pos
             )
             lemma, reading, pos = _contextual_identity(
                 text, end, lemma, reading, pos
