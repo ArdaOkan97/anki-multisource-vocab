@@ -10,6 +10,7 @@ from typing import Any, Dict, Optional, Sequence
 
 from .card_format import (
     blank_target, highlight_target, hiragana, learner_pos, learner_target_span,
+    learner_target_spans,
 )
 from .database import VocabularyDatabase
 from .media import render_card_media
@@ -126,10 +127,14 @@ def sync_source(
             reps = int(card.get("reps", 0))
             if reps > 0 and int(row["last_seen_reps"]) == 0:
                 learned += 1
-            database.update_anki_reps(int(row["lexeme_id"]), reps)
+            database.update_anki_reps(
+                int(row["lexeme_id"]), reps, str(row["sense_key"])
+            )
 
     client.ensure_model()
-    rows = database.next_unseen_for_sources(source_ids, limit, metric)
+    rows = database.next_unseen_sense_cards_for_sources(
+        source_ids, limit, metric
+    )
     added = 0
     moved = 0
     for row in rows:
@@ -141,7 +146,8 @@ def sync_source(
         if video_path and Path(video_path).exists():
             files = render_card_media(
                 Path(video_path), int(row["start_ms"]), int(row["end_ms"]),
-                media_directory, str(row["lexeme_key"]),
+                media_directory,
+                str(row.get("learning_unit_key") or row["lexeme_key"]),
             )
             audio_name = client.store_media(files["audio"])
             image_name = client.store_media(files["image"])
@@ -157,28 +163,37 @@ def sync_source(
                 "difficulty_breakdown": row["difficulty_breakdown"],
                 "dictionary_entry_id": row.get("dictionary_entry_id"),
                 "dictionary_sense_index": row.get("dictionary_sense_index"),
+                "sense_key": row.get("sense_key"),
+                "learning_unit_key": row.get("learning_unit_key"),
                 "dictionary_confidence": row.get("dictionary_confidence"),
                 "target_surface": row.get("target_surface"),
                 "target_start": row.get("target_start"),
                 "target_end": row.get("target_end"),
                 "target_lexical_start": row.get("target_lexical_start"),
                 "target_lexical_end": row.get("target_lexical_end"),
+                "target_lexical_spans": row.get("target_lexical_spans"),
                 "example_progression": row.get("example_progression"),
                 "batch_planning": row.get("batch_planning"),
             },
             ensure_ascii=False,
         )
         target, target_start, target_end = learner_target_span(row)
+        target_spans = learner_target_spans(row)
         fields = {
-            "LexemeKey": str(row["lexeme_key"]), "Expression": str(row["lemma"]),
+            "LexemeKey": str(
+                row.get("learning_unit_key") or row["lexeme_key"]
+            ),
+            "Expression": str(row["lemma"]),
             "Reading": hiragana(str(row["reading"])),
             "PartOfSpeech": learner_pos(str(row["part_of_speech"])),
             "Gloss": str(row.get("gloss") or ""), "Sentence": str(row["japanese"]),
             "SentenceCloze": blank_target(
-                str(row["japanese"]), target, target_start, target_end
+                str(row["japanese"]), target, target_start, target_end,
+                target_spans,
             ),
             "SentenceAnswer": highlight_target(
-                str(row["japanese"]), target, target_start, target_end
+                str(row["japanese"]), target, target_start, target_end,
+                target_spans,
             ),
             "SentenceEnglish": str(row.get("english") or ""), "SentenceAudio": sentence_audio,
             "Image": image, "Source": source_label, "Metadata": metadata,
@@ -190,7 +205,7 @@ def sync_source(
             client.invoke("changeDeck", cards=[card_id], deck=deck)
             database.record_anki_card(
                 int(row["lexeme_id"]), note_id, card_id, int(row["source_id"]),
-                int(row["sentence_id"]),
+                int(row["sentence_id"]), str(row.get("sense_key") or "legacy"),
             )
             moved += 1
             continue
@@ -209,7 +224,7 @@ def sync_source(
         cards = client.invoke("findCards", query=f"nid:{note_id}")
         database.record_anki_card(
             int(row["lexeme_id"]), note_id, int(cards[0]), int(row["source_id"]),
-            int(row["sentence_id"]),
+            int(row["sentence_id"]), str(row.get("sense_key") or "legacy"),
         )
         added += 1
     return {

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import html
-from typing import Mapping, Optional, Tuple
+from typing import Mapping, Optional, Sequence, Tuple
 
 
 _POS_LABELS = {
@@ -58,10 +58,62 @@ def learner_target_span(
     )
 
 
-def blank_target(
-    sentence: str, target: str, start: Optional[int] = None, end: Optional[int] = None
+def learner_target_spans(row: Mapping[str, object]) -> list[Tuple[int, int]]:
+    """Return every analyzed occurrence of the target lexeme in the sentence."""
+    sentence = str(row["japanese"])
+    raw_spans = row.get("target_lexical_spans")
+    spans: list[Tuple[int, int]] = []
+    if isinstance(raw_spans, Sequence) and not isinstance(raw_spans, (str, bytes)):
+        for raw_span in raw_spans:
+            if (
+                isinstance(raw_span, Sequence)
+                and not isinstance(raw_span, (str, bytes))
+                and len(raw_span) == 2
+                and isinstance(raw_span[0], int)
+                and isinstance(raw_span[1], int)
+                and 0 <= raw_span[0] < raw_span[1] <= len(sentence)
+            ):
+                spans.append((raw_span[0], raw_span[1]))
+    if not spans:
+        _, start, end = learner_target_span(row)
+        if start is not None and end is not None:
+            spans.append((start, end))
+    return sorted(set(spans))
+
+
+def _render_spans(
+    sentence: str, spans: Sequence[Tuple[int, int]], replacement: str
 ) -> str:
-    """Escape a sentence and replace its first target occurrence with a review blank."""
+    valid = sorted(set(
+        (start, end) for start, end in spans
+        if 0 <= start < end <= len(sentence)
+    ))
+    if not valid:
+        return html.escape(sentence)
+    parts = []
+    cursor = 0
+    for start, end in valid:
+        if start < cursor:
+            continue
+        parts.append(html.escape(sentence[cursor:start]))
+        if "{target}" in replacement:
+            parts.append(replacement.format(target=html.escape(sentence[start:end])))
+        else:
+            parts.append(replacement)
+        cursor = end
+    parts.append(html.escape(sentence[cursor:]))
+    return "".join(parts)
+
+
+def blank_target(
+    sentence: str, target: str, start: Optional[int] = None, end: Optional[int] = None,
+    spans: Optional[Sequence[Tuple[int, int]]] = None,
+) -> str:
+    """Escape a sentence and blank the analyzed occurrences of its target lexeme."""
+    if spans:
+        return _render_spans(
+            sentence, spans, '<span class="target-blank">（　）</span>'
+        )
     if _valid_span(sentence, target, start, end):
         return (
             html.escape(sentence[:start])
@@ -78,8 +130,13 @@ def blank_target(
 
 
 def highlight_target(
-    sentence: str, target: str, start: Optional[int] = None, end: Optional[int] = None
+    sentence: str, target: str, start: Optional[int] = None, end: Optional[int] = None,
+    spans: Optional[Sequence[Tuple[int, int]]] = None,
 ) -> str:
+    if spans:
+        return _render_spans(
+            sentence, spans, '<span class="target-answer">{target}</span>'
+        )
     if _valid_span(sentence, target, start, end):
         return (
             html.escape(sentence[:start])

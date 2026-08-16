@@ -130,6 +130,225 @@ class GlobalDeduplicationTest(unittest.TestCase):
         self.assertEqual(self.db.stats()["known"], 8)
         self.assertEqual(self.db.stats()["lexemes"], 10)
 
+    def test_ingest_records_standalone_reaction_sense(self):
+        source_id = self.db.add_source(
+            series="Reactions", season=1, episode=1, title=None,
+            video_path=None, japanese_subtitle_path="reaction.srt",
+            english_subtitle_path="reaction-en.srt",
+        )
+        self.db.ingest_cues(
+            source_id,
+            [Cue(1, 0, 800, "そう？")],
+            [Cue(1, 0, 800, "Really?")],
+            JapaneseTokenizer(),
+        )
+
+        occurrence = self.db.connection.execute(
+            """SELECT os.gloss, os.dictionary_entry_id,
+                      os.dictionary_sense_index
+               FROM occurrence_senses os
+               JOIN lexemes l ON l.id = os.lexeme_id
+               WHERE l.lemma = 'そう'"""
+        ).fetchone()
+        self.assertEqual(occurrence["dictionary_entry_id"], 2137720)
+        self.assertEqual(occurrence["dictionary_sense_index"], 2)
+        self.assertEqual(occurrence["gloss"], "so?")
+
+    def test_same_lexeme_can_schedule_two_meanings(self):
+        reaction = self.db.add_source(
+            series="Sense Show", season=1, episode=1, title=None,
+            video_path=None, japanese_subtitle_path="reaction.srt",
+            english_subtitle_path="reaction-en.srt",
+        )
+        manner = self.db.add_source(
+            series="Sense Show", season=1, episode=2, title=None,
+            video_path=None, japanese_subtitle_path="manner.srt",
+            english_subtitle_path="manner-en.srt",
+        )
+        self.db.ingest_cues(
+            reaction, [Cue(1, 0, 800, "そう？")],
+            [Cue(1, 0, 800, "Really?")], JapaneseTokenizer(),
+        )
+        self.db.ingest_cues(
+            manner, [Cue(1, 0, 800, "そうする。")],
+            [Cue(1, 0, 800, "I will do so.")], JapaneseTokenizer(),
+        )
+
+        targets = [
+            row for row in self.db.sense_targets_for_sources(
+                [reaction, manner], 20
+            )
+            if row["lemma"] == "そう"
+        ]
+
+        self.assertEqual(len({row["lexeme_id"] for row in targets}), 1)
+        self.assertEqual(
+            {row["sense_key"] for row in targets},
+            {"jmdict:2137720:0", "jmdict:2137720:2"},
+        )
+        self.assertEqual(len({row["learning_unit_key"] for row in targets}), 2)
+
+    def test_learning_one_sense_deduplicates_it_across_shows_only(self):
+        source_ids = []
+        for series, japanese, english in (
+            ("Hunter x Hunter", "そう？", "Really?"),
+            ("Naruto", "そう？", "Really?"),
+            ("Hunter x Hunter Other Sense", "そうする。", "I will do so."),
+        ):
+            source_id = self.db.add_source(
+                series=series, season=1, episode=1, title=None,
+                video_path=None, japanese_subtitle_path=f"{series}.srt",
+                english_subtitle_path=f"{series}-en.srt",
+            )
+            self.db.ingest_cues(
+                source_id, [Cue(1, 0, 800, japanese)],
+                [Cue(1, 0, 800, english)], JapaneseTokenizer(),
+            )
+            source_ids.append(source_id)
+        lexeme_id = int(self.db.connection.execute(
+            "SELECT id FROM lexemes WHERE lemma = 'そう'"
+        ).fetchone()[0])
+
+        self.db.mark_sense_known(lexeme_id, "jmdict:2137720:2")
+        targets = [
+            row for row in self.db.sense_targets_for_sources(source_ids, 20)
+            if row["lemma"] == "そう"
+        ]
+
+        self.assertEqual(
+            [row["sense_key"] for row in targets],
+            ["jmdict:2137720:0"],
+        )
+
+    def test_anki_progress_is_recorded_per_sense(self):
+        source_id = self.db.add_source(
+            series="Sense Cards", season=1, episode=1, title=None,
+            video_path=None, japanese_subtitle_path="sense.srt",
+            english_subtitle_path="sense-en.srt",
+        )
+        self.db.ingest_cues(
+            source_id,
+            [Cue(1, 0, 800, "そう？"), Cue(2, 900, 1700, "そうする。")],
+            [Cue(1, 0, 800, "Really?"), Cue(2, 900, 1700, "I will do so.")],
+            JapaneseTokenizer(),
+        )
+        lexeme_id = int(self.db.connection.execute(
+            "SELECT id FROM lexemes WHERE lemma = 'そう'"
+        ).fetchone()[0])
+        sentences = {
+            row["japanese"]: int(row["id"])
+            for row in self.db.connection.execute(
+                "SELECT id, japanese FROM sentences ORDER BY cue_index"
+            )
+        }
+        self.db.record_anki_card(
+            lexeme_id, 100, 1100, source_id, sentences["そう？"],
+            "jmdict:2137720:2",
+        )
+        self.db.record_anki_card(
+            lexeme_id, 101, 1101, source_id, sentences["そうする。"],
+            "jmdict:2137720:0",
+        )
+        self.db.update_anki_reps(lexeme_id, 1, "jmdict:2137720:2")
+
+        learned = {
+            row["sense_key"] for row in self.db.connection.execute(
+                "SELECT sense_key FROM learned_senses WHERE lexeme_id = ?",
+                (lexeme_id,),
+            )
+        }
+        cards = list(self.db.tracked_anki_cards())
+        self.assertEqual(len(cards), 2)
+        self.assertEqual(learned, {"jmdict:2137720:2"})
+        self.assertIsNone(self.db.connection.execute(
+            "SELECT known_at FROM lexemes WHERE id = ?", (lexeme_id,)
+        ).fetchone()[0])
+
+    def test_unreviewed_sense_card_moves_across_sources_without_duplicate(self):
+        source_ids = []
+        for series in ("Hunter x Hunter", "Naruto"):
+            source_id = self.db.add_source(
+                series=series, season=1, episode=1, title=None,
+                video_path=None, japanese_subtitle_path=f"{series}.srt",
+                english_subtitle_path=f"{series}-en.srt",
+            )
+            self.db.ingest_cues(
+                source_id, [Cue(1, 0, 800, "そう？")],
+                [Cue(1, 0, 800, "Really?")], JapaneseTokenizer(),
+            )
+            source_ids.append(source_id)
+        anki = FakeAnkiConnect()
+
+        first = sync_source(
+            self.db, [source_ids[0]], limit=1,
+            metric="curriculum", client=anki,
+        )
+        switched = sync_source(
+            self.db, [source_ids[1]], limit=1,
+            metric="curriculum", client=anki,
+        )
+
+        self.assertEqual(first["added"], 1)
+        self.assertEqual(switched["added"], 0)
+        self.assertEqual(switched["moved_unreviewed"], 1)
+        self.assertEqual(len(anki.notes), 1)
+        fields = next(iter(anki.notes.values()))["fields"]
+        self.assertIn("::jmdict:2137720:2", fields["LexemeKey"])
+        self.assertEqual(
+            next(iter(anki.cards.values()))["deck"],
+            "Japanese Sources::Naruto",
+        )
+
+    def test_legacy_anki_card_migrates_to_its_example_sense(self):
+        source_id = self.db.add_source(
+            series="Migration", season=1, episode=1, title=None,
+            video_path=None, japanese_subtitle_path="migration.srt",
+            english_subtitle_path="migration-en.srt",
+        )
+        self.db.ingest_cues(
+            source_id, [Cue(1, 0, 800, "そう？")],
+            [Cue(1, 0, 800, "Really?")], JapaneseTokenizer(),
+        )
+        lexeme_id = int(self.db.connection.execute(
+            "SELECT id FROM lexemes WHERE lemma = 'そう'"
+        ).fetchone()[0])
+        sentence_id = int(self.db.connection.execute(
+            "SELECT id FROM sentences"
+        ).fetchone()[0])
+        self.db.connection.execute(
+            "DROP INDEX IF EXISTS anki_cards_example_sentence"
+        )
+        self.db.connection.execute("DROP TABLE anki_cards")
+        self.db.connection.execute(
+            """CREATE TABLE anki_cards (
+                 lexeme_id INTEGER PRIMARY KEY,
+                 note_id INTEGER NOT NULL UNIQUE,
+                 card_id INTEGER,
+                 introduced_source_id INTEGER,
+                 example_sentence_id INTEGER,
+                 last_seen_reps INTEGER NOT NULL DEFAULT 0,
+                 synced_at TEXT NOT NULL
+               )"""
+        )
+        self.db.connection.execute(
+            """INSERT INTO anki_cards
+               (lexeme_id, note_id, card_id, introduced_source_id,
+                example_sentence_id, last_seen_reps, synced_at)
+               VALUES (?, 100, 1100, ?, ?, 1, '2026-01-01')""",
+            (lexeme_id, source_id, sentence_id),
+        )
+        self.db.connection.commit()
+
+        self.db.initialize()
+
+        card = self.db.tracked_anki_cards()[0]
+        self.assertEqual(card["sense_key"], "jmdict:2137720:2")
+        learned = self.db.connection.execute(
+            """SELECT sense_key FROM learned_senses
+               WHERE lexeme_id = ?""", (lexeme_id,)
+        ).fetchone()
+        self.assertEqual(learned["sense_key"], "jmdict:2137720:2")
+
     def test_reimport_is_idempotent(self):
         source = self.add_show("Show", ["猫", "猫"])
         self.assertEqual(self.db.stats()["lexemes"], 1)
@@ -138,6 +357,16 @@ class GlobalDeduplicationTest(unittest.TestCase):
         cues = [Cue(1, 0, 800, "猫"), Cue(2, 1000, 1800, "猫")]
         self.db.ingest_cues(source, cues, [], CharacterTokenizer())
         self.assertEqual(self.db.connection.execute("SELECT corpus_count FROM lexemes").fetchone()[0], 2)
+
+    def test_legacy_database_without_occurrence_senses_still_queues(self):
+        source = self.add_show("Legacy Show", ["猫"])
+        self.db.connection.execute("DELETE FROM occurrence_senses")
+        self.db.connection.commit()
+
+        rows = self.db.next_unseen(source, 10)
+
+        self.assertEqual([row["lemma"] for row in rows], ["猫"])
+        self.assertIsNone(rows[0].get("contextual_part_of_speech"))
 
     def test_episode_range_forms_one_queue(self):
         episode_1 = self.add_show("Range Show", ["猫"])
@@ -155,6 +384,48 @@ class GlobalDeduplicationTest(unittest.TestCase):
         noun = LexemeToken("そう", "そう", "ソウ", "名詞")
         adverb = LexemeToken("そう", "そう", "ソウ", "副詞")
         self.assertEqual(noun.key, adverb.key)
+
+    def test_occurrences_keep_contextual_pos_and_sense_after_global_merge(self):
+        source = self.db.add_source(
+            series="Context Show", season=1, episode=1, title=None,
+            video_path=None, japanese_subtitle_path="context.srt",
+            english_subtitle_path="context.en.srt",
+        )
+        self.db.ingest_cues(
+            source,
+            [
+                Cue(1, 0, 900, "あれを見て。"),
+                Cue(2, 1000, 1900, "あれ？"),
+            ],
+            [
+                Cue(1, 0, 900, "Look at that."),
+                Cue(2, 1000, 1900, "What?"),
+            ],
+            JapaneseTokenizer(),
+        )
+
+        lexemes = list(self.db.connection.execute(
+            "SELECT id FROM lexemes WHERE lemma = 'あれ' AND reading = 'アレ'"
+        ))
+        self.assertEqual(len(lexemes), 1)
+        senses = list(self.db.connection.execute(
+            """SELECT s.japanese, os.part_of_speech, os.gloss,
+                      os.dictionary_entry_id
+                 FROM occurrence_senses os
+                 JOIN sentences s ON s.id = os.sentence_id
+                WHERE os.lexeme_id = ? AND os.surface = 'あれ'
+                ORDER BY s.cue_index""",
+            (int(lexemes[0]["id"]),),
+        ))
+        self.assertEqual(
+            [(row["japanese"], row["part_of_speech"]) for row in senses],
+            [("あれを見て。", "代名詞"), ("あれ？", "感動詞")],
+        )
+        self.assertIn("that", senses[0]["gloss"])
+        self.assertIn("huh?", senses[1]["gloss"])
+        self.assertNotEqual(
+            senses[0]["dictionary_entry_id"], senses[1]["dictionary_entry_id"]
+        )
 
     def test_pronoun_occurrence_counts_as_unknown_sentence_context(self):
         source = self.db.add_source(

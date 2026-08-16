@@ -8,7 +8,7 @@ from typing import Optional, Tuple
 from jamdict import Jamdict
 
 
-DICTIONARY_RESOLVER_VERSION = 2
+DICTIONARY_RESOLVER_VERSION = 5
 
 _ENGLISH_WORD = re.compile(r"[a-z][a-z'-]+")
 _STOPWORDS = {
@@ -73,6 +73,16 @@ def _priority(forms: list) -> float:
     if tags:
         return 0.2
     return 0.0
+
+
+def _standalone_question(japanese_context: str, lemma: str) -> bool:
+    """Recognize a one-word reaction question without naming specific words."""
+    if not japanese_context or not lemma:
+        return False
+    value = japanese_context.strip()
+    value = re.sub(r"^[\s「『（(［\[【≪]+", "", value)
+    value = re.sub(r"[\s」』）)］\]】≫。！!…〜～]+$", "", value)
+    return re.fullmatch(rf"{re.escape(lemma)}\s*[?？]", value) is not None
 
 
 @dataclass(frozen=True)
@@ -162,7 +172,13 @@ class JMDictResolver:
 
     @lru_cache(maxsize=100_000)
     def resolve(
-        self, lemma: str, reading: str, part_of_speech: str, english_context: str = ""
+        self,
+        lemma: str,
+        reading: str,
+        part_of_speech: str,
+        english_context: str = "",
+        strict_pos: bool = False,
+        japanese_context: str = "",
     ) -> Optional[DictionaryMatch]:
         override = _CORE_GLOSS_OVERRIDES.get((lemma, part_of_speech))
         if override:
@@ -176,6 +192,7 @@ class JMDictResolver:
         )
         wanted_reading = _hiragana(reading)
         context_words = _words(english_context)
+        reaction_question = _standalone_question(japanese_context, lemma)
         best = None
         for entry in result.entries:
             spellings = [form.text for form in entry.kanji_forms]
@@ -200,6 +217,14 @@ class JMDictResolver:
                 pos_match = any(
                     hint in pos_text for hint in _POS_HINTS.get(part_of_speech, ())
                 )
+                interjection_question = (
+                    reaction_question and "interjection" in pos_text
+                )
+                if (
+                    strict_pos and _POS_HINTS.get(part_of_speech)
+                    and not pos_match and not interjection_question
+                ):
+                    continue
                 # UniDic reliably identifies reaction fragments as interjections.
                 # Do not let a same-reading noun such as 羽（は） or 兎（う）
                 # become its learner definition merely because JMdict contains it.
@@ -211,12 +236,19 @@ class JMDictResolver:
                     "usually written using kana" in str(item).lower() for item in sense.misc
                 )
                 score = entry_score + (0.55 if pos_match else 0.0)
-                # Subtitle translations frequently cover a whole phrase or two
-                # speakers, so lexical overlap is only a tiebreaker. JMdict's
-                # earlier senses are the safer default for a general core card.
-                score += min(0.08, overlap_count * 0.04)
+                if interjection_question:
+                    # A tokenizer may label a standalone reaction word by its
+                    # ordinary lexical POS. JMdict's interrogative interjection
+                    # sense is more informative for this actual occurrence.
+                    score += 1.25
+                    if any("?" in gloss or "？" in gloss for gloss in glosses):
+                        score += 0.50
+                # Exact lexical support in the aligned subtitle is decisive
+                # enough to beat JMdict's ordinary first-sense prior. Without
+                # such evidence, earlier senses remain the conservative default.
+                score += min(0.90, overlap_count * 0.45)
                 score += 0.10 if kana_usual and lemma in readings else 0.0
-                score -= sense_index * 0.20
+                score -= sense_index * (0.08 if context_words else 0.20)
                 concise = []
                 for gloss in glosses:
                     if gloss not in concise:

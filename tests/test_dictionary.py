@@ -22,6 +22,15 @@ class DictionaryTest(unittest.TestCase):
         self.assertEqual(match.entry_id, 1577980)
         self.assertIn("to exist", match.gloss)
 
+    def test_context_selects_have_sense_for_aru_possession(self):
+        match = self.resolver.resolve(
+            "ある", "アル", "動詞", "I have a good idea.", strict_pos=True
+        )
+        self.assertIsNotNone(match)
+        self.assertEqual(match.entry_id, 1296400)
+        self.assertEqual(match.sense_index, 1)
+        self.assertEqual(match.gloss, "to have")
+
     def test_nai_gloss_covers_negative_and_lexical_uses(self):
         match = self.resolver.resolve("ない", "ナイ", "形容詞", "There is no choice")
         self.assertIsNotNone(match)
@@ -42,6 +51,42 @@ class DictionaryTest(unittest.TestCase):
         self.assertNotIn("rabbit", u_match.gloss)
         self.assertEqual(ha_match.entry_id, 2069620)
         self.assertNotIn("feather", ha_match.gloss)
+
+    def test_strict_contextual_pos_distinguishes_are_senses(self):
+        resolver = JMDictResolver()
+        pronoun = resolver.resolve(
+            "あれ", "アレ", "代名詞", "Look at that.", strict_pos=True
+        )
+        interjection = resolver.resolve(
+            "あれ", "アレ", "感動詞", "What?", strict_pos=True
+        )
+
+        self.assertEqual(pronoun.entry_id, 1000580)
+        self.assertIn("that", pronoun.gloss)
+        self.assertEqual(interjection.entry_id, 2847612)
+        self.assertIn("huh?", interjection.gloss)
+
+    def test_standalone_question_can_select_interjection_sense(self):
+        match = self.resolver.resolve(
+            "そう", "ソウ", "副詞", "Really?", strict_pos=True,
+            japanese_context="そう？",
+        )
+
+        self.assertIsNotNone(match)
+        self.assertEqual(match.entry_id, 2137720)
+        self.assertEqual(match.sense_index, 2)
+        self.assertEqual(match.gloss, "so?")
+
+    def test_non_question_keeps_ordinary_adverb_sense(self):
+        match = self.resolver.resolve(
+            "そう", "ソウ", "副詞", "Do it that way.", strict_pos=True,
+            japanese_context="そうする。",
+        )
+
+        self.assertIsNotNone(match)
+        self.assertEqual(match.entry_id, 2137720)
+        self.assertEqual(match.sense_index, 0)
+        self.assertIn("in that way", match.gloss)
 
     def test_finds_exact_multi_token_expression(self):
         match = JMDictExpressionResolver().resolve("どうも", "ドウモ")

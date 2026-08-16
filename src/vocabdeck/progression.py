@@ -8,6 +8,30 @@ _COLLOQUIAL_MARKERS = ("ねえ", "ぜ", "ぞ", "やが", "りゃ", "じゃん", 
 _DIFFICULTY_TOLERANCE = 2.0
 _HARDER_UNKNOWN_BASE_PENALTY = 8.0
 _HARDER_UNKNOWN_GAP_WEIGHT = 1.0
+_UNSCORED_UNKNOWN_EXTRA_PENALTY = 20.0
+
+
+def allowed_unknown_context_words(
+    teaching_position: int,
+    *,
+    zero_unknown_through: int = 20,
+    one_unknown_through: int = 200,
+    later_limit: int = 2,
+) -> int:
+    """Return the hard i+N allowance for a one-indexed teaching position."""
+    if teaching_position < 1:
+        raise ValueError("teaching position must be positive")
+    if zero_unknown_through < 0:
+        raise ValueError("zero-unknown boundary cannot be negative")
+    if one_unknown_through < zero_unknown_through:
+        raise ValueError("one-unknown boundary must follow zero-unknown boundary")
+    if later_limit < 1:
+        raise ValueError("later unknown limit must be positive")
+    if teaching_position <= zero_unknown_through:
+        return 0
+    if teaching_position <= one_unknown_through:
+        return 1
+    return later_limit
 
 
 def desired_sentence_words(position: int) -> int:
@@ -86,6 +110,7 @@ def example_score(
     # material where no cleaner example exists.
     score = len(unknown_other) * 10.0
     score += len(harder_unknown_ids) * _HARDER_UNKNOWN_BASE_PENALTY
+    score += len(unscored_unknown_ids) * _UNSCORED_UNKNOWN_EXTRA_PENALTY
     score += difficulty_burden * _HARDER_UNKNOWN_GAP_WEIGHT
     score += 25.0 if missing_translation else 0.0
     score += 15.0 if fragment else 0.0
@@ -107,6 +132,9 @@ def example_score(
         "harder_unknown_ids": sorted(harder_unknown_ids),
         "unscored_unknown_words": len(unscored_unknown_ids),
         "unscored_unknown_ids": sorted(unscored_unknown_ids),
+        "unscored_unknown_penalty": round(
+            len(unscored_unknown_ids) * _UNSCORED_UNKNOWN_EXTRA_PENALTY, 3
+        ),
         "max_unknown_difficulty_gap": round(
             max(harder_unknown_gaps.values(), default=0.0), 3
         ),

@@ -64,6 +64,7 @@ _EDGE_PUNCTUATION = " \t\r\n。？！?!…～〜＜＞《》≪≫「」『』�
 _CONTENT_POS = {
     "名詞", "代名詞", "動詞", "形容詞", "形状詞", "副詞", "連体詞", "感動詞",
 }
+_TRACKED_POS = _CONTENT_POS | {"接頭辞", "接尾辞"}
 _PARTICLE_GLOSSES = {
     "で": "particle marking means, instrument, material, location, or cause",
     "に": "particle marking destination, time, location, purpose, or recipient",
@@ -191,7 +192,7 @@ class JapaneseTokenizer:
     def _component_token(word: Dict[str, Any]) -> Optional[LexemeToken]:
         surface = str(word["surface"])
         pos = str(word["pos"])
-        if pos not in _CONTENT_POS or not _HAS_JAPANESE.search(surface):
+        if pos not in _TRACKED_POS or not _HAS_JAPANESE.search(surface):
             return None
         if pos == "名詞" and word["pos2"] == "固有名詞":
             return None

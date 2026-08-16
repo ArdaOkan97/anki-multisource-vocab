@@ -3,6 +3,7 @@ import unittest
 from vocabdeck.anki import BACK, FRONT
 from vocabdeck.card_format import (
     blank_target, highlight_target, hiragana, learner_pos, learner_target_span,
+    learner_target_spans,
 )
 
 
@@ -28,6 +29,28 @@ class CardFormatTest(unittest.TestCase):
         self.assertEqual(
             result,
             '<span class="target-blank">（　）</span>と猫 &lt; 3',
+        )
+
+    def test_blanks_every_analyzed_occurrence_of_same_lexeme(self):
+        row = {
+            "japanese": "いいねぇ いいよ～。",
+            "lemma": "いい",
+            "target_lexical_start": 0,
+            "target_lexical_end": 2,
+            "target_lexical_spans": [[0, 2], [5, 7]],
+        }
+        target, start, end = learner_target_span(row)
+        spans = learner_target_spans(row)
+        self.assertEqual(
+            blank_target(row["japanese"], target, start, end, spans),
+            '<span class="target-blank">（　）</span>ねぇ '
+            '<span class="target-blank">（　）</span>よ～。',
+        )
+        self.assertEqual(
+            highlight_target(row["japanese"], target, start, end, spans).count(
+                'class="target-answer"'
+            ),
+            2,
         )
 
     def test_highlights_answer_and_converts_reading(self):

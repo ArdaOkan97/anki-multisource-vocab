@@ -1,6 +1,6 @@
 import unittest
 
-from vocabdeck.difficulty import difficulty_score, rank_candidates
+from vocabdeck.difficulty import difficulty_score, rank_candidates, score_components
 
 
 def candidate(word, *, count=1, pos="動詞", words=3, unknown=3):
@@ -33,6 +33,18 @@ class DifficultyTest(unittest.TestCase):
         regular_score, regular = difficulty_score(candidate("なる"), "hybrid")
         self.assertEqual(filler["noise"], 1.0)
         self.assertGreater(filler_score, regular_score)
+
+    def test_katakana_receives_soft_learning_value_penalty(self):
+        self.assertEqual(score_components(candidate("ストップ"))["katakana"], 1.0)
+        self.assertEqual(score_components(candidate("止まる"))["katakana"], 0.0)
+
+    def test_curriculum_penalizes_fixed_expressions(self):
+        word = candidate("いい", pos="形容詞")
+        expression = candidate("何だと", pos="表現")
+        _, word_parts = difficulty_score(word, "curriculum")
+        _, expression_parts = difficulty_score(expression, "curriculum")
+        self.assertEqual(word_parts["expression"], 0.0)
+        self.assertEqual(expression_parts["expression"], 1.0)
 
 
 if __name__ == "__main__":
