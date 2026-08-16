@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -81,6 +82,7 @@ CREATE TABLE IF NOT EXISTS occurrence_senses (
     dictionary_confidence REAL,
     dictionary_status TEXT NOT NULL,
     dictionary_version INTEGER NOT NULL,
+    sense_key TEXT,
     PRIMARY KEY(sentence_id, start_char, end_char, lexeme_id)
 );
 
@@ -92,6 +94,13 @@ ON sentences(source_id, cue_index);
 
 CREATE INDEX IF NOT EXISTS lexemes_dictionary_status
 ON lexemes(dictionary_status, known_at);
+
+CREATE TABLE IF NOT EXISTS learned_senses (
+    lexeme_id INTEGER NOT NULL REFERENCES lexemes(id) ON DELETE CASCADE,
+    sense_key TEXT NOT NULL,
+    known_at TEXT NOT NULL,
+    PRIMARY KEY(lexeme_id, sense_key)
+);
 
 CREATE TABLE IF NOT EXISTS expression_analyses (
     sentence_id INTEGER NOT NULL REFERENCES sentences(id) ON DELETE CASCADE,
@@ -119,13 +128,15 @@ CREATE TABLE IF NOT EXISTS source_queue (
 );
 
 CREATE TABLE IF NOT EXISTS anki_cards (
-    lexeme_id INTEGER PRIMARY KEY REFERENCES lexemes(id) ON DELETE CASCADE,
+    lexeme_id INTEGER NOT NULL REFERENCES lexemes(id) ON DELETE CASCADE,
+    sense_key TEXT NOT NULL DEFAULT 'legacy',
     note_id INTEGER NOT NULL UNIQUE,
     card_id INTEGER,
     introduced_source_id INTEGER REFERENCES sources(id),
     example_sentence_id INTEGER REFERENCES sentences(id) ON DELETE SET NULL,
     last_seen_reps INTEGER NOT NULL DEFAULT 0,
-    synced_at TEXT NOT NULL
+    synced_at TEXT NOT NULL,
+    PRIMARY KEY(lexeme_id, sense_key)
 );
 
 CREATE TABLE IF NOT EXISTS calibration_batches (
@@ -169,6 +180,24 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def canonical_sense_key(
+    dictionary_entry_id: Optional[int],
+    dictionary_sense_index: Optional[int],
+    part_of_speech: str,
+    gloss: Optional[str],
+) -> str:
+    """Build a stable identity for one meaning without duplicating a lexeme."""
+    if dictionary_entry_id is not None and dictionary_sense_index is not None:
+        return f"jmdict:{int(dictionary_entry_id)}:{int(dictionary_sense_index)}"
+    fallback = f"{part_of_speech}\0{str(gloss or '').strip().lower()}"
+    digest = hashlib.sha256(fallback.encode("utf-8")).hexdigest()[:16]
+    return f"local:{digest}"
+
+
+def learning_unit_key(lexeme_key: str, sense_key: str) -> str:
+    return f"{lexeme_key}::{sense_key}"
+
+
 class VocabularyDatabase:
     def __init__(self, path: Path):
         self.path = path
@@ -195,11 +224,101 @@ class VocabularyDatabase:
         for name, sql_type in additions.items():
             if name not in existing:
                 self.connection.execute(f"ALTER TABLE lexemes ADD COLUMN {name} {sql_type}")
+        occurrence_columns = {
+            row["name"] for row in self.connection.execute(
+                "PRAGMA table_info(occurrence_senses)"
+            )
+        }
+        if "sense_key" not in occurrence_columns:
+            self.connection.execute(
+                "ALTER TABLE occurrence_senses ADD COLUMN sense_key TEXT"
+            )
+        occurrence_rows = list(self.connection.execute(
+            """SELECT sentence_id, start_char, end_char, lexeme_id,
+                      dictionary_entry_id, dictionary_sense_index,
+                      part_of_speech, gloss
+               FROM occurrence_senses WHERE sense_key IS NULL"""
+        ))
+        for row in occurrence_rows:
+            self.connection.execute(
+                """UPDATE occurrence_senses SET sense_key = ?
+                   WHERE sentence_id = ? AND start_char = ? AND end_char = ?
+                     AND lexeme_id = ?""",
+                (
+                    canonical_sense_key(
+                        row["dictionary_entry_id"],
+                        row["dictionary_sense_index"],
+                        str(row["part_of_speech"]), row["gloss"],
+                    ),
+                    row["sentence_id"], row["start_char"], row["end_char"],
+                    row["lexeme_id"],
+                ),
+            )
         card_columns = {
             row["name"] for row in self.connection.execute(
                 "PRAGMA table_info(anki_cards)"
             )
         }
+        if "sense_key" not in card_columns:
+            self.connection.execute("DROP INDEX IF EXISTS anki_cards_example_sentence")
+            self.connection.execute("ALTER TABLE anki_cards RENAME TO anki_cards_legacy")
+            self.connection.execute(
+                """CREATE TABLE anki_cards (
+                     lexeme_id INTEGER NOT NULL REFERENCES lexemes(id) ON DELETE CASCADE,
+                     sense_key TEXT NOT NULL,
+                     note_id INTEGER NOT NULL UNIQUE,
+                     card_id INTEGER,
+                     introduced_source_id INTEGER REFERENCES sources(id),
+                     example_sentence_id INTEGER REFERENCES sentences(id) ON DELETE SET NULL,
+                     last_seen_reps INTEGER NOT NULL DEFAULT 0,
+                     synced_at TEXT NOT NULL,
+                     PRIMARY KEY(lexeme_id, sense_key)
+                   )"""
+            )
+            legacy_rows = list(self.connection.execute(
+                "SELECT * FROM anki_cards_legacy"
+            ))
+            for row in legacy_rows:
+                occurrence = self.connection.execute(
+                    """SELECT sense_key FROM occurrence_senses
+                       WHERE lexeme_id = ? AND sentence_id = ?
+                         AND sense_key IS NOT NULL
+                       ORDER BY start_char LIMIT 1""",
+                    (row["lexeme_id"], row["example_sentence_id"]),
+                ).fetchone()
+                if occurrence is not None:
+                    sense_key = str(occurrence["sense_key"])
+                else:
+                    lexeme = self.connection.execute(
+                        """SELECT dictionary_entry_id, dictionary_sense_index,
+                                  part_of_speech, gloss
+                           FROM lexemes WHERE id = ?""",
+                        (row["lexeme_id"],),
+                    ).fetchone()
+                    sense_key = canonical_sense_key(
+                        lexeme["dictionary_entry_id"],
+                        lexeme["dictionary_sense_index"],
+                        str(lexeme["part_of_speech"]), lexeme["gloss"],
+                    )
+                self.connection.execute(
+                    """INSERT INTO anki_cards
+                       (lexeme_id, sense_key, note_id, card_id,
+                        introduced_source_id, example_sentence_id,
+                        last_seen_reps, synced_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        row["lexeme_id"], sense_key, row["note_id"],
+                        row["card_id"], row["introduced_source_id"],
+                        row["example_sentence_id"], row["last_seen_reps"],
+                        row["synced_at"],
+                    ),
+                )
+            self.connection.execute("DROP TABLE anki_cards_legacy")
+            card_columns = {
+                row["name"] for row in self.connection.execute(
+                    "PRAGMA table_info(anki_cards)"
+                )
+            }
         if "example_sentence_id" not in card_columns:
             self.connection.execute(
                 "ALTER TABLE anki_cards ADD COLUMN example_sentence_id INTEGER"
@@ -208,6 +327,13 @@ class VocabularyDatabase:
             """CREATE UNIQUE INDEX IF NOT EXISTS anki_cards_example_sentence
                ON anki_cards(example_sentence_id)
                WHERE example_sentence_id IS NOT NULL"""
+        )
+        self.connection.execute(
+            """INSERT OR IGNORE INTO learned_senses
+               (lexeme_id, sense_key, known_at)
+               SELECT a.lexeme_id, a.sense_key, COALESCE(l.known_at, a.synced_at)
+               FROM anki_cards a JOIN lexemes l ON l.id = a.lexeme_id
+               WHERE a.last_seen_reps > 0 OR l.known_at IS NOT NULL"""
         )
         # Expression senses were already selected by the stricter semantic
         # resolver. Preserve them while allowing ordinary legacy matches to be
@@ -417,6 +543,7 @@ class VocabularyDatabase:
                         match = contextual_resolver.resolve(
                             token.lemma, token.reading, token.part_of_speech,
                             translation or "", strict_pos=True,
+                            japanese_context=cue.text,
                         )
                         gloss = match.gloss if match is not None else None
                         entry_id = match.entry_id if match is not None else None
@@ -427,18 +554,21 @@ class VocabularyDatabase:
                             match.confidence if match is not None else None
                         )
                         status = "matched" if match is not None else "missing"
+                    sense_key = canonical_sense_key(
+                        entry_id, sense_index, token.part_of_speech, gloss
+                    )
                     connection.execute(
                         """INSERT OR REPLACE INTO occurrence_senses
                            (sentence_id, start_char, end_char, lexeme_id, surface,
                             part_of_speech, gloss, dictionary_entry_id,
                             dictionary_sense_index, dictionary_confidence,
-                            dictionary_status, dictionary_version)
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                            dictionary_status, dictionary_version, sense_key)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                         (
                             sentence_id, token.start, token.end, lexeme_id,
                             token.surface, token.part_of_speech, gloss, entry_id,
                             sense_index, confidence, status,
-                            DICTIONARY_RESOLVER_VERSION,
+                            DICTIONARY_RESOLVER_VERSION, sense_key,
                         ),
                     )
             connection.execute(
@@ -485,8 +615,98 @@ class VocabularyDatabase:
     def next_unseen(self, source_id: int, limit: int = 20, metric: str = "hybrid") -> List[dict]:
         return self.next_unseen_for_sources([source_id], limit, metric)
 
+    def sense_targets_for_sources(
+        self, source_ids: Sequence[int], limit: int = 200,
+        metric: str = "curriculum",
+    ) -> List[dict]:
+        """Rank unseen meanings while retaining one canonical lexeme record."""
+        if not source_ids:
+            return []
+        markers = ",".join("?" for _ in source_ids)
+        rows = list(self.connection.execute(
+            f"""SELECT l.id AS lexeme_id, l.lexeme_key, l.lemma, l.reading,
+                       l.corpus_count AS global_count,
+                       os.sense_key, os.part_of_speech, os.gloss,
+                       os.dictionary_entry_id, os.dictionary_sense_index,
+                       os.dictionary_confidence, os.dictionary_status,
+                       a.note_id, a.card_id, a.last_seen_reps,
+                       s.id AS sentence_id, s.japanese, s.english,
+                       s.start_ms, s.end_ms, s.source_id, s.cue_index,
+                       src.series, src.season, src.episode, src.video_path
+                FROM occurrence_senses os
+                JOIN lexemes l ON l.id = os.lexeme_id
+                JOIN sentences s ON s.id = os.sentence_id
+                JOIN sources src ON src.id = s.source_id
+                LEFT JOIN learned_senses learned
+                  ON learned.lexeme_id = os.lexeme_id
+                 AND learned.sense_key = os.sense_key
+                LEFT JOIN anki_cards a
+                  ON a.lexeme_id = os.lexeme_id
+                 AND a.sense_key = os.sense_key
+                WHERE s.source_id IN ({markers})
+                  AND l.known_at IS NULL
+                  AND os.dictionary_status = 'matched'
+                  AND os.gloss IS NOT NULL AND os.sense_key IS NOT NULL
+                  AND learned.lexeme_id IS NULL
+                  AND NOT (
+                    os.part_of_speech = '感動詞' AND LENGTH(l.lemma) <= 1
+                  )
+                  AND os.part_of_speech NOT IN ('接頭辞', '接尾辞')
+                ORDER BY l.id, os.sense_key,
+                         CASE WHEN s.english IS NULL OR s.english = '' THEN 1 ELSE 0 END,
+                         LENGTH(s.japanese), s.cue_index""",
+            tuple(source_ids),
+        ))
+        grouped: Dict[tuple, List[dict]] = {}
+        for raw in rows:
+            row = dict(raw)
+            grouped.setdefault(
+                (int(row["lexeme_id"]), str(row["sense_key"])), []
+            ).append(row)
+        candidates = []
+        senses_by_lexeme: Dict[int, List[tuple]] = {}
+        for key, occurrences in grouped.items():
+            senses_by_lexeme.setdefault(key[0], []).append(key)
+            row = dict(occurrences[0])
+            row["source_count"] = len(occurrences)
+            row["sentence_word_count"] = 1
+            row["sentence_unknown_word_count"] = 1
+            row["learning_unit_key"] = learning_unit_key(
+                str(row["lexeme_key"]), str(row["sense_key"])
+            )
+            candidates.append(row)
+        from .difficulty import rank_candidates
+
+        ranked = rank_candidates(candidates, metric)
+        sense_ranks = {}
+        for lexeme_id, keys in senses_by_lexeme.items():
+            keys.sort(key=lambda key: (
+                -len(grouped[key]),
+                int(grouped[key][0].get("dictionary_sense_index") or 0),
+                key[1],
+            ))
+            for index, key in enumerate(keys):
+                sense_ranks[key] = index
+        for row in ranked:
+            rank = sense_ranks[(int(row["lexeme_id"]), str(row["sense_key"]))]
+            row["sense_rank"] = rank
+            penalty = min(15.0, rank * 5.0)
+            row["difficulty_score"] = round(
+                min(100.0, float(row["difficulty_score"]) + penalty), 3
+            )
+            row["rank_score"] = row["difficulty_score"]
+            row["difficulty_breakdown"]["secondary_sense_penalty"] = penalty
+        ranked.sort(key=lambda row: (
+            float(row["difficulty_score"]),
+            int(row["sense_rank"]),
+            -int(row["source_count"]),
+            str(row["learning_unit_key"]),
+        ))
+        return ranked[:limit]
+
     def next_unseen_for_sources(
-        self, source_ids: Sequence[int], limit: int = 20, metric: str = "hybrid"
+        self, source_ids: Sequence[int], limit: int = 20, metric: str = "hybrid",
+        *, preserve_target_order: bool = False,
     ) -> List[dict]:
         if not source_ids:
             return []
@@ -506,6 +726,7 @@ class VocabularyDatabase:
                          AND NOT (
                            l.part_of_speech = '感動詞' AND LENGTH(l.lemma) <= 1
                          )
+                         AND l.part_of_speech NOT IN ('接頭辞', '接尾辞')
                        GROUP BY o.lexeme_id
                    ), examples AS (
                        SELECT r.lexeme_id, r.source_count, r.rank_score,
@@ -585,8 +806,31 @@ class VocabularyDatabase:
         # the entire corpus.
         pool_size = min(len(ranked), max(100, limit * 5))
         return self._plan_progressive_batch(
-            ranked[:pool_size], source_ids, limit, lexical_difficulties
+            ranked[:pool_size], source_ids, limit, lexical_difficulties,
+            preserve_target_order=preserve_target_order,
         )
+
+    def next_unseen_sense_cards_for_sources(
+        self, source_ids: Sequence[int], limit: int = 20,
+        metric: str = "curriculum",
+    ) -> List[dict]:
+        """Return one example for each unseen sense-aware learning unit.
+
+        Real dictionary-backed material is identified by ``lexeme + sense``.
+        A legacy lexeme queue remains available for imports that have no usable
+        dictionary senses, so existing databases and custom tokenizers keep
+        working without pretending that a missing sense is a real meaning.
+        """
+        target_limit = max(100, int(limit) * 5)
+        targets = self.sense_targets_for_sources(
+            source_ids, target_limit, metric
+        )
+        cards = self.occurrence_candidates_for_targets(
+            targets, source_ids, candidates_per_target=1
+        )
+        if cards:
+            return cards[:limit]
+        return self.next_unseen_for_sources(source_ids, limit, metric)
 
     def _plan_progressive_batch(
         self,
@@ -594,17 +838,20 @@ class VocabularyDatabase:
         source_ids: Sequence[int],
         limit: int,
         lexical_difficulties: Dict[int, float],
+        *,
+        preserve_target_order: bool = False,
     ) -> List[dict]:
         from .progression import example_score, joint_planning_score
         from .tokenizer import JapaneseTokenizer
 
         if not rows:
             return rows
-        known_ids = {
+        initial_known_ids = {
             int(row[0]) for row in self.connection.execute(
                 "SELECT id FROM lexemes WHERE known_at IS NOT NULL"
             )
         }
+        known_ids = set(initial_known_ids)
         markers = ",".join("?" for _ in source_ids)
         tokenizer = JapaneseTokenizer()
         examples_by_lexeme: Dict[int, List[dict]] = {}
@@ -665,6 +912,9 @@ class VocabularyDatabase:
                 if occurrence_start is not None and occurrence_end is not None:
                     candidate["target_lexical_start"] = int(occurrence_start)
                     candidate["target_lexical_end"] = int(occurrence_end)
+                candidate["target_lexical_spans"] = self.sentence_lexeme_spans(
+                    int(candidate["sentence_id"]), lexeme_id
+                )
                 span = tokenizer.find_inflected_span(
                     candidate["japanese"], row["lemma"], row["reading"],
                     lexical_surface,
@@ -685,8 +935,8 @@ class VocabularyDatabase:
         for position in range(min(limit, len(remaining))):
             best_plan = None
             window_end = min(len(remaining), PLANNING_WINDOW)
-            scan_ranges = [(0, window_end)]
-            if window_end < len(remaining):
+            scan_ranges = [(0, 1)] if preserve_target_order else [(0, window_end)]
+            if not preserve_target_order and window_end < len(remaining):
                 scan_ranges.append((window_end, len(remaining)))
             for scan_start, scan_end in scan_ranges:
                 for rank_index in range(scan_start, scan_end):
@@ -743,6 +993,7 @@ class VocabularyDatabase:
             row["target_end"] = candidate.get("target_end")
             row["target_lexical_start"] = candidate.get("target_lexical_start")
             row["target_lexical_end"] = candidate.get("target_lexical_end")
+            row["target_lexical_spans"] = candidate.get("target_lexical_spans")
             row["global_part_of_speech"] = row["part_of_speech"]
             for field in (
                 "contextual_part_of_speech", "contextual_gloss",
@@ -927,7 +1178,10 @@ class VocabularyDatabase:
         parameters: tuple = () if force else (DICTIONARY_RESOLVER_VERSION,)
         if source_ids is not None:
             if not source_ids:
-                return {"matched": 0, "missing": 0}
+                return {
+                    "matched": 0, "missing": 0,
+                    "occurrence_matched": 0, "occurrence_missing": 0,
+                }
             markers = ",".join("?" for _ in source_ids)
             where += (
                 " AND EXISTS (SELECT 1 FROM occurrences ox "
@@ -977,6 +1231,84 @@ class VocabularyDatabase:
                         ),
                     )
                     matched += 1
+        occurrence_result = self.enrich_occurrence_senses(
+            source_ids, force=force
+        )
+        return {
+            "matched": matched,
+            "missing": missing,
+            "occurrence_matched": occurrence_result["matched"],
+            "occurrence_missing": occurrence_result["missing"],
+        }
+
+    def enrich_occurrence_senses(
+        self, source_ids: Optional[Sequence[int]] = None, force: bool = False
+    ) -> Dict[str, int]:
+        """Refresh context-specific senses when resolver behavior changes."""
+        from .dictionary import JMDictResolver
+
+        where = "l.part_of_speech != '表現'"
+        parameters: tuple = ()
+        if not force:
+            where += " AND COALESCE(os.dictionary_version, 0) < ?"
+            parameters = (DICTIONARY_RESOLVER_VERSION,)
+        if source_ids is not None:
+            if not source_ids:
+                return {"matched": 0, "missing": 0}
+            markers = ",".join("?" for _ in source_ids)
+            where += f" AND s.source_id IN ({markers})"
+            parameters = (*parameters, *source_ids)
+        rows = list(self.connection.execute(
+            f"""SELECT os.sentence_id, os.start_char, os.end_char,
+                       os.lexeme_id, l.lemma, l.reading,
+                       os.part_of_speech, s.japanese, s.english
+                FROM occurrence_senses os
+                JOIN lexemes l ON l.id = os.lexeme_id
+                JOIN sentences s ON s.id = os.sentence_id
+                WHERE {where}
+                ORDER BY os.sentence_id, os.start_char""",
+            parameters,
+        ))
+        resolver = JMDictResolver()
+        matched = 0
+        missing = 0
+        with self.transaction() as connection:
+            for row in rows:
+                match = resolver.resolve(
+                    str(row["lemma"]), str(row["reading"]),
+                    str(row["part_of_speech"]), str(row["english"] or ""),
+                    strict_pos=True,
+                    japanese_context=str(row["japanese"] or ""),
+                )
+                status = "matched" if match is not None else "missing"
+                sense_key = canonical_sense_key(
+                    match.entry_id if match else None,
+                    match.sense_index if match else None,
+                    str(row["part_of_speech"]),
+                    match.gloss if match else None,
+                )
+                connection.execute(
+                    """UPDATE occurrence_senses
+                       SET gloss = ?, dictionary_entry_id = ?,
+                           dictionary_sense_index = ?, dictionary_confidence = ?,
+                           dictionary_status = ?, dictionary_version = ?,
+                           sense_key = ?
+                       WHERE sentence_id = ? AND start_char = ? AND end_char = ?
+                         AND lexeme_id = ?""",
+                    (
+                        match.gloss if match else None,
+                        match.entry_id if match else None,
+                        match.sense_index if match else None,
+                        match.confidence if match else None,
+                        status, DICTIONARY_RESOLVER_VERSION, sense_key,
+                        row["sentence_id"], row["start_char"], row["end_char"],
+                        row["lexeme_id"],
+                    ),
+                )
+                if match is None:
+                    missing += 1
+                else:
+                    matched += 1
         return {"matched": matched, "missing": missing}
 
     def mark_known(self, lexeme_key: str) -> None:
@@ -987,6 +1319,16 @@ class VocabularyDatabase:
             )
             if cursor.rowcount != 1:
                 raise KeyError(lexeme_key)
+            lexeme_id = int(connection.execute(
+                "SELECT id FROM lexemes WHERE lexeme_key = ?", (lexeme_key,)
+            ).fetchone()[0])
+            connection.execute(
+                """INSERT OR IGNORE INTO learned_senses
+                   (lexeme_id, sense_key, known_at)
+                   SELECT lexeme_id, sense_key, ? FROM occurrence_senses
+                   WHERE lexeme_id = ? AND sense_key IS NOT NULL""",
+                (utc_now(), lexeme_id),
+            )
 
     def mark_known_by_id(self, lexeme_id: int) -> None:
         with self.transaction() as connection:
@@ -994,44 +1336,72 @@ class VocabularyDatabase:
                 "UPDATE lexemes SET known_at = COALESCE(known_at, ?) WHERE id = ?",
                 (utc_now(), lexeme_id),
             )
+            connection.execute(
+                """INSERT OR IGNORE INTO learned_senses
+                   (lexeme_id, sense_key, known_at)
+                   SELECT lexeme_id, sense_key, ? FROM occurrence_senses
+                   WHERE lexeme_id = ? AND sense_key IS NOT NULL""",
+                (utc_now(), lexeme_id),
+            )
+
+    def mark_sense_known(self, lexeme_id: int, sense_key: str) -> None:
+        with self.transaction() as connection:
+            connection.execute(
+                """INSERT INTO learned_senses (lexeme_id, sense_key, known_at)
+                   VALUES (?, ?, ?)
+                   ON CONFLICT(lexeme_id, sense_key) DO NOTHING""",
+                (int(lexeme_id), str(sense_key), utc_now()),
+            )
 
     def record_anki_card(
         self, lexeme_id: int, note_id: int, card_id: int, source_id: int,
         example_sentence_id: Optional[int] = None,
+        sense_key: str = "legacy",
     ) -> None:
         with self.transaction() as connection:
             connection.execute(
                 """INSERT INTO anki_cards
-                   (lexeme_id, note_id, card_id, introduced_source_id,
+                   (lexeme_id, sense_key, note_id, card_id, introduced_source_id,
                     example_sentence_id, synced_at)
-                   VALUES (?, ?, ?, ?, ?, ?)
-                   ON CONFLICT(lexeme_id) DO UPDATE SET
+                   VALUES (?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(lexeme_id, sense_key) DO UPDATE SET
                      note_id=excluded.note_id,
                      card_id=excluded.card_id,
                      introduced_source_id=excluded.introduced_source_id,
                      example_sentence_id=excluded.example_sentence_id,
                      synced_at=excluded.synced_at""",
                 (
-                    lexeme_id, note_id, card_id, source_id,
+                    lexeme_id, sense_key, note_id, card_id, source_id,
                     example_sentence_id, utc_now(),
                 ),
             )
 
     def tracked_anki_cards(self) -> List[sqlite3.Row]:
-        return list(self.connection.execute("SELECT * FROM anki_cards ORDER BY lexeme_id"))
+        return list(self.connection.execute(
+            "SELECT * FROM anki_cards ORDER BY lexeme_id, sense_key"
+        ))
 
-    def update_anki_reps(self, lexeme_id: int, reps: int) -> None:
+    def update_anki_reps(
+        self, lexeme_id: int, reps: int, sense_key: str = "legacy"
+    ) -> None:
         with self.transaction() as connection:
             connection.execute(
                 """UPDATE anki_cards SET last_seen_reps = ?, synced_at = ?
-                   WHERE lexeme_id = ?""",
-                (reps, utc_now(), lexeme_id),
+                   WHERE lexeme_id = ? AND sense_key = ?""",
+                (reps, utc_now(), lexeme_id, sense_key),
             )
             if reps > 0:
                 connection.execute(
-                    "UPDATE lexemes SET known_at = COALESCE(known_at, ?) WHERE id = ?",
-                    (utc_now(), lexeme_id),
+                    """INSERT INTO learned_senses (lexeme_id, sense_key, known_at)
+                       VALUES (?, ?, ?)
+                       ON CONFLICT(lexeme_id, sense_key) DO NOTHING""",
+                    (lexeme_id, sense_key, utc_now()),
                 )
+                if sense_key == "legacy":
+                    connection.execute(
+                        "UPDATE lexemes SET known_at = COALESCE(known_at, ?) WHERE id = ?",
+                        (utc_now(), lexeme_id),
+                    )
 
     def source_id(self, series: str, season: int, episode: int) -> int:
         row = self.connection.execute(
@@ -1077,6 +1447,7 @@ class VocabularyDatabase:
                       CASE WHEN l.dictionary_status = 'matched' AND l.gloss IS NOT NULL
                                  AND NOT (l.part_of_speech = '感動詞'
                                           AND LENGTH(l.lemma) <= 1)
+                                 AND l.part_of_speech NOT IN ('接頭辞', '接尾辞')
                            THEN 1 ELSE 0 END AS eligible
                FROM occurrences o
                JOIN sentences s ON s.id = o.sentence_id
@@ -1132,6 +1503,260 @@ class VocabularyDatabase:
                 (int(sentence_id),),
             )
         }
+
+    def sentence_lexeme_spans(
+        self, sentence_id: int, lexeme_id: int
+    ) -> List[List[int]]:
+        """Return exact lexical spans for every occurrence of a lexeme."""
+        return [
+            [int(row[0]), int(row[1])]
+            for row in self.connection.execute(
+                """SELECT start_char, end_char
+                   FROM occurrence_senses
+                   WHERE sentence_id = ? AND lexeme_id = ?
+                     AND start_char IS NOT NULL AND end_char IS NOT NULL
+                   ORDER BY start_char, end_char""",
+                (int(sentence_id), int(lexeme_id)),
+            )
+        ]
+
+    def sentence_learning_unit_keys(self, sentence_id: int) -> set:
+        return {
+            learning_unit_key(str(row["lexeme_key"]), str(row["sense_key"]))
+            for row in self.connection.execute(
+                """SELECT DISTINCT l.lexeme_key, os.sense_key
+                   FROM occurrence_senses os
+                   JOIN lexemes l ON l.id = os.lexeme_id
+                   WHERE os.sentence_id = ? AND os.sense_key IS NOT NULL""",
+                (int(sentence_id),),
+            )
+        }
+
+    def occurrence_candidates_for_targets(
+        self,
+        target_rows: Sequence[Mapping[str, object]],
+        source_ids: Sequence[int],
+        *,
+        candidates_per_target: int = 5,
+    ) -> List[dict]:
+        """Materialize several source examples without changing target order.
+
+        Target vocabulary is frozen by ``target_rows``. Candidate ranking may
+        choose a different sentence, but it cannot replace a target with an
+        easier-to-validate word.
+        """
+        from .progression import example_score
+        from .dictionary import JMDictResolver
+        from .tokenizer import JapaneseTokenizer
+
+        if candidates_per_target < 1:
+            raise ValueError("candidates per target must be positive")
+        if not source_ids:
+            return []
+        markers = ",".join("?" for _ in source_ids)
+        tokenizer = JapaneseTokenizer()
+        contextual_resolver = JMDictResolver()
+        initial_known_ids = {
+            int(row[0]) for row in self.connection.execute(
+                "SELECT id FROM lexemes WHERE known_at IS NOT NULL"
+            )
+        }
+        initial_known_units = {
+            learning_unit_key(str(row["lexeme_key"]), str(row["sense_key"]))
+            for row in self.connection.execute(
+                """SELECT l.lexeme_key, learned.sense_key
+                   FROM learned_senses learned
+                   JOIN lexemes l ON l.id = learned.lexeme_id"""
+            )
+        }
+        known_ids = set(initial_known_ids)
+        lexical_difficulties = {
+            int(row["lexeme_id"]): float(row.get("difficulty_score") or 0.0)
+            for row in target_rows
+        }
+        materialized: List[dict] = []
+        for curriculum_index, raw_target in enumerate(target_rows):
+            target = dict(raw_target)
+            lexeme_id = int(target["lexeme_id"])
+            target_entry_id = target.get("dictionary_entry_id")
+            target_sense_index = target.get("dictionary_sense_index")
+            rows = self.connection.execute(
+                f"""SELECT s.id AS sentence_id, s.japanese, s.english,
+                           s.start_ms, s.end_ms, s.source_id, s.cue_index,
+                           src.series, src.season, src.episode, src.video_path,
+                           target_occurrence.surface,
+                           sense.start_char AS occurrence_start,
+                           sense.end_char AS occurrence_end,
+                           sense.part_of_speech AS contextual_part_of_speech,
+                           sense.gloss AS contextual_gloss,
+                           sense.dictionary_entry_id AS contextual_dictionary_entry_id,
+                           sense.dictionary_sense_index AS contextual_dictionary_sense_index,
+                           sense.dictionary_confidence AS contextual_dictionary_confidence,
+                           sense.dictionary_status AS contextual_dictionary_status,
+                           sense.sense_key AS contextual_sense_key,
+                           GROUP_CONCAT(DISTINCT all_words.lexeme_id) AS word_ids_csv
+                    FROM occurrences target_occurrence
+                    LEFT JOIN occurrence_senses sense
+                      ON sense.lexeme_id = target_occurrence.lexeme_id
+                     AND sense.sentence_id = target_occurrence.sentence_id
+                     AND sense.surface = target_occurrence.surface
+                    JOIN sentences s ON s.id = target_occurrence.sentence_id
+                    JOIN sources src ON src.id = s.source_id
+                    JOIN occurrences all_words ON all_words.sentence_id = s.id
+                    WHERE target_occurrence.lexeme_id = ?
+                      AND sense.dictionary_entry_id = ?
+                      AND sense.dictionary_sense_index = ?
+                      AND s.source_id IN ({markers})
+                    GROUP BY s.id, sense.start_char, sense.end_char,
+                             target_occurrence.lexeme_id, target_occurrence.surface""",
+                (lexeme_id, target_entry_id, target_sense_index, *source_ids),
+            )
+            ranked_examples = []
+            for raw_candidate in rows:
+                candidate = dict(raw_candidate)
+                word_ids = {
+                    int(value)
+                    for value in str(candidate.pop("word_ids_csv") or "").split(",")
+                    if value
+                }
+                candidate["word_ids"] = word_ids
+                candidate["context_learning_unit_keys"] = sorted(
+                    self.sentence_learning_unit_keys(
+                        int(candidate["sentence_id"])
+                    )
+                )
+                candidate["lemma"] = str(target["lemma"])
+                if str(target.get("part_of_speech") or "") != "表現":
+                    contextual_match = contextual_resolver.resolve(
+                        str(target["lemma"]), str(target["reading"]),
+                        str(
+                            candidate.get("contextual_part_of_speech")
+                            or target.get("part_of_speech") or ""
+                        ),
+                        str(candidate.get("english") or ""),
+                        strict_pos=True,
+                        japanese_context=str(candidate.get("japanese") or ""),
+                    )
+                    if contextual_match is not None:
+                        if (
+                            contextual_match.entry_id != int(target_entry_id)
+                            or contextual_match.sense_index
+                            != int(target_sense_index)
+                        ):
+                            continue
+                        candidate.update({
+                            "contextual_gloss": contextual_match.gloss,
+                            "contextual_dictionary_entry_id": (
+                                contextual_match.entry_id
+                            ),
+                            "contextual_dictionary_sense_index": (
+                                contextual_match.sense_index
+                            ),
+                            "contextual_dictionary_confidence": (
+                                contextual_match.confidence
+                            ),
+                            "contextual_dictionary_status": "matched",
+                        })
+                occurrence_start = candidate.pop("occurrence_start")
+                occurrence_end = candidate.pop("occurrence_end")
+                if occurrence_start is not None and occurrence_end is not None:
+                    candidate["target_lexical_start"] = int(occurrence_start)
+                    candidate["target_lexical_end"] = int(occurrence_end)
+                candidate["target_lexical_spans"] = self.sentence_lexeme_spans(
+                    int(candidate["sentence_id"]), lexeme_id
+                )
+                span = tokenizer.find_inflected_span(
+                    str(candidate["japanese"]), str(target["lemma"]),
+                    str(target["reading"]), str(candidate["surface"]),
+                )
+                if not span:
+                    continue
+                candidate["target_start"], candidate["target_end"] = span
+                candidate.setdefault("target_lexical_start", span[0])
+                candidate.setdefault(
+                    "target_lexical_end", span[0] + len(str(candidate["surface"]))
+                )
+                candidate["target_surface"] = str(candidate["japanese"])[
+                    span[0]:span[1]
+                ]
+                score, progression = example_score(
+                    candidate, lexeme_id, known_ids, curriculum_index,
+                    lexical_difficulties,
+                    float(target.get("difficulty_score") or 0.0),
+                )
+                ranked_examples.append((score, int(candidate["cue_index"]), candidate, progression))
+            ranked_examples.sort(key=lambda item: (item[0], item[1]))
+            for candidate_index, (_, _, candidate, progression) in enumerate(
+                ranked_examples[:candidates_per_target], start=1
+            ):
+                card = dict(target)
+                for field in (
+                    "sentence_id", "japanese", "english", "start_ms", "end_ms",
+                    "source_id", "cue_index", "series", "season", "episode",
+                    "video_path", "target_surface", "target_start", "target_end",
+                    "target_lexical_start", "target_lexical_end",
+                    "target_lexical_spans",
+                    "contextual_part_of_speech", "contextual_gloss",
+                    "contextual_dictionary_entry_id",
+                    "contextual_dictionary_sense_index",
+                    "contextual_dictionary_confidence",
+                    "contextual_dictionary_status",
+                    "contextual_sense_key",
+                ):
+                    card[field] = candidate.get(field)
+                card["sentence_word_count"] = len(candidate["word_ids"])
+                card["sentence_unknown_word_count"] = (
+                    int(progression["unknown_other_words"]) + 1
+                )
+                card["global_part_of_speech"] = target.get("part_of_speech")
+                if (
+                    card.get("contextual_dictionary_status") == "matched"
+                    and card.get("contextual_part_of_speech")
+                    == card.get("part_of_speech")
+                ):
+                    card["gloss"] = card.get("contextual_gloss")
+                    card["dictionary_entry_id"] = card.get(
+                        "contextual_dictionary_entry_id"
+                    )
+                    card["dictionary_sense_index"] = card.get(
+                        "contextual_dictionary_sense_index"
+                    )
+                    card["dictionary_confidence"] = card.get(
+                        "contextual_dictionary_confidence"
+                    )
+                card["example_progression"] = progression
+                card["context_lexeme_ids"] = sorted(candidate["word_ids"])
+                card["context_learning_unit_keys"] = list(
+                    candidate["context_learning_unit_keys"]
+                )
+                target_unit = str(card["learning_unit_key"])
+                card["initial_known_context_learning_unit_keys"] = sorted(
+                    (
+                        set(candidate["context_learning_unit_keys"])
+                        - {target_unit}
+                    ) & initial_known_units
+                )
+                card["initial_unknown_context_learning_unit_keys"] = sorted(
+                    set(candidate["context_learning_unit_keys"])
+                    - {target_unit}
+                    - initial_known_units
+                )
+                card["initial_known_context_lexeme_ids"] = sorted(
+                    (candidate["word_ids"] - {lexeme_id}) & initial_known_ids
+                )
+                card["initial_unknown_context_lexeme_ids"] = sorted(
+                    candidate["word_ids"] - {lexeme_id} - initial_known_ids
+                )
+                card["curriculum_position"] = curriculum_index + 1
+                card["candidate_position"] = candidate_index
+                card["candidate_key"] = ":".join((
+                    str(card["learning_unit_key"]), str(card["sentence_id"]),
+                    str(card.get("target_lexical_start")),
+                    str(card.get("target_lexical_end")),
+                ))
+                materialized.append(card)
+            known_ids.add(lexeme_id)
+        return materialized
 
     def fully_known_alternative_examples(
         self,
@@ -1195,6 +1820,9 @@ class VocabularyDatabase:
             if occurrence_start is not None and occurrence_end is not None:
                 candidate["target_lexical_start"] = int(occurrence_start)
                 candidate["target_lexical_end"] = int(occurrence_end)
+            candidate["target_lexical_spans"] = self.sentence_lexeme_spans(
+                sentence_id, int(row["lexeme_id"])
+            )
             span = tokenizer.find_inflected_span(
                 str(candidate["japanese"]), str(row["lemma"]),
                 str(row["reading"]), lexical_surface,
@@ -1294,6 +1922,10 @@ class VocabularyDatabase:
             "sources": "SELECT COUNT(*) FROM sources",
             "lexemes": "SELECT COUNT(*) FROM lexemes",
             "known": "SELECT COUNT(*) FROM lexemes WHERE known_at IS NOT NULL",
+            "learned_senses": "SELECT COUNT(*) FROM learned_senses",
+            "lexemes_with_learned_senses": (
+                "SELECT COUNT(DISTINCT lexeme_id) FROM learned_senses"
+            ),
             "sentences": "SELECT COUNT(*) FROM sentences",
         }.items():
             result[name] = int(self.connection.execute(sql).fetchone()[0])

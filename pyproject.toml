@@ -25,6 +25,9 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
 reading-full = ["sudachidict-full>=20240109"]
+local-review = [
+  "mlx-lm>=0.31.3,<0.32; python_version >= '3.10' and platform_system == 'Darwin' and platform_machine == 'arm64'",
+]
 
 [project.scripts]
 vocabdeck = "vocabdeck.cli:main"

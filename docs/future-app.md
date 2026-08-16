@@ -71,7 +71,66 @@ accessible contrast themes should communicate the same distinctions for
 color-blind users and monochrome displays. Users should be able to disable or
 customize the palette.
 
-## Planned next PR: optional card breakdown colors
+## Immediate next PR: audio-content gate
+
+Before adding presentation features, make sentence audio a fail-closed part of
+card validation. The gate should run only after a card passes the text checks:
+
+1. Extract a wider working window around the subtitle cue.
+2. Reject or extend clips whose speech is active at either media boundary.
+3. Run local Japanese ASR with timestamps without supplying the expected answer
+   as a prompt.
+4. Normalize the recognized speech and the target reading to kana/phonemes, then
+   align the complete subtitle and require explicit target-reading coverage.
+5. Permit only documented pronunciation variants (for example, conversational
+   vowel changes); ambiguous matches abstain rather than pass.
+6. If the target is missing, expand to nearby silence and retry once. If it is
+   still absent, try a different occurrence or omit the word.
+7. Cache the transcript, alignment, target-coverage score, chosen media bounds,
+   and failure reason per occurrence so subsequent deck builds are reproducible.
+
+The initial regression fixture is `誰だ お前。`: the source cue ends at
+440.013 seconds, while the second spoken beat begins around 440.3 seconds, after
+the current clip's 200 ms tail. The narrow clip must fail and an expanded clip
+containing `お前` must pass.
+
+Acceptance criteria:
+
+- no production card is accepted when its target reading is absent or clipped;
+- target presence, sentence alignment, and clean audio boundaries are reported
+  as separate criteria;
+- uncertain ASR/alignment results fail closed;
+- widening cannot cross a configured maximum or silently absorb a long adjacent
+  utterance;
+- the implementation works locally and does not require a hosted API.
+
+## Current PR: sense-aware learning units
+
+The implementation keeps one canonical global lexeme while allowing genuinely
+different meanings to be learned from different source occurrences. A learning
+unit is keyed by `lexeme_id + sense_key`, not spelling alone. The stable external
+form combines `lexeme_key` with a JMdict entry and sense index. Occurrences map
+to one unit; candidate generation, scheduling, review fingerprints, Anki note
+identity, and learner state deduplicate the same sense across shows but may
+introduce a distinct, source-attested sense later.
+
+The current safe first layer uses exact JMdict senses and requires each selected
+occurrence to pass the contextual, recoverability, and contextual-gloss gates.
+A later refinement may cluster near-synonymous JMdict senses to avoid trivial
+duplicate cards. Grammar constructions such as hearsay or appearance `そうだ`
+belong to the grammar layer rather than being created automatically as vocabulary
+senses.
+
+Initial regression cases:
+
+- `そう？` → reaction sense: `so?` / learner gloss `really?; is that so?`;
+- `そうする` → manner sense: `in that way; to do so`;
+- learning either occurrence must not mark the other sense as learned;
+- the same reaction sense encountered in another show must remain deduplicated.
+
+These cases are covered by automated database and Anki-state regressions.
+
+## Later PR: optional card breakdown colors
 
 Do not change the current 200-card review baseline. The next PR should isolate a
 small color-coded prototype so its learning value can be judged independently of

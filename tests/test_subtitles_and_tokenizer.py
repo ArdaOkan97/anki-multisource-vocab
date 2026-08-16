@@ -143,6 +143,19 @@ class SubtitleAndTokenizerTest(unittest.TestCase):
         self.assertEqual(by_surface["何"].reading, "ナニ")
         self.assertEqual(by_surface["何"].part_of_speech, "代名詞")
 
+    def test_noun_like_suffixes_are_tracked_as_sentence_context(self):
+        tokenizer = JapaneseTokenizer()
+        armored = tokenizer.tokenize("装甲車？")
+        plural = tokenizer.tokenize("俺達？")
+        self.assertEqual(
+            [(token.surface, token.part_of_speech) for token in armored],
+            [("装甲", "名詞"), ("車", "接尾辞")],
+        )
+        self.assertEqual(
+            [(token.surface, token.part_of_speech) for token in plural],
+            [("俺", "代名詞"), ("達", "接尾辞")],
+        )
+
     def test_nani_reading_before_common_particles(self):
         tokenizer = JapaneseTokenizer()
         for text in ("何が？", "何を？", "何に？"):

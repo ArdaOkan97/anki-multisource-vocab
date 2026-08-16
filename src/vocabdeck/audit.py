@@ -99,7 +99,11 @@ def audit_queue(
     reading_validator: Optional[ContextualReadingValidator] = None,
 ) -> Dict[str, Any]:
     """Audit the exact progressive batch that would next be sent to Anki."""
-    rows = database.next_unseen_for_sources(source_ids, limit, metric)
+    selector = getattr(
+        database, "next_unseen_sense_cards_for_sources",
+        database.next_unseen_for_sources,
+    )
+    rows = selector(source_ids, limit, metric)
     return audit_rows(
         database,
         rows,
