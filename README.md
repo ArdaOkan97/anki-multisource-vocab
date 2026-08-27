@@ -1,6 +1,6 @@
 # Multi-source Japanese vocabulary for Anki
 
-This project is a local-first pipeline for building Core 2k/6k-style recognition cards from Japanese video and subtitle sources without teaching the same lexeme twice.
+This project is a local-first pipeline for building Core 2k/6k-style recognition cards from Japanese video and subtitle sources without teaching the same meaning twice.
 
 The current milestone can ingest external Japanese/English SRT files, align translations using timestamp coverage and textual continuation groups, tokenize Japanese into dictionary-form lexemes, keep episode metadata in SQLite, preview a difficulty queue, extract a sentence-audio clip and still image from the video, and lazily add cards through AnkiConnect.
 
@@ -9,10 +9,10 @@ The current milestone can ingest external Japanese/English SRT files, align tran
 There are three different states, and they must not be conflated:
 
 1. **Observed**: a word occurred in one or more sources.
-2. **Queued**: the word is eligible to become a new card for the active source.
-3. **Known**: its one canonical Anki card has been answered at least once (`reps > 0`).
+2. **Queued**: a source-attested meaning is eligible to become a new card.
+3. **Known**: that meaning's Anki card has been answered at least once (`reps > 0`).
 
-Cards are materialized lazily. If `F` occurs in both Hunter x Hunter and Naruto, there is still only one Anki note. If that card was prefetched for HxH but has not been answered, switching to Naruto moves it to the Naruto deck and replaces its primary example with the Naruto context. Once answered, `F` is globally known and its card stays where it was learned; every other queue skips it. Occurrences from both shows remain in the database, so alternative context can be surfaced later without creating a duplicate vocabulary card.
+Cards are materialized lazily. If the same meaning of `F` occurs in both Hunter x Hunter and Naruto, there is still only one Anki note. If that card was prefetched for HxH but has not been answered, switching to Naruto moves it to the Naruto deck and replaces its primary example with the Naruto context. Once answered, that meaning is globally known and its card stays where it was learned; every other queue skips it. A genuinely different, contextually validated meaning may be taught later while both cards still point to one canonical lexeme. Occurrences from every show remain in the database.
 
 ```mermaid
 flowchart LR
@@ -20,9 +20,10 @@ flowchart LR
     B["English subtitles"] --> I
     I --> O["All timestamped occurrences"]
     O --> L["Canonical lexemes"]
-    L --> Q["Per-source candidate queues"]
+    L --> S["Source-attested senses"]
+    S --> Q["Per-source candidate queues"]
     K["Global known state"] --> Q
-    Q -->|"next batch only"| N["One canonical Anki note"]
+    Q -->|"next batch only"| N["One note per learned meaning"]
     N -->|"first answer: reps > 0"| K
 ```
 
@@ -31,6 +32,13 @@ conjugations and merges the same learner-facing item when UniDic assigns differe
 grammatical roles in different contexts, while keeping homographs with different
 readings separate. Treating spelling alone as identity would incorrectly merge
 those reading distinctions.
+
+Learning identity uses the canonical lexeme plus a stable JMdict entry/sense
+key. Thus `そう？` (reaction: “really?; is that so?”) and `そうする` (manner:
+“in that way; do so”) share one lexeme record but remain two learning units.
+Reviewing either unit does not mark the other as learned, while the same unit in
+another show is skipped globally. Candidate generation, dependency scheduling,
+review fingerprints, Anki metadata, and Anki progress all carry this identity.
 
 Content vocabulary includes nouns, pronouns, verbs, adjectives, adverbs,
 prenominals, and interjections. Grammatical particles and auxiliary tokens are used
@@ -204,8 +212,95 @@ Re-exporting the audit reports agreement counts and both important error types
 per criterion: automatic passes rejected by the reviewer and automatic flags
 accepted by the reviewer.
 
-Large plans use a bounded rolling window. This keeps planning responsive while
-still allowing sentence comprehensibility to reorder nearby vocabulary.
+On an Apple Silicon Mac with Python 3.10+, the same audit JSON can be reviewed
+locally with MLX.
+The output is append-only JSONL and resumes by card fingerprint, so an
+interrupted overnight run does not repeat completed cards. Similarity scores and
+automatic findings are deliberately omitted from the model prompt to avoid
+anchoring the reviewer to the thresholds being calibrated:
+
+```bash
+uv run vocabdeck --db ".vocabdeck/hxh-full.sqlite3" \
+  plan-validation-candidates \
+  --series "Hunter x Hunter" --season 1 --episodes 1-10 \
+  --targets 200 --candidates-per-target 5 \
+  --output ".vocabdeck/audits/hxh-curriculum-candidates.json"
+uv sync --extra local-review
+HF_HOME=".vocabdeck/huggingface" uv run vocabdeck \
+  review-calibration-local \
+  --input ".vocabdeck/audits/hxh-curriculum-candidates.json" \
+  --output ".vocabdeck/audits/hxh-contextual-reviews.jsonl" \
+  --review-pass contextual --deterministic-clean-only \
+  --max-per-target 2 --batch-size 4
+HF_HOME=".vocabdeck/huggingface" uv run vocabdeck \
+  review-calibration-local \
+  --input ".vocabdeck/audits/hxh-curriculum-candidates.json" \
+  --output ".vocabdeck/audits/hxh-recoverability-reviews.jsonl" \
+  --review-pass recoverability --deterministic-clean-only \
+  --max-per-target 2 --batch-size 4
+HF_HOME=".vocabdeck/huggingface" uv run vocabdeck \
+  review-calibration-local \
+  --input ".vocabdeck/audits/hxh-curriculum-candidates.json" \
+  --output ".vocabdeck/audits/hxh-contextual-gloss-reviews.jsonl" \
+  --review-pass contextual_gloss --deterministic-clean-only \
+  --max-per-target 2 --batch-size 4
+uv run vocabdeck validate-reviewed-cards \
+  --input ".vocabdeck/audits/hxh-curriculum-candidates.json" \
+  --contextual-reviews ".vocabdeck/audits/hxh-contextual-reviews.jsonl" \
+  --recoverability-reviews ".vocabdeck/audits/hxh-recoverability-reviews.jsonl" \
+  --contextual-gloss-reviews ".vocabdeck/audits/hxh-contextual-gloss-reviews.jsonl" \
+  --output ".vocabdeck/audits/hxh-validated-cards.json"
+uv run vocabdeck select-validated-curriculum \
+  --input ".vocabdeck/audits/hxh-curriculum-candidates.json" \
+  --validation ".vocabdeck/audits/hxh-validated-cards.json" \
+  --limit 20 \
+  --output ".vocabdeck/audits/hxh-curriculum-selection.json" \
+  --preview ".vocabdeck/previews/hxh-curriculum.html"
+```
+
+For efficient iterative review, plan only occurrences that satisfy the current
+teaching position's dependency gate. Pass the latest selection and append each
+model pass to its resumable review file; after validation and reselection, run
+the planner again to pick newly unlocked occurrences or alternates for rejected
+ones:
+
+```bash
+uv run vocabdeck plan-review-frontier \
+  --input ".vocabdeck/audits/hxh-curriculum-candidates.json" \
+  --selection ".vocabdeck/audits/hxh-curriculum-selection.json" \
+  --contextual-reviews ".vocabdeck/audits/hxh-contextual-reviews.jsonl" \
+  --recoverability-reviews ".vocabdeck/audits/hxh-recoverability-reviews.jsonl" \
+  --contextual-gloss-reviews ".vocabdeck/audits/hxh-contextual-gloss-reviews.jsonl" \
+  --limit 24 --output ".vocabdeck/audits/hxh-review-frontier.json"
+```
+
+The eligible target pool and its meaning-level priority are frozen before
+occurrence validation. The final teaching order is dynamic: at each step the scheduler
+looks within a bounded lexical frontier, chooses a validated sentence that fits
+the learner's current known-word state, then treats its target as known for the
+next step. This allows a clean prerequisite to move ahead of a lexically earlier
+word without letting an unrelated easy or katakana-heavy word reshape the pool.
+Candidate order remains a ranking of examples for the same target, not a second
+vocabulary ranking.
+
+The validation policy fails closed. The contextual pass checks the occurrence's
+word boundary, part of speech, and dictionary sense. A separate, narrowly
+prompted recoverability pass checks that the English subtitle actually expresses
+the target's contribution instead of merely being a natural translation of the
+whole utterance. The contextual-gloss pass independently checks that the
+learner-facing definition explains the target's sense in this occurrence. Any
+deterministic finding, stale or missing model review, reviewer disagreement, or
+uncertainty rejects or abstains on that sample.
+Production generation can then try a different occurrence and omit the word if
+no occurrence receives unanimous approval.
+
+The production scheduler applies a hard progressive-comprehensibility policy:
+teaching positions 1–20 allow no other unknown content words, positions 21–200
+allow one, and later positions allow two. Particles, auxiliaries, punctuation,
+and recognized grammar tokens are not counted as vocabulary. An allowed unknown
+must also be scored near or below the target; an unscored or substantially harder
+word fails closed. These boundaries and the lexical-frontier size are configurable
+on `select-validated-curriculum`.
 
 For a conservative learning preview, reject every questionable sample and look
 for an unused occurrence whose surrounding vocabulary is already known. The word
@@ -219,9 +314,10 @@ uv run vocabdeck --db ".vocabdeck/hxh-full.sqlite3" export-clean-preview \
   --selection-output ".vocabdeck/audits/hxh-episodes-1-10-clean-200-selection.json"
 ```
 
-The selection JSON explains every postponed word. After dropping a word, the
-gate restores it to unknown status in later sentences and rejects any downstream
-card where it would become harder than the new target.
+The selection JSON explains every postponed word. A postponed target remains
+unknown. The scheduler may teach a validated prerequisite first and reconsider
+the blocked target on the next iteration; if no qualifying occurrence becomes
+available, the target remains deferred.
 
 Three explainable difficulty metrics are available:
 
@@ -270,14 +366,12 @@ The default hybrid score combines:
 - penalties for fragments, missing translations, and dialogue fillers.
 
 Word ordering and example selection are planned together at batch time. For each
-position, the planner combines lexical difficulty with the best sentence available
-given the learner's global known words and the targets already selected in that
-batch. Comprehensibility is weighted most heavily for the opening cards and tapers
-as the batch progresses. Each selected target is treated as provisionally known for
-the cards after it, and desired context grows from two to eight content words. Exact
-token spans are retained so an inflected form such as `いた` is blanked in full at
-its morphological occurrence rather than matching an unrelated `い` elsewhere in
-the sentence.
+position, the production planner first enforces the hard unknown-word allowance,
+then prefers fewer unknowns, lexical priority, and the best validated occurrence.
+Each selected target is treated as provisionally known for subsequent cards.
+Exact token spans are retained so an inflected form such as `いた` is blanked in
+full at its morphological occurrence rather than matching an unrelated `い`
+elsewhere in the sentence.
 A future refinement can add JLPT/graded vocabulary levels and explicit grammar
 complexity. Changing metrics reranks only unseen cards and does not disturb Anki
 review history.
@@ -286,10 +380,30 @@ review history.
 
 - **“Known” means introduced, not mastered.** The first answer is enough to prevent a duplicate new card elsewhere. Anki/FSRS remains responsible for whether the word is actually retained.
 - **One note, many occurrences.** A vocabulary card has one primary context, but its database record can point to every show, season, episode, timestamp, and subtitle line where it appeared.
+- **One global lexeme, distinct learning units.** Identical spelling and reading remain globally deduplicated. Each occurrence maps to a stable JMdict sense; the same sense is learned once across all shows, while a genuinely different validated sense can receive its own card.
 - **One sentence, one teaching card.** Once a sentence is selected for a card, it is reserved. Other words use a different occurrence or wait until another source supplies one.
 - **Decks are views, not the source of truth.** SQLite owns global identity and source history; Anki owns review scheduling and logs.
-- **Never delete or move reviewed cards during deduplication.** A reviewed card stays in its original deck. An unreviewed prefetched card may move when its source changes; other queues skip a learned lexeme.
+- **Never delete or move reviewed cards during deduplication.** A reviewed card stays in its original deck. An unreviewed prefetched card may move when its source changes; other queues skip the learned meaning.
 - **Batch lazily.** Creating thousands of duplicate suspended notes up front makes reconciliation fragile and pollutes the collection.
+
+## Frozen regression baseline
+
+The reviewed Hunter x Hunter episodes 1–10 hybrid generation is frozen under
+[`baselines/hxh-e01-e10-hybrid-qwen9b-200-v1`](baselines/hxh-e01-e10-hybrid-qwen9b-200-v1).
+Its manifest records every deterministic gate, curriculum setting, local model
+revision, prompt version, dependency lock hash, and source-artifact hash. The
+compact 200-card snapshot is checked by the test suite and is the reference for
+future generation A/B experiments. It is intentionally described as a hybrid
+baseline because three local Qwen review passes participated in acceptance.
+
+## Project backlog
+
+Planned and completed work is tracked with
+[Backlog.md](https://github.com/MrLesk/Backlog.md). Review the exported
+[Kanban board](backlog/BOARD.md), or install the pinned project tool with
+`npm install` and run `npm run backlog:board`. Task specifications and acceptance
+criteria live under [`backlog/tasks`](backlog/tasks); update them through the
+Backlog.md CLI rather than editing task files directly.
 
 ## Roadmap
 
@@ -297,6 +411,10 @@ review history.
 2. Add furigana formatting and optional isolated-word TTS. Source audio already supplies authentic sentence reading.
 3. Add an Anki add-on companion that triggers synchronization after review and offers a source switcher inside Anki. Until then, the CLI is the synchronization boundary.
 4. Add conflict recovery for cards manually deleted, moved, or merged inside Anki, plus backups and an audit command.
+
+The longer-term companion-app concept—including separate grammar progress,
+tap-to-explain constructions, and accessible sentence color coding—is documented
+in [docs/future-app.md](docs/future-app.md).
 
 ## Tests
 

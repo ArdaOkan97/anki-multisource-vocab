@@ -6,6 +6,7 @@ from typing import Any, Mapping, Sequence
 
 from .card_format import (
     blank_target, highlight_target, hiragana, learner_pos, learner_target_span,
+    learner_target_spans,
 )
 from .media import render_card_media
 
@@ -32,11 +33,12 @@ def render_preview_html(
       <img loading="lazy" src="{image_src}" alt="Source frame">"""
         progression = row.get("example_progression") or {}
         target, target_start, target_end = learner_target_span(row)
+        target_spans = learner_target_spans(row)
         cloze = blank_target(
-            str(row["japanese"]), target, target_start, target_end
+            str(row["japanese"]), target, target_start, target_end, target_spans
         )
         answer_sentence = highlight_target(
-            str(row["japanese"]), target, target_start, target_end
+            str(row["japanese"]), target, target_start, target_end, target_spans
         )
         hidden = "" if index == 0 else " hidden"
         cards.append(

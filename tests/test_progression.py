@@ -1,6 +1,7 @@
 import unittest
 
 from vocabdeck.progression import (
+    allowed_unknown_context_words,
     desired_sentence_words,
     example_score,
     joint_planning_score,
@@ -8,6 +9,13 @@ from vocabdeck.progression import (
 
 
 class ProgressionTest(unittest.TestCase):
+    def test_unknown_context_allowance_grows_by_teaching_position(self):
+        self.assertEqual(allowed_unknown_context_words(1), 0)
+        self.assertEqual(allowed_unknown_context_words(20), 0)
+        self.assertEqual(allowed_unknown_context_words(21), 1)
+        self.assertEqual(allowed_unknown_context_words(200), 1)
+        self.assertEqual(allowed_unknown_context_words(201), 2)
+
     def test_joint_planner_values_easy_context_more_at_start(self):
         common_with_unknown, early = joint_planning_score(15.0, 10.0, position=0)
         rarer_with_clear_context, _ = joint_planning_score(25.0, 0.0, position=0)

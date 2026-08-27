@@ -62,6 +62,29 @@ class PreviewTest(unittest.TestCase):
             '<span class="target-answer">いい</span>ですね？', document
         )
 
+    def test_repeated_target_is_not_revealed_on_front(self):
+        row = {
+            "lexeme_key": "いい|イイ", "lemma": "いい", "reading": "イイ",
+            "part_of_speech": "形容詞", "gloss": "good",
+            "japanese": "いいねぇ いいよ～。", "english": "Very nice.",
+            "target_surface": "いい", "target_start": 0, "target_end": 2,
+            "target_lexical_start": 0, "target_lexical_end": 2,
+            "target_lexical_spans": [[0, 2], [5, 7]],
+            "difficulty_score": 10, "series": "Test", "season": 1,
+            "episode": 1, "video_path": "", "start_ms": 0, "end_ms": 1000,
+            "example_progression": {},
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "preview.html"
+            document = render_preview_html(
+                [row], output, include_media=False
+            ).read_text(encoding="utf-8")
+        self.assertIn(
+            '<span class="target-blank">（　）</span>ねぇ '
+            '<span class="target-blank">（　）</span>よ～。',
+            document,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -8,8 +8,9 @@ from typing import Any, Dict, Iterable, List, Mapping
 from wordfreq import zipf_frequency
 
 
-METRICS = ("source", "general", "hybrid")
+METRICS = ("source", "general", "hybrid", "curriculum")
 _KANJI = re.compile(r"[\u3400-\u9fff]")
+_KATAKANA_WORD = re.compile(r"[\u30a0-\u30ffー]{2,}")
 
 
 def _clamp(value: float) -> float:
@@ -65,6 +66,11 @@ def score_components(candidate: Mapping[str, Any]) -> Dict[str, float]:
     noise = 1.0 if candidate.get("part_of_speech") == "感動詞" or filler else 0.0
     if kana_only and len(lemma) == 1:
         noise = max(noise, 0.8)
+    # Transparent loanwords and sound-symbolic katakana are often easy to infer
+    # from subtitles. Keep them eligible, but avoid letting that confidence
+    # dominate the beginning of a general vocabulary curriculum.
+    katakana = 1.0 if _KATAKANA_WORD.fullmatch(lemma) else 0.0
+    expression = 1.0 if candidate.get("part_of_speech") == "表現" else 0.0
     return {
         "general_zipf": round(zipf, 3),
         "general": round(general, 6),
@@ -74,6 +80,8 @@ def score_components(candidate: Mapping[str, Any]) -> Dict[str, float]:
         "quality": round(quality, 6),
         "colloquial": colloquial,
         "noise": noise,
+        "katakana": katakana,
+        "expression": expression,
     }
 
 
@@ -85,13 +93,15 @@ def difficulty_score(candidate: Mapping[str, Any], metric: str) -> tuple:
         raw = (
             (parts["source"] * 0.80) + (parts["sentence"] * 0.10)
             + (parts["quality"] * 0.10) + (parts["noise"] * 0.20)
+            + (parts["katakana"] * 0.10)
         )
     elif metric == "general":
         raw = (
             parts["general"] + (parts["form"] * 0.05)
             + (parts["quality"] * 0.10) + (parts["noise"] * 0.20)
+            + (parts["katakana"] * 0.10)
         )
-    else:
+    elif metric == "hybrid":
         raw = (
             (parts["general"] * 0.55)
             + (parts["source"] * 0.15)
@@ -99,6 +109,19 @@ def difficulty_score(candidate: Mapping[str, Any], metric: str) -> tuple:
             + (parts["form"] * 0.05)
             + (parts["quality"] * 0.05)
             + (parts["noise"] * 0.20)
+            + (parts["katakana"] * 0.10)
+        )
+    else:
+        # Target-word curriculum only. Sentence quality is deliberately absent:
+        # occurrence selection and validation happen after vocabulary order is
+        # frozen, so an easy subtitle cannot promote a less useful word.
+        raw = (
+            (parts["general"] * 0.70)
+            + (parts["source"] * 0.20)
+            + (parts["form"] * 0.10)
+            + (parts["noise"] * 0.20)
+            + (parts["katakana"] * 0.10)
+            + (parts["expression"] * 0.12)
         )
     return round(_clamp(raw) * 100, 3), parts
 

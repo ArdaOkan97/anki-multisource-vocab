@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "baseline_id": "hxh-e01-e10-hybrid-qwen9b-200-v1",
+  "frozen_on": "2026-08-26",
+  "purpose": "Regression and A/B reference; not a gold-quality claim",
+  "expected_cards_sha256": "839c88e6e31404cef0a4575f932f192d6509b278c7b9b938da69c58c378492aa",
+  "source": {
+    "series": "Hunter x Hunter",
+    "season": 1,
+    "episodes": "1-10",
+    "manifest_sha256": "7cf1089ff59a7afea72868d69ab5fd3cf0e91126276b0da5106c9cfab0a1cb76",
+    "database_sha256": "8c5d466e801db519e9154ed1a5ef16d26e042a6ece0a7642c21850e6c9002b1b"
+  },
+  "candidate_generation": {
+    "command": "plan-validation-candidates",
+    "metric": "curriculum",
+    "targets": 1500,
+    "candidates_per_target": 5,
+    "occurrence_candidates": 4040,
+    "candidate_artifact_sha256": "2abd80e371e167d9e1617d4dab6ada517b26094ae78c8a7cde5cbfb6527f2d27"
+  },
+  "deterministic_audit": {
+    "translation_alignment_threshold": 0.78,
+    "gloss_support_threshold": 0.70,
+    "standalone_gloss_support_threshold": 0.82,
+    "requires_definition": true,
+    "requires_unique_sentence": true,
+    "rejects_flagged_findings": true
+  },
+  "local_model_validation": {
+    "enabled": true,
+    "engine": "mlx-lm",
+    "engine_version": "0.31.3",
+    "model": "mlx-community/Qwen3.5-9B-OptiQ-4bit",
+    "model_revision": "890b4c43f99ff392819d83605f7b1e59fa9688aa",
+    "temperature": 0.0,
+    "thinking": false,
+    "max_tokens": 48,
+    "max_kv_size": 1024,
+    "batch_size": 4,
+    "unanimous_required": true,
+    "uncertainty_policy": "fail_closed",
+    "passes": [
+      {
+        "name": "contextual",
+        "prompt_version": 5,
+        "review_records": 373,
+        "review_log_sha256": "60625ce15eb1da6be125c86d53edb316b7e81ba1bb8211850ff5051f48b76ffc"
+      },
+      {
+        "name": "recoverability",
+        "prompt_version": 1,
+        "review_records": 288,
+        "review_log_sha256": "e752c40ee85bd78d6d06406161bd6b4837ccb3b8847f77ae834143a6fdc291e6"
+      },
+      {
+        "name": "contextual_gloss",
+        "prompt_version": 1,
+        "review_records": 288,
+        "review_log_sha256": "c119030761ec9b797ed10087afce62b91bdc772f9c5b74d3a79fa9db751b77b8"
+      }
+    ],
+    "validation_artifact_sha256": "38e245bf673f30c24c89efcaff6ab8e8f7ca891fa4aaa56864df657914710b0b",
+    "accepted_occurrence_candidates": 206
+  },
+  "curriculum_selection": {
+    "command": "select-validated-curriculum",
+    "requested_cards": 200,
+    "frontier_size": 100,
+    "zero_unknown_through": 20,
+    "one_unknown_through": 200,
+    "max_unknown_later": 2,
+    "harder_unknown_tolerance": 2.0,
+    "requires_scored_unknowns": true,
+    "unique_sentence_per_card": true,
+    "selection_artifact_sha256": "de1697a08466f1c045203045d122c456f1f449038d5593889a7991c3988615a2",
+    "stable_card_projection_sha256": "4e91397e75d554eb485287231198e96c020d574bfbd80a0e2923b359d83ded77",
+    "preview_sha256": "d1574e3e715b1947f1804233c104fcf5f2acf9744029f647dafeebd51e30cd75"
+  },
+  "disabled_features": {
+    "hosted_llm": true,
+    "audio_content_gate": true,
+    "audio_reading_repair": true,
+    "small_model_multiple_choice_verifier": true,
+    "grammar_color_breakdown": true
+  },
+  "software": {
+    "uv_lock_sha256": "81d252209a45430135454eba63fee0a5e840ba7dbdb27091dfe348de27252a87",
+    "fugashi": "1.5.2",
+    "unidic_lite": "1.0.8",
+    "wordfreq": "3.1.1",
+    "jamdict": "0.1a11.post2",
+    "jamdict_data": "1.5",
+    "sentence_transformers": "5.7.0",
+    "sudachipy": "0.6.11",
+    "sudachidict_core": "20260723",
+    "pyopenjtalk": "0.4.1"
+  },
+  "human_review": {
+    "reviewed_cards": 100,
+    "total_cards": 200,
+    "reviewed_range": "1-100",
+    "status": "first_half_complete",
+    "flagged_cards": 5,
+    "flagged_card_list": "human-review.json"
+  }
+}

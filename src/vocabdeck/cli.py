@@ -236,6 +236,109 @@ def build_parser() -> argparse.ArgumentParser:
     import_reviews.add_argument("--name", required=True)
     import_reviews.add_argument("--input", required=True, type=Path)
 
+    validation_candidates = commands.add_parser(
+        "plan-validation-candidates",
+        help="Freeze curriculum targets and audit several occurrences per word",
+    )
+    _source_selector(validation_candidates)
+    validation_candidates.add_argument("--targets", type=int, default=200)
+    validation_candidates.add_argument(
+        "--candidates-per-target", type=int, default=5
+    )
+    validation_candidates.add_argument(
+        "--metric", choices=METRICS, default="curriculum"
+    )
+    validation_candidates.add_argument("--output", required=True, type=Path)
+
+    review_frontier = commands.add_parser(
+        "plan-review-frontier",
+        help="Plan only currently teachable occurrence reviews",
+    )
+    review_frontier.add_argument("--input", required=True, type=Path)
+    review_frontier.add_argument("--selection", type=Path)
+    review_frontier.add_argument("--contextual-reviews", type=Path)
+    review_frontier.add_argument("--recoverability-reviews", type=Path)
+    review_frontier.add_argument("--contextual-gloss-reviews", type=Path)
+    review_frontier.add_argument("--limit", type=int, default=40)
+    review_frontier.add_argument("--frontier-size", type=int, default=100)
+    review_frontier.add_argument("--zero-unknown-through", type=int, default=20)
+    review_frontier.add_argument("--one-unknown-through", type=int, default=200)
+    review_frontier.add_argument("--max-unknown-later", type=int, default=2)
+    review_frontier.add_argument("--output", required=True, type=Path)
+
+    local_review = commands.add_parser(
+        "review-calibration-local",
+        help="Review an audit JSON with a resumable local MLX language model",
+    )
+    local_review.add_argument("--input", required=True, type=Path)
+    local_review.add_argument("--output", required=True, type=Path)
+    local_review.add_argument(
+        "--model", default="mlx-community/Qwen3.5-9B-OptiQ-4bit"
+    )
+    local_review.add_argument("--batch-size", type=int, default=4)
+    local_review.add_argument("--max-tokens", type=int, default=48)
+    local_review.add_argument("--limit", type=int)
+    local_review.add_argument("--minimal-only", action="store_true")
+    local_review.add_argument(
+        "--max-per-target", type=int,
+        help="Review only the best N occurrence candidates for each fixed target",
+    )
+    local_review.add_argument(
+        "--deterministic-clean-only", action="store_true",
+        help="Review only cards that pass every deterministic production gate",
+    )
+    local_review.add_argument(
+        "--review-pass", choices=(
+            "contextual", "critic", "recoverability", "contextual_gloss",
+        ),
+        default="contextual",
+    )
+    local_review.add_argument(
+        "--thinking", action="store_true",
+        help="Enable the model's slower reasoning mode",
+    )
+
+    validate_reviewed = commands.add_parser(
+        "validate-reviewed-cards",
+        help="Apply deterministic, contextual, and recoverability gates",
+    )
+    validate_reviewed.add_argument("--input", required=True, type=Path)
+    validate_reviewed.add_argument(
+        "--contextual-reviews", required=True, type=Path
+    )
+    validate_reviewed.add_argument(
+        "--recoverability-reviews", required=True, type=Path
+    )
+    validate_reviewed.add_argument(
+        "--contextual-gloss-reviews", required=True, type=Path
+    )
+    validate_reviewed.add_argument("--output", required=True, type=Path)
+    validate_reviewed.add_argument("--minimal-only", action="store_true")
+
+    select_validated = commands.add_parser(
+        "select-validated-curriculum",
+        help="Choose one unanimously approved occurrence per fixed target",
+    )
+    select_validated.add_argument("--input", required=True, type=Path)
+    select_validated.add_argument("--validation", required=True, type=Path)
+    select_validated.add_argument("--output", required=True, type=Path)
+    select_validated.add_argument("--preview", type=Path)
+    select_validated.add_argument("--no-media", action="store_true")
+    select_validated.add_argument("--limit", type=int)
+    select_validated.add_argument(
+        "--frontier-size", type=int, default=100,
+        help="Maximum lexical-priority window considered at each teaching step",
+    )
+    select_validated.add_argument(
+        "--zero-unknown-through", type=int, default=20,
+    )
+    select_validated.add_argument(
+        "--one-unknown-through", type=int, default=200,
+    )
+    select_validated.add_argument(
+        "--max-unknown-later", type=int, default=2,
+    )
+
     coverage = commands.add_parser(
         "coverage", help="Report cumulative eligible vocabulary by episode"
     )
@@ -264,6 +367,141 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             episodes=args.episodes, english_track=args.english_track,
         )
         print(str(output))
+        return 0
+    if args.command == "review-calibration-local":
+        from .local_review import (
+            MLXBatchReviewer, load_review_cards, run_local_review,
+        )
+
+        cards = load_review_cards(args.input, minimal_only=args.minimal_only)
+        if args.deterministic_clean_only:
+            from .validation import DeterministicCardValidator
+
+            deterministic = DeterministicCardValidator()
+            cards = [
+                card for card in cards
+                if deterministic.validate(card).status == "accepted"
+            ]
+        if args.max_per_target is not None:
+            if args.max_per_target < 1:
+                raise ValueError("max per target must be positive")
+            counts = {}
+            limited = []
+            for card in cards:
+                target = int(
+                    card.get("curriculum_position")
+                    or card.get("audit_position")
+                )
+                count = counts.get(target, 0)
+                if count >= args.max_per_target:
+                    continue
+                counts[target] = count + 1
+                limited.append(card)
+            cards = limited
+        reviewer = MLXBatchReviewer(
+            args.model, max_tokens=args.max_tokens,
+            review_pass=args.review_pass,
+            thinking=args.thinking,
+        )
+        result = run_local_review(
+            cards, args.output, reviewer,
+            batch_size=args.batch_size, limit=args.limit,
+            review_pass=args.review_pass,
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "plan-review-frontier":
+        from .local_review import load_review_cards, load_review_records
+        from .validation import plan_review_frontier, write_validation_report
+
+        cards = load_review_cards(args.input)
+        selected_cards = []
+        if args.selection:
+            selection = json.loads(
+                args.selection.expanduser().resolve().read_text(encoding="utf-8")
+            )
+            selected_cards = list(selection.get("accepted", []))
+        reviews_by_pass = {}
+        for review_pass, path in (
+            ("contextual", args.contextual_reviews),
+            ("recoverability", args.recoverability_reviews),
+            ("contextual_gloss", args.contextual_gloss_reviews),
+        ):
+            if path and path.expanduser().resolve().exists():
+                reviews_by_pass[review_pass] = load_review_records(path)
+        plan = plan_review_frontier(
+            cards,
+            selected_cards=selected_cards,
+            reviews_by_pass=reviews_by_pass,
+            limit=args.limit,
+            frontier_size=args.frontier_size,
+            zero_unknown_through=args.zero_unknown_through,
+            one_unknown_through=args.one_unknown_through,
+            later_unknown_limit=args.max_unknown_later,
+        )
+        output = write_validation_report(plan, args.output)
+        print(json.dumps({
+            "output": str(output), **plan["summary"],
+        }, ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "validate-reviewed-cards":
+        from .local_review import load_review_cards, load_review_records
+        from .validation import (
+            DeterministicCardValidator, RecordedReviewValidator,
+            UnanimousCardValidator, validate_cards, write_validation_report,
+        )
+
+        cards = load_review_cards(args.input, minimal_only=args.minimal_only)
+        validator = UnanimousCardValidator([
+            DeterministicCardValidator(),
+            RecordedReviewValidator(
+                "contextual", load_review_records(args.contextual_reviews)
+            ),
+            RecordedReviewValidator(
+                "recoverability",
+                load_review_records(args.recoverability_reviews),
+            ),
+            RecordedReviewValidator(
+                "contextual_gloss",
+                load_review_records(args.contextual_gloss_reviews),
+            ),
+        ])
+        report = validate_cards(cards, validator)
+        output = write_validation_report(report, args.output)
+        print(json.dumps({
+            "output": str(output), **report["summary"],
+        }, ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "select-validated-curriculum":
+        from .local_review import load_review_cards
+        from .validation import (
+            select_validated_curriculum, write_validation_report,
+        )
+
+        cards = load_review_cards(args.input)
+        validation_report = json.loads(
+            args.validation.expanduser().resolve().read_text(encoding="utf-8")
+        )
+        selection = select_validated_curriculum(
+            cards, validation_report,
+            frontier_size=args.frontier_size,
+            zero_unknown_through=args.zero_unknown_through,
+            one_unknown_through=args.one_unknown_through,
+            later_unknown_limit=args.max_unknown_later,
+            limit=args.limit,
+        )
+        output = write_validation_report(selection, args.output)
+        preview = None
+        if args.preview:
+            preview = render_preview_html(
+                selection["accepted"], args.preview,
+                include_media=not args.no_media,
+            )
+        print(json.dumps({
+            "output": str(output),
+            "preview": None if preview is None else str(preview),
+            **selection["summary"],
+        }, ensure_ascii=False, indent=2))
         return 0
 
     db = _database(args.db)
@@ -311,14 +549,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         elif args.command == "queue":
             source_ids = _selected_source_ids(db, args)
             db.enrich_dictionary(source_ids)
-            rows = db.next_unseen_for_sources(source_ids, args.limit, args.metric)
+            rows = db.next_unseen_sense_cards_for_sources(
+                source_ids, args.limit, args.metric
+            )
             print(json.dumps(rows, ensure_ascii=False, indent=2))
         elif args.command == "compare-difficulty":
             source_ids = _selected_source_ids(db, args)
             db.enrich_dictionary(source_ids)
             comparison = {}
             for metric in METRICS:
-                rows = db.next_unseen_for_sources(source_ids, args.limit, metric)
+                rows = db.next_unseen_sense_cards_for_sources(
+                    source_ids, args.limit, metric
+                )
                 comparison[metric] = [
                     {
                         "word": row["lemma"], "reading": row["reading"],
@@ -338,7 +580,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         elif args.command == "export-preview":
             source_ids = _selected_source_ids(db, args)
             db.enrich_dictionary(source_ids)
-            rows = db.next_unseen_for_sources(source_ids, args.limit, args.metric)
+            rows = db.next_unseen_sense_cards_for_sources(
+                source_ids, args.limit, args.metric
+            )
             output = render_preview_html(rows, args.output, include_media=not args.no_media)
             print(str(output))
         elif args.command == "audit":
@@ -397,6 +641,42 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             }
             write_audit_json(selection_document, args.selection_output)
             print(json.dumps(selection_document, ensure_ascii=False, indent=2))
+        elif args.command == "plan-validation-candidates":
+            from .audit import audit_rows, write_audit_json
+
+            source_ids = _selected_source_ids(db, args)
+            db.enrich_dictionary(source_ids)
+            targets = db.sense_targets_for_sources(
+                source_ids, args.targets, args.metric,
+            )
+            candidates = db.occurrence_candidates_for_targets(
+                targets, source_ids,
+                candidates_per_target=args.candidates_per_target,
+            )
+            report = audit_rows(db, candidates, metric=args.metric)
+            report["curriculum"] = [
+                {
+                    "position": position,
+                    "lexeme_id": int(card["lexeme_id"]),
+                    "lexeme_key": str(card["lexeme_key"]),
+                    "sense_key": str(card["sense_key"]),
+                    "learning_unit_key": str(card["learning_unit_key"]),
+                    "lemma": str(card["lemma"]),
+                    "reading": str(card["reading"]),
+                    "part_of_speech": str(card["part_of_speech"]),
+                    "difficulty_score": float(card["difficulty_score"]),
+                }
+                for position, card in enumerate(targets, start=1)
+            ]
+            report["summary"].update({
+                "curriculum_targets": len(targets),
+                "occurrence_candidates": len(candidates),
+                "candidates_per_target": int(args.candidates_per_target),
+            })
+            output = write_audit_json(report, args.output)
+            print(json.dumps({
+                "output": str(output), **report["summary"],
+            }, ensure_ascii=False, indent=2))
         elif args.command == "plan-calibration":
             source_ids = _selected_source_ids(db, args)
             dictionary = db.enrich_dictionary(source_ids)

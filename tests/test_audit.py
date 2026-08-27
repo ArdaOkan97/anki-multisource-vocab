@@ -201,6 +201,7 @@ class AuditTest(unittest.TestCase):
             "translation_available": "passed",
             "translation_alignment": "flagged",
             "definition_available": "passed",
+            "contextual_interpretation": "not_checked",
             "gloss_support": "flagged",
             "context_difficulty": "flagged",
             "contextual_reading": "passed",
@@ -215,6 +216,7 @@ class AuditTest(unittest.TestCase):
             "translation_available": "flagged",
             "translation_alignment": "not_checked",
             "definition_available": "flagged",
+            "contextual_interpretation": "not_checked",
             "gloss_support": "not_checked",
             "context_difficulty": "passed",
             "contextual_reading": "passed",
@@ -242,6 +244,105 @@ class AuditTest(unittest.TestCase):
         self.assertIn("Excluded candidates", document)
         self.assertIn("Not eligible for Anki", document)
         self.assertIn("UniDic ネコ · Sudachi ネコ · OpenJTalk ネコ", document)
+
+    def test_rejects_occurrence_pos_that_differs_from_global_card(self):
+        class ContextualDatabase(FakeDatabase):
+            def next_unseen_for_sources(self, source_ids, limit, metric):
+                return [{
+                    "sentence_id": 13,
+                    "lexeme_id": 7,
+                    "lexeme_key": "あれ|アレ",
+                    "lemma": "あれ",
+                    "reading": "アレ",
+                    "part_of_speech": "代名詞",
+                    "global_part_of_speech": "代名詞",
+                    "contextual_part_of_speech": "感動詞",
+                    "contextual_dictionary_status": "matched",
+                    "gloss": "that; that thing",
+                    "japanese": "あれ？",
+                    "english": "What?",
+                    "difficulty_score": 20.0,
+                    "target_surface": "あれ",
+                    "target_start": 0,
+                    "target_end": 2,
+                    "target_lexical_start": 0,
+                    "target_lexical_end": 2,
+                    "example_progression": {},
+                }]
+
+            def expression_analyses_for_sentence(self, sentence_id):
+                return []
+
+            def excluded_candidates(self, source_ids, limit=100):
+                return []
+
+        class StrongEmbedder:
+            model_name = "strong"
+
+            def similarity(self, query, passage):
+                return 0.90
+
+        report = audit_queue(
+            ContextualDatabase(), [1], limit=1,
+            embedder=StrongEmbedder(), reading_validator=FakeReadingValidator(),
+        )
+        card = report["cards"][0]
+        self.assertIn(
+            "contextual_pos_mismatch",
+            {finding["code"] for finding in card["audit_findings"]},
+        )
+        criterion = next(
+            item for item in card["audit_criteria"]
+            if item["code"] == "contextual_interpretation"
+        )
+        self.assertEqual(criterion["status"], "flagged")
+
+    def test_short_standalone_target_uses_stricter_gloss_threshold(self):
+        class ContextualDatabase(FakeDatabase):
+            def next_unseen_for_sources(self, source_ids, limit, metric):
+                return [{
+                    "sentence_id": 14,
+                    "lexeme_id": 8,
+                    "lexeme_key": "何|ナニ",
+                    "lemma": "何",
+                    "reading": "ナニ",
+                    "part_of_speech": "代名詞",
+                    "global_part_of_speech": "代名詞",
+                    "contextual_part_of_speech": "代名詞",
+                    "contextual_dictionary_status": "matched",
+                    "gloss": "what",
+                    "japanese": "何？",
+                    "english": "What?",
+                    "difficulty_score": 20.0,
+                    "target_surface": "何",
+                    "target_start": 0,
+                    "target_end": 1,
+                    "target_lexical_start": 0,
+                    "target_lexical_end": 1,
+                    "example_progression": {},
+                }]
+
+            def expression_analyses_for_sentence(self, sentence_id):
+                return []
+
+            def excluded_candidates(self, source_ids, limit=100):
+                return []
+
+        class BoundaryEmbedder:
+            model_name = "boundary"
+
+            def similarity(self, query, passage):
+                return 0.80 if passage.startswith("The target") else 0.90
+
+        report = audit_queue(
+            ContextualDatabase(), [1], limit=1,
+            embedder=BoundaryEmbedder(), reading_validator=FakeReadingValidator(),
+        )
+        finding = next(
+            item for item in report["cards"][0]["audit_findings"]
+            if item["code"] == "weak_gloss_support"
+        )
+        self.assertEqual(finding["threshold"], 0.82)
 
     def test_flags_only_evidence_backed_reading_disagreement(self):
         report = audit_queue(
