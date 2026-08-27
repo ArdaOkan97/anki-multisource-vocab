@@ -1,0 +1,12 @@
+{
+  "name": "anki-multisource-vocab-project-tools",
+  "private": true,
+  "scripts": {
+    "backlog": "backlog",
+    "backlog:board": "backlog board",
+    "backlog:browser": "backlog browser"
+  },
+  "devDependencies": {
+    "backlog.md": "1.50.1"
+  }
+}

@@ -396,6 +396,15 @@ compact 200-card snapshot is checked by the test suite and is the reference for
 future generation A/B experiments. It is intentionally described as a hybrid
 baseline because three local Qwen review passes participated in acceptance.
 
+## Project backlog
+
+Planned and completed work is tracked with
+[Backlog.md](https://github.com/MrLesk/Backlog.md). Review the exported
+[Kanban board](backlog/BOARD.md), or install the pinned project tool with
+`npm install` and run `npm run backlog:board`. Task specifications and acceptance
+criteria live under [`backlog/tasks`](backlog/tasks); update them through the
+Backlog.md CLI rather than editing task files directly.
+
 ## Roadmap
 
 1. Add explicit grammar-complexity signals and optional JLPT/graded vocabulary priors.
