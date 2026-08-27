@@ -15,9 +15,11 @@ class BaselineSnapshotTest(unittest.TestCase):
     def test_reviewed_hybrid_baseline_is_immutable_and_self_consistent(self):
         config_path = BASELINE / "config.json"
         cards_path = BASELINE / "expected-cards.json"
+        review_path = BASELINE / "human-review.json"
         config = json.loads(config_path.read_text(encoding="utf-8"))
         raw_cards = cards_path.read_bytes()
         cards = json.loads(raw_cards)
+        review = json.loads(review_path.read_text(encoding="utf-8"))
 
         self.assertEqual(
             hashlib.sha256(raw_cards).hexdigest(),
@@ -50,6 +52,15 @@ class BaselineSnapshotTest(unittest.TestCase):
         self.assertTrue(config["disabled_features"]["hosted_llm"])
         self.assertFalse(
             config["disabled_features"].get("local_model_validation", False)
+        )
+        self.assertEqual(review["reviewed_cards"], 100)
+        self.assertEqual(
+            len(review["flagged_cards"]),
+            config["human_review"]["flagged_cards"],
+        )
+        self.assertEqual(
+            [item["position"] for item in review["flagged_cards"]],
+            [40, 56, 68, 69, 78],
         )
 
 

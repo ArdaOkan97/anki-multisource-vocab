@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "baseline_id": "hxh-e01-e10-hybrid-qwen9b-200-v1",
+  "reviewed_range": {
+    "start": 1,
+    "end": 100
+  },
+  "reviewed_cards": 100,
+  "flagged_cards": [
+    {
+      "position": 40,
+      "verdict": "flag",
+      "categories": [
+        "near_duplicate_learning_unit"
+      ],
+      "user_note": "Second occurrence of 何 with なに reading.",
+      "evidence": {
+        "current": "何？ / なに / what?; huh?",
+        "earlier": "Card 7: 何!? / なに / what"
+      },
+      "diagnosis": "The cards have different exact JMdict sense indices but are not meaningfully distinct enough for this learner-facing curriculum.",
+      "planned_regression": "Near-synonymous sense clustering must suppress the later card without suppressing a genuinely different reading or meaning."
+    },
+    {
+      "position": 56,
+      "verdict": "flag",
+      "categories": [
+        "audio_quality",
+        "overlapping_speech"
+      ],
+      "user_note": "Audio quality is not good; backchannel speech may be present.",
+      "evidence": {
+        "sentence": "≪始まってるのかよ≫ ≪これが試験？≫",
+        "episode": 3,
+        "cue_index": 313
+      },
+      "diagnosis": "Text validation cannot detect competing or backchannel speech in the extracted clip.",
+      "planned_regression": "The audio-content gate must report target coverage and overlapping-speaker quality separately and reject or re-cut unusable clips."
+    },
+    {
+      "position": 68,
+      "verdict": "flag",
+      "categories": [
+        "subtitle_contamination",
+        "translation_quality"
+      ],
+      "user_note": "Wrong translation; a cheaper LLM filtering mechanism is needed.",
+      "evidence": {
+        "japanese": "残りの４人が２勝すれば こっちの勝ちなんだから。",
+        "english": "Sedokan 149-year sentence, serial bombings If we defeat two of the remaining four, then we win."
+      },
+      "diagnosis": "The aligned subtitle contains unrelated text before a relevant translation. Target recoverability passed, but whole-subtitle contamination was not gated.",
+      "planned_regression": "A constrained low-cost translation-quality classifier must reject contaminated or concatenated subtitles independently of target-sense recoverability."
+    },
+    {
+      "position": 69,
+      "verdict": "flag",
+      "categories": [
+        "unknown_context_under_count",
+        "compound_segmentation"
+      ],
+      "user_note": "Unclear whether 官 in 試験官 was learned before.",
+      "evidence": {
+        "sentence": "俺が本物の試験官だ！",
+        "learned_before": "試験 at card 41",
+        "not_learned_before": "官 and 試験官",
+        "reported_other_unknowns": 0
+      },
+      "diagnosis": "Confirmed: 官 was not taught. Context accounting retained 試験 but omitted the untaught 官 component, so the zero-unknown claim was incorrect.",
+      "planned_regression": "Compound/expression context accounting must count an untaught whole compound or every untaught lexical component; it may not silently drop 官."
+    },
+    {
+      "position": 78,
+      "verdict": "flag",
+      "categories": [
+        "wrong_contextual_sense",
+        "semantic_duplicate"
+      ],
+      "user_note": "Might be a second occurrence of くれる.",
+      "evidence": {
+        "current": "さて １つ答えてくれ。 / to give; to let (one) have",
+        "earlier": "Card 58: 待ってくれよ～！ / to do for one; to take the trouble to do"
+      },
+      "diagnosis": "Confirmed: the surface lemma repeats, and 答えてくれ uses the request/benefactive construction rather than the selected ordinary give sense. It should not be a new learning unit.",
+      "planned_regression": "Contextual sense validation must map Vてくれ to the benefactive/request use and deduplicate it against the earlier learned sense."
+    }
+  ]
+}

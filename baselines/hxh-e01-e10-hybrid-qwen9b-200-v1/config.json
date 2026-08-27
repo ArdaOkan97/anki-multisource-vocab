@@ -99,7 +99,9 @@
   "human_review": {
     "reviewed_cards": 100,
     "total_cards": 200,
-    "status": "partial",
-    "flagged_card_list": "pending"
+    "reviewed_range": "1-100",
+    "status": "first_half_complete",
+    "flagged_cards": 5,
+    "flagged_card_list": "human-review.json"
   }
 }

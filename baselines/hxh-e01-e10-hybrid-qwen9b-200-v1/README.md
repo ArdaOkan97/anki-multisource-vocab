@@ -3,7 +3,9 @@
 This directory freezes the exact hybrid configuration and 200-card output that
 was reviewed in August 2026. It is a regression baseline, not a gold dataset.
 At the time it was frozen, 100 of the 200 rendered cards had been reviewed by
-the user and the complete flagged-card list was still pending.
+the user. The findings from that first half are preserved in
+[`human-review.json`](human-review.json); the remaining 100 cards have not yet
+been reviewed.
 
 The baseline is **not deterministic-only**. Candidate construction, dictionary
 resolution, difficulty ranking, and curriculum scheduling are deterministic.
