@@ -94,9 +94,28 @@ The initial regression fixture is `誰だ お前。`: the source cue ends at
 the current clip's 200 ms tail. The narrow clip must fail and an expanded clip
 containing `お前` must pass.
 
+A second regression fixture is `次は私だ！`. The occurrence is pronounced
+`つぎはわたしだ`, so the target `私` must be stored and displayed as `わたし`.
+If the candidate initially selects the alternate dictionary reading `わたくし`,
+the gate should repair it to `わたし` when audio alignment uniquely and
+confidently supports that reading. This fixture checks that the gate resolves the
+selected occurrence-specific reading, not merely the presence of the written
+target or any reading listed by the dictionary.
+
+Reading repair is allowed only when the audio-supported alternative belongs to
+the same written form and compatible dictionary entry/sense. After repair, the
+pipeline must recompute the lexeme/learning-unit identity and card fingerprint,
+then rerun all reading-dependent validation and deduplication checks. The repair,
+original reading, selected reading, evidence score, and model/tool versions must
+be stored in the audit metadata. If several readings remain plausible or the
+audio evidence is weak, do not guess: try another occurrence or omit the card.
+
 Acceptance criteria:
 
 - no production card is accepted when its target reading is absent or clipped;
+- when the audio uniquely supports a compatible alternate dictionary reading,
+  the card is repaired, re-fingerprinted, and revalidated before acceptance;
+- no production card is accepted when a reading mismatch remains unresolved;
 - target presence, sentence alignment, and clean audio boundaries are reported
   as separate criteria;
 - uncertain ASR/alignment results fail closed;
@@ -129,6 +148,75 @@ Initial regression cases:
 - the same reaction sense encountered in another show must remain deduplicated.
 
 These cases are covered by automated database and Anki-state regressions.
+
+## TODO: fast constrained local sense verification
+
+Investigate replacing the expensive open-ended review passes with a small local
+model answering constrained, dictionary-grounded questions. This is a
+performance project, not permission to weaken the fail-closed acceptance policy.
+
+The first classifier should receive the Japanese sentence, the exact target span,
+and the JMdict senses that survive deterministic spelling, reading, expression,
+and coarse part-of-speech checks. It answers only one constrained label:
+
+```text
+What does <target> mean in this sentence?
+
+<Japanese sentence>
+
+A. <candidate sense 1>
+B. <candidate sense 2>
+C. <candidate sense 3>
+D. None of these / ambiguous
+```
+
+Use the actual number of surviving senses rather than inventing distractors. The
+final choice must always be `None of these / ambiguous`. A `None` result, invalid
+output, low score margin, or disagreement must reject that occurrence so the
+generator can try another sentence. Constrained decoding should permit only the
+listed labels.
+
+Do not ask this one question to prove every property of a card. Use a cheap
+cascade:
+
+1. Deterministic token-boundary, reading, part-of-speech, expression, duplicate,
+   curriculum, and dictionary checks reject impossible candidates without an
+   LLM.
+2. The small model selects the contextual dictionary sense from the Japanese
+   sentence. Shuffle the options and ask twice; map labels back to stable sense
+   IDs and require the same answer both times.
+3. A second constrained question checks the subtitle independently: given the
+   chosen sense and English subtitle, answer `expressed`, `not expressed`, or
+   `ambiguous`. Only `expressed` passes.
+4. The learner-facing gloss must be the selected dictionary sense or a
+   deterministic approved rendering of it. Do not let the model freely write a
+   definition.
+5. During evaluation, send disagreements and borderline cases to the current 9B
+   reviewer as a teacher. In self-service production, omit unresolved cards
+   instead of requiring that slow fallback.
+
+Calibrate candidate models on the existing reviewed Hunter x Hunter occurrences,
+then hold out whole episodes and at least one different series. Optimize for
+accepted-card precision and false-accept rate, not overall accuracy: abstaining
+often is acceptable, approving a wrong card is not. Report throughput, peak
+memory, acceptance coverage, false accepts, and disagreement with the 9B teacher.
+Do not choose thresholds until this held-out evaluation exists.
+
+Initial experiments should compare a few compact Japanese-capable models (roughly
+1.5B–4B parameters) under the same constrained prompt and quantization. A smaller
+model is adopted only if its accepted subset meets the precision target. Cache
+results by model revision, prompt version, option order, and card fingerprint so
+deck regeneration does not repeat inference.
+
+Acceptance criteria:
+
+- no candidate sense is invented outside the deterministic dictionary choices;
+- option-order shuffling produces the same stable sense identity;
+- `None`, ambiguity, disagreement, and low margin fail closed;
+- subtitle support remains independent from Japanese sense selection;
+- held-out episodes and a second show meet the configured false-accept target;
+- the fast path materially improves cards reviewed per second on Apple Silicon;
+- every decision remains reproducible and auditable without a hosted service.
 
 ## Later PR: optional card breakdown colors
 

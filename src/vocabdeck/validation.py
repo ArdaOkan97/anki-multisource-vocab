@@ -396,7 +396,14 @@ def plan_review_frontier(
                     for review_pass, validator in validators.items()
                 }
                 if any(
-                    result.status == "rejected"
+                    result.status == "rejected" or (
+                        result.status == "abstained"
+                        and not all(
+                            reason.startswith("missing_")
+                            and reason.endswith("_review")
+                            for reason in result.reason_codes
+                        )
+                    )
                     for result in review_results.values()
                 ):
                     continue

@@ -136,6 +136,27 @@ class ValidationTest(unittest.TestCase):
             ["contextual", "recoverability", "contextual_gloss"],
         )
 
+    def test_review_frontier_does_not_requeue_recorded_uncertainty(self):
+        card = audited_card()
+        card.update({
+            "audit_position": 1, "curriculum_position": 1,
+            "candidate_position": 1, "sentence_id": 10,
+            "lexeme_id": 10, "difficulty_score": 10.0,
+            "context_lexeme_ids": [10],
+            "initial_known_context_lexeme_ids": [],
+            "initial_unknown_context_lexeme_ids": [],
+        })
+        uncertain = review(
+            card, "contextual", verdict="uncertain",
+            reason="insufficient_context",
+        )
+
+        plan = plan_review_frontier(
+            [card], reviews_by_pass={"contextual": [uncertain]}
+        )
+
+        self.assertEqual(plan["summary"]["planned_reviews"], 0)
+
     def test_deterministic_gate_fails_closed(self):
         validator = DeterministicCardValidator()
         self.assertEqual(validator.validate(audited_card()).status, "accepted")

@@ -386,6 +386,16 @@ review history.
 - **Never delete or move reviewed cards during deduplication.** A reviewed card stays in its original deck. An unreviewed prefetched card may move when its source changes; other queues skip the learned meaning.
 - **Batch lazily.** Creating thousands of duplicate suspended notes up front makes reconciliation fragile and pollutes the collection.
 
+## Frozen regression baseline
+
+The reviewed Hunter x Hunter episodes 1–10 hybrid generation is frozen under
+[`baselines/hxh-e01-e10-hybrid-qwen9b-200-v1`](baselines/hxh-e01-e10-hybrid-qwen9b-200-v1).
+Its manifest records every deterministic gate, curriculum setting, local model
+revision, prompt version, dependency lock hash, and source-artifact hash. The
+compact 200-card snapshot is checked by the test suite and is the reference for
+future generation A/B experiments. It is intentionally described as a hybrid
+baseline because three local Qwen review passes participated in acceptance.
+
 ## Roadmap
 
 1. Add explicit grammar-complexity signals and optional JLPT/graded vocabulary priors.
