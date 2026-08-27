@@ -1,10 +1,10 @@
 # Kanban Board Export (powered by Backlog.md)
-Generated on: 2026-08-27 11:41:35
+Generated on: 2026-08-27 11:48:32
 Project: Anki Multisource Vocabulary
 
 | To Do | In Progress | Done |
 | --- | --- | --- |
-| **VOCAB-3** - Prototype optional answer-side sentence breakdown colors | **VOCAB-1** - Finalize and merge the frozen hybrid baseline PR [@codex] |  |
+| **VOCAB-3** - Prototype optional answer-side sentence breakdown colors |  | **VOCAB-1** - Finalize and merge the frozen hybrid baseline PR [@codex] |
 | **VOCAB-4** - Build the grammar-aware companion app MVP |  |  |
 | **VOCAB-5** - Scale validated curriculum generation across the full series |  |  |
 | **VOCAB-6** - Add graded vocabulary and grammar difficulty priors |  |  |

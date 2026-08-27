@@ -1,11 +1,11 @@
 ---
 id: VOCAB-1
 title: Finalize and merge the frozen hybrid baseline PR
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-08-27 11:21'
-updated_date: '2026-08-27 11:43'
+updated_date: '2026-08-27 11:48'
 labels: []
 dependencies: []
 references:
@@ -25,10 +25,10 @@ Finish PR #8 without changing the frozen 200-card output. The PR establishes the
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 PR #8 contains the pinned generation config and immutable 200-card snapshot
-- [ ] #2 The five findings from cards 40, 56, 68, 69, and 78 are preserved as structured review data
-- [ ] #3 The full test suite passes on the final PR head
-- [ ] #4 The PR is merged without rewriting the frozen expected-card snapshot
+- [x] #1 PR #8 contains the pinned generation config and immutable 200-card snapshot
+- [x] #2 The five findings from cards 40, 56, 68, 69, and 78 are preserved as structured review data
+- [x] #3 The full test suite passes on the final PR head
+- [x] #4 The PR is merged without rewriting the frozen expected-card snapshot
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -43,4 +43,12 @@ Finish PR #8 without changing the frozen 200-card output. The PR establishes the
 
 <!-- SECTION:NOTES:BEGIN -->
 Initialized Backlog.md 1.50.1 with a pinned project dependency, exported board, 16 task specifications, and AGENTS.md workflow guidance. Verified the frozen expected-card SHA-256 remained unchanged and all 127 tests passed.
+
+PR #8 merged as 817fdcbe7a794b49a01d993b1891f384154cbd64 at 2026-08-27T11:47:29Z. Post-merge verification: expected-card SHA-256 839c88e6e31404cef0a4575f932f192d6509b278c7b9b938da69c58c378492aa and 127 tests passed.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Merged PR #8 with the pinned hybrid baseline, immutable 200-card snapshot, structured first-100-card review findings, and Backlog.md roadmap. Verified the snapshot hash was unchanged and all 127 tests passed on master.
+<!-- SECTION:FINAL_SUMMARY:END -->
