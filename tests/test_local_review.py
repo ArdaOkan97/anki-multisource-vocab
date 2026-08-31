@@ -159,6 +159,7 @@ class LocalReviewTest(unittest.TestCase):
         self.assertTrue(args.deterministic_clean_only)
         self.assertEqual(args.max_per_target, 2)
         self.assertTrue(args.thinking)
+        self.assertEqual(args.memory_limit_gb, 4.0)
 
         validation = build_parser().parse_args([
             "validate-reviewed-cards",
