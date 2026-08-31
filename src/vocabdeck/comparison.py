@@ -46,9 +46,11 @@ def load_card_artifact(path: Path) -> list[dict[str, Any]]:
         cards = document
     elif isinstance(document, dict) and isinstance(document.get("accepted"), list):
         cards = document["accepted"]
+    elif isinstance(document, dict) and isinstance(document.get("cards"), list):
+        cards = document["cards"]
     else:
         raise ValueError(
-            f"{path} must contain a card array or an object with an accepted array"
+            f"{path} must contain a card array or an object with a cards/accepted array"
         )
     if not all(isinstance(card, dict) for card in cards):
         raise ValueError(f"{path} contains a non-object card")

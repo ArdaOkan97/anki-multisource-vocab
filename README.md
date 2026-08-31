@@ -225,38 +225,54 @@ uv run vocabdeck --db ".vocabdeck/hxh-full.sqlite3" \
   --series "Hunter x Hunter" --season 1 --episodes 1-10 \
   --targets 200 --candidates-per-target 5 \
   --output ".vocabdeck/audits/hxh-curriculum-candidates.json"
+uv sync --extra audio-review
+HF_HOME=".vocabdeck/huggingface" uv run vocabdeck review-audio-cards \
+  --input ".vocabdeck/audits/hxh-curriculum-candidates.json" \
+  --output ".vocabdeck/audits/hxh-audio-candidates.json" \
+  --preview ".vocabdeck/previews/hxh-audio-candidates.html"
 uv sync --extra local-review
 HF_HOME=".vocabdeck/huggingface" uv run vocabdeck \
   review-calibration-local \
-  --input ".vocabdeck/audits/hxh-curriculum-candidates.json" \
+  --input ".vocabdeck/audits/hxh-audio-candidates.json" \
   --output ".vocabdeck/audits/hxh-contextual-reviews.jsonl" \
   --review-pass contextual --deterministic-clean-only \
   --max-per-target 2 --batch-size 4
 HF_HOME=".vocabdeck/huggingface" uv run vocabdeck \
   review-calibration-local \
-  --input ".vocabdeck/audits/hxh-curriculum-candidates.json" \
+  --input ".vocabdeck/audits/hxh-audio-candidates.json" \
   --output ".vocabdeck/audits/hxh-recoverability-reviews.jsonl" \
   --review-pass recoverability --deterministic-clean-only \
   --max-per-target 2 --batch-size 4
 HF_HOME=".vocabdeck/huggingface" uv run vocabdeck \
   review-calibration-local \
-  --input ".vocabdeck/audits/hxh-curriculum-candidates.json" \
+  --input ".vocabdeck/audits/hxh-audio-candidates.json" \
   --output ".vocabdeck/audits/hxh-contextual-gloss-reviews.jsonl" \
   --review-pass contextual_gloss --deterministic-clean-only \
   --max-per-target 2 --batch-size 4
 uv run vocabdeck validate-reviewed-cards \
-  --input ".vocabdeck/audits/hxh-curriculum-candidates.json" \
+  --input ".vocabdeck/audits/hxh-audio-candidates.json" \
   --contextual-reviews ".vocabdeck/audits/hxh-contextual-reviews.jsonl" \
   --recoverability-reviews ".vocabdeck/audits/hxh-recoverability-reviews.jsonl" \
   --contextual-gloss-reviews ".vocabdeck/audits/hxh-contextual-gloss-reviews.jsonl" \
   --output ".vocabdeck/audits/hxh-validated-cards.json"
 uv run vocabdeck select-validated-curriculum \
-  --input ".vocabdeck/audits/hxh-curriculum-candidates.json" \
+  --input ".vocabdeck/audits/hxh-audio-candidates.json" \
   --validation ".vocabdeck/audits/hxh-validated-cards.json" \
   --limit 20 \
   --output ".vocabdeck/audits/hxh-curriculum-selection.json" \
   --preview ".vocabdeck/previews/hxh-curriculum.html"
 ```
+
+The audio stage uses two pinned local models: MLX Whisper supplies high-recall
+Japanese target/timestamp evidence, while a hiragana/phoneme CTC model resolves
+pronunciation when Sudachi and OpenJTalk do not unanimously support the current
+reading. Neither model is prompted with the expected sentence. A narrow cue that
+cannot prove the target gets one bounded wider retry; unresolved, ambiguous, or
+marked multi-speaker audio is rejected so the curriculum can choose another occurrence.
+Each decision is cached with the exact model revision, transcript, per-character
+timings, alignment, media bounds, and reason. If audio uniquely supports another
+compatible JMdict reading, the card identity is repaired and prior contextual
+reviews are invalidated; rerun those reviews before final curriculum acceptance.
 
 For efficient iterative review, plan only occurrences that satisfy the current
 teaching position's dependency gate. Pass the latest selection and append each

@@ -71,7 +71,7 @@ accessible contrast themes should communicate the same distinctions for
 color-blind users and monochrome displays. Users should be able to disable or
 customize the palette.
 
-## Immediate next PR: audio-content gate
+## Current PR: audio-content gate
 
 Before adding presentation features, make sentence audio a fail-closed part of
 card validation. The gate should run only after a card passes the text checks:
@@ -91,8 +91,9 @@ card validation. The gate should run only after a card passes the text checks:
 
 The initial regression fixture is `誰だ お前。`: the source cue ends at
 440.013 seconds, while the second spoken beat begins around 440.3 seconds, after
-the current clip's 200 ms tail. The narrow clip must fail and an expanded clip
-containing `お前` must pass.
+the current clip's 200 ms tail. The narrow clip must fail and trigger the bounded
+expanded retry. If the pronunciation model still cannot prove `お前`, the card
+must remain rejected and the curriculum must choose another occurrence.
 
 A second regression fixture is `次は私だ！`. The occurrence is pronounced
 `つぎはわたしだ`, so the target `私` must be stored and displayed as `わたし`.

@@ -183,7 +183,10 @@ def load_review_cards(
     input_path: Path, *, minimal_only: bool = False
 ) -> List[Dict[str, Any]]:
     document = json.loads(input_path.expanduser().resolve().read_text(encoding="utf-8"))
-    cards = [dict(card) for card in document.get("cards", [])]
+    source = document.get("cards")
+    if source is None:
+        source = document.get("accepted", [])
+    cards = [dict(card) for card in source]
     if minimal_only:
         cards = [
             card for card in cards

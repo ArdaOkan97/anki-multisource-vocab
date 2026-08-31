@@ -352,6 +352,25 @@ def build_parser() -> argparse.ArgumentParser:
     compare_baseline.add_argument("--json-output", required=True, type=Path)
     compare_baseline.add_argument("--html-output", required=True, type=Path)
 
+    audio_review = commands.add_parser(
+        "review-audio-cards",
+        help="Fail-closed kana/audio validation before curriculum acceptance",
+    )
+    audio_review.add_argument("--input", required=True, type=Path)
+    audio_review.add_argument("--output", required=True, type=Path)
+    audio_review.add_argument("--preview", type=Path)
+    audio_review.add_argument("--no-media", action="store_true")
+    audio_review.add_argument(
+        "--cache-directory", type=Path,
+        default=Path(".vocabdeck/audio-review"),
+    )
+    audio_review.add_argument(
+        "--positions", type=_episode_selection,
+        help="optional 1-based artifact positions, e.g. 14,18,56",
+    )
+    audio_review.add_argument("--limit", type=int)
+    audio_review.add_argument("--device", choices=("mps", "cpu"))
+
     coverage = commands.add_parser(
         "coverage", help="Report cumulative eligible vocabulary by episode"
     )
@@ -550,6 +569,53 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "curriculum_passed": report["checks"][
                 "curriculum_unknown_words"
             ]["passed"],
+        }, ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "review-audio-cards":
+        from .audio_validation import (
+            AudioContentGate, HiraganaCTCTranscriber,
+            MLXWhisperTranscriber, review_audio_cards,
+        )
+        from .comparison import load_card_artifact
+
+        cards = load_card_artifact(args.input)
+        if args.positions:
+            selected = set(args.positions)
+            cards = [
+                card for position, card in enumerate(cards, start=1)
+                if position in selected
+            ]
+        if args.limit is not None:
+            if args.limit < 1:
+                raise ValueError("limit must be positive")
+            cards = cards[:args.limit]
+        gate = AudioContentGate(
+            HiraganaCTCTranscriber(device=args.device),
+            orthographic_transcriber=MLXWhisperTranscriber(),
+        )
+        report = review_audio_cards(
+            cards, gate, args.cache_directory.expanduser().resolve(),
+            progress=lambda index, total, result: print(
+                f"audio review {index}/{total}: {result['status']} "
+                f"({result['reason']})", file=sys.stderr, flush=True,
+            ),
+        )
+        output = args.output.expanduser().resolve()
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
+            json.dumps(report, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        preview = None
+        if args.preview:
+            preview = render_preview_html(
+                report["accepted"], args.preview,
+                include_media=not args.no_media,
+            )
+        print(json.dumps({
+            "output": str(output),
+            "preview": None if preview is None else str(preview),
+            **report["summary"],
         }, ensure_ascii=False, indent=2))
         return 0
 

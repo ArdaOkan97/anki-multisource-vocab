@@ -100,10 +100,13 @@ class ComparisonTest(unittest.TestCase):
             root = Path(directory)
             array_path = root / "array.json"
             selection_path = root / "selection.json"
+            audit_path = root / "audit.json"
             array_path.write_text(json.dumps(cards), encoding="utf-8")
             selection_path.write_text(json.dumps({"accepted": cards}), encoding="utf-8")
+            audit_path.write_text(json.dumps({"cards": cards}), encoding="utf-8")
             self.assertEqual(load_card_artifact(array_path), cards)
             self.assertEqual(load_card_artifact(selection_path), cards)
+            self.assertEqual(load_card_artifact(audit_path), cards)
             json_path = write_comparison_json(report, root / "report.json")
             html_path = render_comparison_html(report, root / "report.html")
             self.assertEqual(json.loads(json_path.read_text())["schema_version"], 1)
