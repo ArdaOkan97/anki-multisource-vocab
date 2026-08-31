@@ -23,6 +23,9 @@ _ASS_OVERRIDE = re.compile(r"\{\\[^}]+\}")
 _SPEAKER = re.compile(r"^(?:[（(][^）)]{1,24}[）)]\s*)+")
 _ENGLISH_TERMINAL = re.compile(r'[.!?]["”’)]*$')
 _CONTINUATION_ENDINGS = (",", ";", ":", "—", "-", "…")
+_MID_SENTENCE_RESTART = re.compile(
+    r"(?<![.!?;:—-])\s+(If|When|Why|What|Who|How|Then|Meanwhile|However|Therefore|Regardless)\b"
+)
 
 
 def _millis(hours: str, minutes: str, seconds: str, millis: str) -> int:
@@ -115,6 +118,33 @@ def _translation_groups(candidates: List[Cue]) -> List[List[Cue]]:
     return groups
 
 
+def translation_scope_issues(text: str) -> List[str]:
+    """Return high-precision structural signs of concatenated subtitle text."""
+    value = " ".join(str(text or "").split())
+    if not value:
+        return []
+    return ["mid_sentence_restart"] if _MID_SENTENCE_RESTART.search(value) else []
+
+
+def _substantial_group_overlap(left: dict, right: dict) -> bool:
+    left_start = left["group"][0].start_ms
+    left_end = left["group"][-1].end_ms
+    right_start = right["group"][0].start_ms
+    right_end = right["group"][-1].end_ms
+    overlap = max(0, min(left_end, right_end) - max(left_start, right_start))
+    shorter = max(1, min(left_end - left_start, right_end - right_start))
+    return overlap / shorter >= 0.35
+
+
+def _timing_quality(item: dict) -> tuple:
+    return (
+        item["group_coverage"],
+        item["japanese_coverage"],
+        item["overlap"],
+        -item["midpoint_distance"],
+    )
+
+
 def align_translation(cue: Cue, translations: Iterable[Cue]) -> Optional[str]:
     candidates = sorted(translations, key=lambda item: (item.start_ms, item.end_ms))
     japanese_duration = max(1, cue.end_ms - cue.start_ms)
@@ -153,6 +183,32 @@ def align_translation(cue: Cue, translations: Iterable[Cue]) -> Optional[str]:
         selected = [
             max(scored, key=lambda item: (item["overlap"], -item["midpoint_distance"]))
         ]
+
+    # Mutually overlapping English groups are usually alternative subtitle
+    # layers (dialogue plus signs/credits), not consecutive translations. Keep
+    # the strongest timing match from each conflict set. Sequential groups are
+    # still concatenated for Japanese cues spanning multiple English sentences.
+    resolved = []
+    for item in sorted(
+        selected, key=lambda value: value["group"][0].start_ms
+    ):
+        conflicts = [
+            index for index, existing in enumerate(resolved)
+            if _substantial_group_overlap(existing, item)
+        ]
+        if not conflicts:
+            resolved.append(item)
+            continue
+        contenders = [item] + [resolved[index] for index in conflicts]
+        winner = max(contenders, key=_timing_quality)
+        resolved = [
+            existing for index, existing in enumerate(resolved)
+            if index not in conflicts
+        ]
+        resolved.append(winner)
+    selected = sorted(
+        resolved, key=lambda value: value["group"][0].start_ms
+    )
 
     texts = []
     for item in selected:

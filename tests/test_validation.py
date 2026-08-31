@@ -16,6 +16,7 @@ def audited_card(part_of_speech="動詞"):
         {"code": code, "status": "passed"}
         for code in (
             "translation_available", "translation_alignment",
+            "translation_scope",
             "definition_available", "contextual_interpretation",
             "gloss_support", "context_difficulty",
             "expression_interpretation", "unique_example",
@@ -207,6 +208,15 @@ class ValidationTest(unittest.TestCase):
         self.assertEqual(result.status, "rejected")
         self.assertIn("excess_translation_scope", result.reason_codes)
 
+        contaminated = audited_card()
+        contaminated["english"] = (
+            "Sedokan 149-year sentence, serial bombings "
+            "If we defeat two of the remaining four, then we win."
+        )
+        result = validator.validate(contaminated)
+        self.assertEqual(result.status, "rejected")
+        self.assertIn("subtitle_contamination", result.reason_codes)
+
     def test_unanimous_pipeline_requires_context_and_recoverability(self):
         card = audited_card()
         contextual = review(card, "contextual")
@@ -231,6 +241,35 @@ class ValidationTest(unittest.TestCase):
         decision = pipeline.validate(card)
         self.assertEqual(decision["status"], "rejected")
         self.assertEqual(decision["failed_stage"], "llm:recoverability")
+
+    def test_subtitle_contamination_fails_before_positive_model_reviews(self):
+        card = audited_card()
+        card["english"] = (
+            "Sedokan 149-year sentence, serial bombings "
+            "If we defeat two of the remaining four, then we win."
+        )
+        pipeline = UnanimousCardValidator([
+            DeterministicCardValidator(),
+            RecordedReviewValidator("contextual", [review(card, "contextual")]),
+            RecordedReviewValidator(
+                "recoverability", [review(card, "recoverability")]
+            ),
+            RecordedReviewValidator(
+                "contextual_gloss", [review(card, "contextual_gloss")]
+            ),
+        ])
+
+        decision = pipeline.validate(card)
+
+        self.assertEqual(decision["status"], "rejected")
+        self.assertEqual(decision["failed_stage"], "deterministic")
+        self.assertIn("subtitle_contamination", decision["reason_codes"])
+
+        clean = audited_card()
+        clean["english"] = "It was so moving that I couldn't help but cry."
+        self.assertEqual(
+            DeterministicCardValidator().validate(clean).status, "accepted"
+        )
 
     def test_missing_review_abstains_and_is_counted(self):
         card = audited_card()

@@ -9,11 +9,13 @@ from typing import Any, Dict, List, Mapping, Protocol, Sequence, Tuple
 
 from .audit import READING_CHECK_POS
 from .local_review import card_fingerprint
+from .subtitles import translation_scope_issues
 
 
 REQUIRED_DETERMINISTIC_CRITERIA = (
     "translation_available",
     "translation_alignment",
+    "translation_scope",
     "definition_available",
     "contextual_interpretation",
     "gloss_support",
@@ -105,6 +107,8 @@ class DeterministicCardValidator:
             12, content_words * 6
         ):
             structural_reasons.append("excess_translation_scope")
+        if translation_scope_issues(english):
+            structural_reasons.append("subtitle_contamination")
         if not gloss:
             structural_reasons.append("missing_definition")
         if not (
