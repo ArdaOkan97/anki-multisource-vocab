@@ -3,7 +3,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from vocabdeck.database import VocabularyDatabase
+from vocabdeck.database import (
+    VocabularyDatabase,
+    canonical_sense_key,
+    learning_unit_key,
+)
+from vocabdeck.dictionary import JMDictResolver
 from vocabdeck.anki import sync_source
 from vocabdeck.progression import example_score
 from vocabdeck.semantics import ExpressionDecision
@@ -36,6 +41,25 @@ class FixedExpressionScorer:
             component_description=" | ".join(component_glosses),
             model="test-embedder",
         )
+
+
+class LegacyCompoundTokenizer:
+    """Reproduce a database that silently omitted noun-like suffixes."""
+
+    def tokenize(self, text):
+        return [
+            LexemeToken("俺", "俺", "オレ", "代名詞", 0, 1),
+            LexemeToken("本物", "本物", "ホンモノ", "名詞", 2, 4),
+            LexemeToken("試験", "試験", "シケン", "名詞", 5, 7),
+        ]
+
+
+class OverlappingCompoundTokenizer:
+    def tokenize(self, text):
+        return [
+            LexemeToken("試験", "試験", "シケン", "名詞", 0, 2),
+            LexemeToken("試験官", "試験官", "シケンカン", "名詞", 0, 3),
+        ]
 
 
 class FakeAnkiConnect:
@@ -505,6 +529,82 @@ class GlobalDeduplicationTest(unittest.TestCase):
         self.assertEqual((analysis["decision"], analysis["model"]), (
             "expression", "test-embedder"
         ))
+        sentence_id = int(self.db.connection.execute(
+            "SELECT id FROM sentences WHERE source_id = ? AND cue_index = 1",
+            (source,),
+        ).fetchone()[0])
+        self.assertEqual(len(self.db.sentence_learning_unit_keys(sentence_id)), 1)
+
+    def test_context_accounting_recovers_omitted_compound_suffix(self):
+        source = self.db.add_source(
+            series="Legacy Compound", season=1, episode=1, title=None,
+            video_path=None, japanese_subtitle_path="legacy.srt",
+            english_subtitle_path=None,
+        )
+        japanese = "俺が本物の試験官だ！"
+        english = "I'm the real examiner."
+        self.db.ingest_cues(
+            source,
+            [Cue(1, 0, 1000, japanese)],
+            [Cue(1, 0, 1000, english)],
+            LegacyCompoundTokenizer(),
+        )
+        sentence_id = int(self.db.connection.execute(
+            "SELECT id FROM sentences WHERE source_id = ?", (source,)
+        ).fetchone()[0])
+        suffix = LexemeToken("官", "官", "カン", "接尾辞", 7, 8)
+        match = JMDictResolver().resolve(
+            suffix.lemma, suffix.reading, suffix.part_of_speech, english,
+            strict_pos=True, japanese_context=japanese,
+        )
+        expected = learning_unit_key(
+            suffix.key,
+            canonical_sense_key(
+                match.entry_id if match else None,
+                match.sense_index if match else None,
+                suffix.part_of_speech,
+                match.gloss if match else None,
+            ),
+        )
+
+        keys = self.db.sentence_learning_unit_keys(sentence_id)
+
+        self.assertIn(expected, keys)
+        self.assertEqual(len(keys), 4)
+
+    def test_whole_compound_supersedes_nested_component_span(self):
+        source = self.db.add_source(
+            series="Overlapping Compound", season=1, episode=1, title=None,
+            video_path=None, japanese_subtitle_path="overlap.srt",
+            english_subtitle_path=None,
+        )
+        self.db.ingest_cues(
+            source,
+            [Cue(1, 0, 1000, "試験官だ。")],
+            [Cue(1, 0, 1000, "He is an examiner.")],
+            OverlappingCompoundTokenizer(),
+        )
+        sentence_id = int(self.db.connection.execute(
+            "SELECT id FROM sentences WHERE source_id = ?", (source,)
+        ).fetchone()[0])
+        keys_by_lemma = {
+            str(row["lemma"]): learning_unit_key(
+                str(row["lexeme_key"]), str(row["sense_key"])
+            )
+            for row in self.db.connection.execute(
+                """SELECT l.lemma, l.lexeme_key, os.sense_key
+                   FROM occurrence_senses os
+                   JOIN lexemes l ON l.id = os.lexeme_id
+                   WHERE os.sentence_id = ?""",
+                (sentence_id,),
+            )
+        }
+
+        context = self.db.sentence_learning_unit_keys(sentence_id)
+
+        self.assertIn(keys_by_lemma["試験官"], context)
+        self.assertNotIn(keys_by_lemma["試験"], context)
+        self.assertEqual(len(context), 1)
 
     def test_rejected_expression_keeps_component_occurrences(self):
         source = self.db.add_source(

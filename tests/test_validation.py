@@ -416,6 +416,71 @@ class ValidationTest(unittest.TestCase):
             "harder_unknown_context", selection["deferred"][0]["blockers"]
         )
 
+    def test_compound_suffix_dependency_is_not_hidden_by_known_prefix(self):
+        card = audited_card()
+        target = "honmono::real"
+        examiner_prefix = "shiken::exam"
+        examiner_suffix = "kan::official"
+        speaker = "ore::i"
+        card.update({
+            "lexeme_id": 10,
+            "learning_unit_key": target,
+            "difficulty_score": 10.0,
+            "curriculum_position": 1,
+            "candidate_position": 1,
+            "sentence_id": 1134,
+            "japanese": "俺が本物の試験官だ！",
+            "target_surface": "本物",
+            "target_start": 2,
+            "target_end": 4,
+            "context_learning_unit_keys": [
+                speaker, target, examiner_prefix, examiner_suffix,
+            ],
+            "initial_known_context_learning_unit_keys": [
+                speaker, examiner_prefix,
+            ],
+        })
+        validation = {
+            "accepted": [{
+                "audit_position": 1,
+                "decision": {"status": "accepted"},
+            }],
+            "rejected": [{
+                "audit_position": 2,
+                "decision": {"status": "rejected"},
+            }],
+            "abstained": [],
+        }
+        suffix_target = audited_card()
+        suffix_target.update({
+            "audit_position": 2,
+            "lexeme_id": 20,
+            "learning_unit_key": examiner_suffix,
+            "difficulty_score": 9.0,
+            "curriculum_position": 2,
+            "candidate_position": 1,
+            "sentence_id": 2000,
+            "context_learning_unit_keys": [examiner_suffix],
+            "initial_known_context_learning_unit_keys": [],
+        })
+
+        selection = select_validated_curriculum(
+            [card, suffix_target], validation,
+            zero_unknown_through=0,
+        )
+
+        self.assertEqual(selection["summary"]["accepted"], 1)
+        self.assertEqual(
+            selection["accepted"][0]["scheduling"][
+                "unknown_context_learning_unit_keys"
+            ],
+            [examiner_suffix],
+        )
+        self.assertEqual(
+            selection["accepted"][0]["scheduling"]["unknown_context_words"],
+            1,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

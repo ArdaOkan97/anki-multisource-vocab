@@ -204,6 +204,7 @@ class VocabularyDatabase:
         self.connection = sqlite3.connect(str(path))
         self.connection.row_factory = sqlite3.Row
         self.connection.execute("PRAGMA foreign_keys = ON")
+        self._sentence_learning_unit_cache: Dict[int, set] = {}
 
     def close(self) -> None:
         self.connection.close()
@@ -415,6 +416,7 @@ class VocabularyDatabase:
     ) -> Dict[str, int]:
         from .dictionary import JMDictResolver
 
+        self._sentence_learning_unit_cache.clear()
         sentence_count = 0
         occurrence_count = 0
         contextual_resolver = JMDictResolver()
@@ -1247,6 +1249,8 @@ class VocabularyDatabase:
         """Refresh context-specific senses when resolver behavior changes."""
         from .dictionary import JMDictResolver
 
+        self._sentence_learning_unit_cache.clear()
+
         where = "l.part_of_speech != '表現'"
         parameters: tuple = ()
         if not force:
@@ -1521,16 +1525,87 @@ class VocabularyDatabase:
         ]
 
     def sentence_learning_unit_keys(self, sentence_id: int) -> set:
-        return {
-            learning_unit_key(str(row["lexeme_key"]), str(row["sense_key"]))
-            for row in self.connection.execute(
-                """SELECT DISTINCT l.lexeme_key, os.sense_key
-                   FROM occurrence_senses os
-                   JOIN lexemes l ON l.id = os.lexeme_id
-                   WHERE os.sentence_id = ? AND os.sense_key IS NOT NULL""",
-                (int(sentence_id),),
+        """Return every lexical dependency without double-counting expressions.
+
+        Persisted occurrence senses are the preferred, sense-aware analysis. A
+        database created by an older tokenizer can nevertheless omit a tracked
+        component (notably noun-like suffixes such as 官 in 試験官). Retokenize
+        the sentence with the current component tokenizer and add only tokens
+        that are not covered by a persisted span. Persisted multi-token spans
+        therefore remain one atomic unit, while gaps can never disappear from
+        the progressive unknown-word gate.
+        """
+        sentence_id = int(sentence_id)
+        cached = self._sentence_learning_unit_cache.get(sentence_id)
+        if cached is not None:
+            return set(cached)
+
+        rows = list(self.connection.execute(
+            """SELECT os.start_char, os.end_char, os.sense_key,
+                      l.lexeme_key
+               FROM occurrence_senses os
+               JOIN lexemes l ON l.id = os.lexeme_id
+               WHERE os.sentence_id = ? AND os.sense_key IS NOT NULL
+               ORDER BY os.start_char, os.end_char""",
+            (sentence_id,),
+        ))
+        # A retained whole-expression occurrence is authoritative over any
+        # component occurrence nested inside it. Partially overlapping spans
+        # remain separate dependencies; neither may hide the other.
+        rows = [
+            row for row in rows
+            if not any(
+                (
+                    int(other["start_char"]) <= int(row["start_char"])
+                    and int(row["end_char"]) <= int(other["end_char"])
+                    and (
+                        int(other["start_char"]) < int(row["start_char"])
+                        or int(row["end_char"]) < int(other["end_char"])
+                    )
+                )
+                for other in rows
             )
+        ]
+        keys = {
+            learning_unit_key(str(row["lexeme_key"]), str(row["sense_key"]))
+            for row in rows
         }
+        covered_spans = [
+            (int(row["start_char"]), int(row["end_char"])) for row in rows
+        ]
+        sentence = self.connection.execute(
+            "SELECT japanese, english FROM sentences WHERE id = ?",
+            (sentence_id,),
+        ).fetchone()
+        if sentence is not None:
+            from .dictionary import JMDictResolver
+            from .tokenizer import JapaneseTokenizer
+
+            resolver = JMDictResolver()
+            for token in JapaneseTokenizer().tokenize(str(sentence["japanese"])):
+                if any(
+                    start <= token.start and token.end <= end
+                    for start, end in covered_spans
+                ):
+                    continue
+                match = resolver.resolve(
+                    token.lemma,
+                    token.reading,
+                    token.part_of_speech,
+                    str(sentence["english"] or ""),
+                    strict_pos=True,
+                    japanese_context=str(sentence["japanese"]),
+                )
+                sense_key = canonical_sense_key(
+                    match.entry_id if match else None,
+                    match.sense_index if match else None,
+                    token.part_of_speech,
+                    match.gloss if match else None,
+                )
+                keys.add(learning_unit_key(token.key, sense_key))
+
+        self._sentence_learning_unit_cache[sentence_id] = set(keys)
+        return keys
 
     def occurrence_candidates_for_targets(
         self,
