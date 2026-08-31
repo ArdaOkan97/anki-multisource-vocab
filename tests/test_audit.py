@@ -200,6 +200,7 @@ class AuditTest(unittest.TestCase):
         self.assertEqual(first_criteria, {
             "translation_available": "passed",
             "translation_alignment": "flagged",
+            "translation_scope": "passed",
             "definition_available": "passed",
             "contextual_interpretation": "not_checked",
             "gloss_support": "flagged",
@@ -215,6 +216,7 @@ class AuditTest(unittest.TestCase):
         self.assertEqual(second_criteria, {
             "translation_available": "flagged",
             "translation_alignment": "not_checked",
+            "translation_scope": "not_checked",
             "definition_available": "flagged",
             "contextual_interpretation": "not_checked",
             "gloss_support": "not_checked",

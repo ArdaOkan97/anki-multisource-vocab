@@ -2,7 +2,12 @@ import unittest
 
 from vocabdeck.dictionary import JMDictResolver
 from vocabdeck.semantics import ExpressionDecision
-from vocabdeck.subtitles import align_translation, merge_continuations, parse_srt_text
+from vocabdeck.subtitles import (
+    align_translation,
+    merge_continuations,
+    parse_srt_text,
+    translation_scope_issues,
+)
 from vocabdeck.tokenizer import JapaneseTokenizer
 
 
@@ -71,6 +76,39 @@ class SubtitleAndTokenizerTest(unittest.TestCase):
         )
         self.assertEqual(
             align_translation(japanese, english), "First sentence. Second sentence."
+        )
+
+    def test_alignment_chooses_best_of_overlapping_translation_layers(self):
+        japanese = parse_srt_text(
+            "1\n00:20:57,006 --> 00:21:02,011\n"
+            "残りの４人が２勝すれば こっちの勝ちなんだから。\n"
+        )[0]
+        english = parse_srt_text(
+            "327\n00:20:56,210 --> 00:21:00,670\n"
+            "Sedokan 149-year sentence, serial bombings\n\n"
+            "328\n00:20:57,370 --> 00:20:59,850\n"
+            "If we defeat two of the remaining four,\n\n"
+            "329\n00:20:59,850 --> 00:21:01,390\nthen we win.\n"
+        )
+
+        self.assertEqual(
+            align_translation(japanese, english),
+            "If we defeat two of the remaining four, then we win.",
+        )
+
+    def test_translation_scope_flags_restart_but_keeps_idiomatic_text(self):
+        contaminated = (
+            "Sedokan 149-year sentence, serial bombings "
+            "If we defeat two of the remaining four, then we win."
+        )
+        self.assertEqual(
+            translation_scope_issues(contaminated), ["mid_sentence_restart"]
+        )
+        self.assertEqual(
+            translation_scope_issues(
+                "It was so moving that I couldn't help but cry."
+            ),
+            [],
         )
 
     def test_merges_japanese_arrow_continuations(self):

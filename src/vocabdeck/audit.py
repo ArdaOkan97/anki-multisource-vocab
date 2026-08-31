@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 from .readings import ContextualReadingValidator
 from .semantics import MultilingualE5Small, TextEmbedder
+from .subtitles import translation_scope_issues
 
 
 ALIGNMENT_WARNING_THRESHOLD = 0.78
@@ -21,6 +22,7 @@ READING_CHECK_POS = {"名詞", "代名詞", "副詞", "連体詞", "感動詞", 
 AUDIT_CRITERION_CODES = (
     "translation_available",
     "translation_alignment",
+    "translation_scope",
     "definition_available",
     "contextual_interpretation",
     "gloss_support",
@@ -163,6 +165,10 @@ def audit_rows(
                 "translation_alignment", "not_checked", "Translation alignment",
                 "Not checked because the English subtitle is missing.",
             ))
+            criteria.append(_criterion(
+                "translation_scope", "not_checked", "Whole-translation scope",
+                "Not checked because the English subtitle is missing.",
+            ))
         else:
             criteria.append(_criterion(
                 "translation_available", "passed", "English translation available",
@@ -188,6 +194,23 @@ def audit_rows(
                     "translation_alignment", "passed", "Translation alignment",
                     "Japanese and English semantic similarity meets the threshold.",
                     score=alignment_score, threshold=ALIGNMENT_WARNING_THRESHOLD,
+                ))
+            scope_issues = translation_scope_issues(english)
+            if scope_issues:
+                findings.append(_finding(
+                    "subtitle_contamination", "high",
+                    "Translation contains unrelated or concatenated text",
+                    "The English subtitle has a mid-sentence structural restart, which indicates that separate subtitle layers or cues were concatenated.",
+                ))
+                criteria.append(_criterion(
+                    "translation_scope", "flagged", "Whole-translation scope",
+                    "Structural contamination was detected independently of target-sense recoverability.",
+                    "high",
+                ))
+            else:
+                criteria.append(_criterion(
+                    "translation_scope", "passed", "Whole-translation scope",
+                    "No deterministic sign of concatenated subtitle content was found.",
                 ))
 
         if not contextual_pos:

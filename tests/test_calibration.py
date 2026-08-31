@@ -121,7 +121,7 @@ class CalibrationTest(unittest.TestCase):
         self.assertEqual(json.loads(json_path.read_text())["summary"]["cards"], 2)
         with csv_path.open(encoding="utf-8", newline="") as handle:
             rows = list(csv.DictReader(handle))
-        self.assertEqual(len(rows), 18)
+        self.assertEqual(len(rows), 20)
         reviewed = next(row for row in rows if row["review_note"])
         self.assertEqual(reviewed["review_verdict"], "pass")
         self.assertEqual(reviewed["review_priority"], "pass_control")
