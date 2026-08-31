@@ -396,6 +396,22 @@ compact 200-card snapshot is checked by the test suite and is the reference for
 future generation A/B experiments. It is intentionally described as a hybrid
 baseline because three local Qwen review passes participated in acceptance.
 
+Compare a candidate curriculum-selection JSON file against the snapshot before
+changing generation defaults:
+
+```bash
+uv run vocabdeck compare-baseline \
+  --baseline baselines/hxh-e01-e10-hybrid-qwen9b-200-v1 \
+  --candidate .vocabdeck/audits/candidate-selection.json \
+  --json-output .vocabdeck/comparisons/candidate-vs-baseline.json \
+  --html-output .vocabdeck/comparisons/candidate-vs-baseline.html
+```
+
+The candidate may be a plain card array or a selection artifact containing an
+`accepted` array. The report categorizes reading, sense, gloss, sentence,
+translation, audio, and unknown-context changes; checks the staged curriculum
+unknown-word limits; and shows the status of every frozen human-review finding.
+
 ## Project backlog
 
 Planned and completed work is tracked with

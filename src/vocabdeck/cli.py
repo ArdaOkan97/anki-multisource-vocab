@@ -339,6 +339,19 @@ def build_parser() -> argparse.ArgumentParser:
         "--max-unknown-later", type=int, default=2,
     )
 
+    compare_baseline = commands.add_parser(
+        "compare-baseline",
+        help="Compare a candidate curriculum with a frozen card baseline",
+    )
+    compare_baseline.add_argument(
+        "--baseline", required=True, type=Path,
+        help="baseline directory or expected-cards JSON file",
+    )
+    compare_baseline.add_argument("--candidate", required=True, type=Path)
+    compare_baseline.add_argument("--human-review", type=Path)
+    compare_baseline.add_argument("--json-output", required=True, type=Path)
+    compare_baseline.add_argument("--html-output", required=True, type=Path)
+
     coverage = commands.add_parser(
         "coverage", help="Report cumulative eligible vocabulary by episode"
     )
@@ -501,6 +514,42 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "output": str(output),
             "preview": None if preview is None else str(preview),
             **selection["summary"],
+        }, ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "compare-baseline":
+        from .comparison import (
+            compare_card_sets, load_card_artifact, render_comparison_html,
+            write_comparison_json,
+        )
+
+        baseline_path = args.baseline.expanduser().resolve()
+        if baseline_path.is_dir():
+            baseline_cards_path = baseline_path / "expected-cards.json"
+            default_review_path = baseline_path / "human-review.json"
+        else:
+            baseline_cards_path = baseline_path
+            default_review_path = baseline_path.parent / "human-review.json"
+        review_path = (
+            args.human_review.expanduser().resolve()
+            if args.human_review else default_review_path
+        )
+        human_review = None
+        if review_path.exists():
+            human_review = json.loads(review_path.read_text(encoding="utf-8"))
+        report = compare_card_sets(
+            load_card_artifact(baseline_cards_path),
+            load_card_artifact(args.candidate),
+            human_review=human_review,
+        )
+        json_output = write_comparison_json(report, args.json_output)
+        html_output = render_comparison_html(report, args.html_output)
+        print(json.dumps({
+            "json_output": str(json_output),
+            "html_output": str(html_output),
+            **report["summary"],
+            "curriculum_passed": report["checks"][
+                "curriculum_unknown_words"
+            ]["passed"],
         }, ensure_ascii=False, indent=2))
         return 0
 

@@ -1,9 +1,11 @@
 ---
 id: VOCAB-2
 title: Improve self-service card reliability against the frozen baseline
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - '@codex'
 created_date: '2026-08-27 11:21'
+updated_date: '2026-08-27 12:11'
 labels: []
 dependencies: []
 documentation:
