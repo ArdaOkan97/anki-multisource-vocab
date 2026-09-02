@@ -335,6 +335,42 @@ def build_parser() -> argparse.ArgumentParser:
     )
     small_benchmark.add_argument("--output", required=True, type=Path)
 
+    gold_dataset = commands.add_parser(
+        "build-verifier-gold-dataset",
+        help="Build frozen human-gold and review-queue verifier data",
+    )
+    gold_dataset.add_argument("--baseline", required=True, type=Path)
+    gold_dataset.add_argument("--human-review", required=True, type=Path)
+    gold_dataset.add_argument("--heldout-hxh", required=True, type=Path)
+    gold_dataset.add_argument("--second-show", required=True, type=Path)
+    gold_dataset.add_argument("--queue-size", type=int, default=40)
+    gold_dataset.add_argument("--output", required=True, type=Path)
+
+    evaluate_verifier = commands.add_parser(
+        "evaluate-verifier-benchmark",
+        help="Evaluate verifier predictions against human gold",
+    )
+    evaluate_verifier.add_argument("--dataset", required=True, type=Path)
+    evaluate_verifier.add_argument("--predictions", required=True, type=Path)
+    evaluate_verifier.add_argument("--precision-target", type=float, default=0.995)
+    evaluate_verifier.add_argument("--minimum-accepted-gold", type=int, default=600)
+    evaluate_verifier.add_argument("--json-output", required=True, type=Path)
+    evaluate_verifier.add_argument("--html-output", required=True, type=Path)
+
+    run_verifier = commands.add_parser(
+        "run-verifier-benchmark",
+        help="Run the constrained MLX verifier on a versioned dataset",
+    )
+    run_verifier.add_argument("--dataset", required=True, type=Path)
+    run_verifier.add_argument(
+        "--model", default="mlx-community/Qwen3.5-2B-OptiQ-4bit"
+    )
+    run_verifier.add_argument(
+        "--memory-limit-gb", type=float, default=4.0,
+        help="MLX allocation limit (hard maximum: 6 GiB)",
+    )
+    run_verifier.add_argument("--output", required=True, type=Path)
+
     validate_reviewed = commands.add_parser(
         "validate-reviewed-cards",
         help="Apply deterministic, contextual, and recoverability gates",
@@ -564,6 +600,58 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         print(json.dumps({
             "output": str(output), **result["summary"]
+        }, ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "build-verifier-gold-dataset":
+        from .gold_benchmark import build_gold_dataset, write_json
+
+        dataset = build_gold_dataset(
+            args.baseline, args.human_review, args.heldout_hxh,
+            args.second_show, queue_size=args.queue_size,
+        )
+        output = write_json(dataset, args.output)
+        print(json.dumps({
+            "output": str(output),
+            "splits": {
+                name: len(rows) for name, rows in dataset["splits"].items()
+            },
+        }, ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "evaluate-verifier-benchmark":
+        from .gold_benchmark import (
+            evaluate_predictions, render_blinded_html, write_json,
+        )
+
+        dataset = json.loads(args.dataset.read_text(encoding="utf-8"))
+        predictions = json.loads(args.predictions.read_text(encoding="utf-8"))
+        report = evaluate_predictions(
+            dataset, predictions, precision_target=args.precision_target,
+            minimum_accepted_gold=args.minimum_accepted_gold,
+        )
+        json_output = write_json(report, args.json_output)
+        html_output = render_blinded_html(dataset, report, args.html_output)
+        print(json.dumps({
+            "json_output": str(json_output),
+            "html_output": str(html_output),
+            **report["summary"],
+        }, ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "run-verifier-benchmark":
+        from .constrained_review import MLXLabelReviewer, run_constrained_dataset
+        from .gold_benchmark import validate_dataset, write_json
+
+        dataset = json.loads(args.dataset.read_text(encoding="utf-8"))
+        validate_dataset(dataset)
+        reviewer = MLXLabelReviewer(
+            args.model, memory_limit_gb=args.memory_limit_gb
+        )
+        try:
+            predictions = run_constrained_dataset(dataset, reviewer)
+        finally:
+            reviewer.close()
+        output = write_json(predictions, args.output)
+        print(json.dumps({
+            "output": str(output), **predictions["summary"],
         }, ensure_ascii=False, indent=2))
         return 0
     if args.command == "validate-reviewed-cards":
