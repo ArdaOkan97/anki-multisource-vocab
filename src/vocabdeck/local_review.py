@@ -370,19 +370,39 @@ class MLXBatchReviewer:
         *,
         max_tokens: int = 48,
         max_kv_size: int = 1024,
+        memory_limit_gb: float = 4.0,
         review_pass: str = "contextual",
         thinking: bool = False,
     ) -> None:
         if review_pass not in SYSTEM_PROMPTS:
             raise ValueError(f"unsupported review pass: {review_pass!r}")
+        from huggingface_hub import snapshot_download
+
+        from .inference_resources import InferenceResourceGuard
+
+        self._resource_guard = InferenceResourceGuard(
+            memory_limit_gb=memory_limit_gb
+        )
+        self._resource_guard.acquire()
         try:
+            model_path = Path(model_name).expanduser()
+            if not model_path.exists():
+                model_path = Path(snapshot_download(model_name))
+            self._resource_guard.validate_model_path(model_path)
+            import mlx.core as mx
+            self._resource_guard.configure_mlx(mx)
             from mlx_lm import batch_generate, load
             from mlx_lm.sample_utils import make_sampler
+            model, tokenizer = load(str(model_path))
         except ImportError as error:
+            self._resource_guard.release()
             raise RuntimeError(
                 "Local review requires the local-review extra: "
                 "uv sync --extra local-review"
             ) from error
+        except Exception:
+            self._resource_guard.release()
+            raise
         self.model_name = model_name
         self.max_tokens = max_tokens
         self.max_kv_size = max_kv_size
@@ -390,7 +410,16 @@ class MLXBatchReviewer:
         self.thinking = thinking
         self._batch_generate = batch_generate
         self._sampler = make_sampler(temp=0.0)
-        self._model, self._tokenizer = load(model_name)
+        self._mx = mx
+        self._model, self._tokenizer = model, tokenizer
+
+    def close(self) -> None:
+        self._resource_guard.release(self._mx)
+
+    def __del__(self) -> None:
+        guard = getattr(self, "_resource_guard", None)
+        if guard is not None:
+            guard.release(getattr(self, "_mx", None))
 
     def review(self, prompts: Sequence[str]) -> Tuple[List[str], Mapping[str, Any]]:
         encoded = [

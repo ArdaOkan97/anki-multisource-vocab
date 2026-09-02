@@ -273,10 +273,20 @@ def build_parser() -> argparse.ArgumentParser:
     local_review.add_argument("--input", required=True, type=Path)
     local_review.add_argument("--output", required=True, type=Path)
     local_review.add_argument(
-        "--model", default="mlx-community/Qwen3.5-9B-OptiQ-4bit"
+        "--model", required=True,
+        help=(
+            "Explicit MLX model repository or path. The frozen Qwen 9B "
+            "baseline remains a comparison artifact, not a safe runtime "
+            "default."
+        ),
     )
     local_review.add_argument("--batch-size", type=int, default=4)
     local_review.add_argument("--max-tokens", type=int, default=48)
+    local_review.add_argument("--max-kv-size", type=int, default=1024)
+    local_review.add_argument(
+        "--memory-limit-gb", type=float, default=4.0,
+        help="MLX allocation limit (hard maximum: 6 GiB)",
+    )
     local_review.add_argument("--limit", type=int)
     local_review.add_argument("--minimal-only", action="store_true")
     local_review.add_argument(
@@ -297,6 +307,33 @@ def build_parser() -> argparse.ArgumentParser:
         "--thinking", action="store_true",
         help="Enable the model's slower reasoning mode",
     )
+
+    small_benchmark = commands.add_parser(
+        "benchmark-small-verifier",
+        help="Benchmark a constrained small MLX verifier against 9B reviews",
+    )
+    small_benchmark.add_argument("--input", required=True, type=Path)
+    small_benchmark.add_argument(
+        "--contextual-reviews", required=True, type=Path
+    )
+    small_benchmark.add_argument(
+        "--recoverability-reviews", required=True, type=Path
+    )
+    small_benchmark.add_argument(
+        "--contextual-gloss-reviews", required=True, type=Path
+    )
+    small_benchmark.add_argument(
+        "--model", default="mlx-community/Qwen3.5-2B-OptiQ-4bit"
+    )
+    small_benchmark.add_argument("--limit", type=int)
+    small_benchmark.add_argument("--series")
+    small_benchmark.add_argument("--episodes")
+    small_benchmark.add_argument("--precision-target", type=float, default=0.995)
+    small_benchmark.add_argument(
+        "--memory-limit-gb", type=float, default=4.0,
+        help="MLX allocation limit (hard maximum: 6 GiB)",
+    )
+    small_benchmark.add_argument("--output", required=True, type=Path)
 
     validate_reviewed = commands.add_parser(
         "validate-reviewed-cards",
@@ -432,14 +469,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             cards = limited
         reviewer = MLXBatchReviewer(
             args.model, max_tokens=args.max_tokens,
+            max_kv_size=args.max_kv_size,
+            memory_limit_gb=args.memory_limit_gb,
             review_pass=args.review_pass,
             thinking=args.thinking,
         )
-        result = run_local_review(
-            cards, args.output, reviewer,
-            batch_size=args.batch_size, limit=args.limit,
-            review_pass=args.review_pass,
-        )
+        try:
+            result = run_local_review(
+                cards, args.output, reviewer,
+                batch_size=args.batch_size, limit=args.limit,
+                review_pass=args.review_pass,
+            )
+        finally:
+            reviewer.close()
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
     if args.command == "plan-review-frontier":
@@ -474,6 +516,54 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         output = write_validation_report(plan, args.output)
         print(json.dumps({
             "output": str(output), **plan["summary"],
+        }, ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "benchmark-small-verifier":
+        from .constrained_review import (
+            MLXLabelReviewer, run_constrained_benchmark, teacher_labels,
+        )
+        from .local_review import load_review_cards
+
+        cards = load_review_cards(args.input)
+        if args.series:
+            cards = [
+                card for card in cards
+                if str(card.get("series") or "") == args.series
+            ]
+        if args.episodes:
+            episodes = set(_episode_selection(args.episodes))
+            cards = [
+                card for card in cards
+                if int(card.get("episode") or 0) in episodes
+            ]
+        labels = teacher_labels(
+            args.contextual_reviews,
+            args.recoverability_reviews,
+            args.contextual_gloss_reviews,
+        )
+        cards = [
+            card for card in cards if int(card["audit_position"]) in labels
+        ]
+        if args.limit is not None:
+            cards = cards[:max(0, int(args.limit))]
+        reviewer = MLXLabelReviewer(
+            args.model, memory_limit_gb=args.memory_limit_gb
+        )
+        try:
+            result = run_constrained_benchmark(
+                cards, reviewer, labels,
+                precision_target=args.precision_target,
+            )
+        finally:
+            reviewer.close()
+        output = args.output.expanduser().resolve()
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
+            json.dumps(result, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        print(json.dumps({
+            "output": str(output), **result["summary"]
         }, ensure_ascii=False, indent=2))
         return 0
     if args.command == "validate-reviewed-cards":

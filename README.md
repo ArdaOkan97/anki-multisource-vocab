@@ -231,20 +231,30 @@ HF_HOME=".vocabdeck/huggingface" uv run vocabdeck review-audio-cards \
   --output ".vocabdeck/audits/hxh-audio-candidates.json" \
   --preview ".vocabdeck/previews/hxh-audio-candidates.html"
 uv sync --extra local-review
+
+The frozen regression baseline records its original pinned Qwen 9B reviews,
+but local review has no runtime default. Every experiment must name an explicit
+model, and the resource guard rejects artifacts above the configured safety
+ceiling. The 2B model below is an experimental benchmark candidate, not yet a
+replacement for the frozen baseline.
+
 HF_HOME=".vocabdeck/huggingface" uv run vocabdeck \
   review-calibration-local \
+  --model "mlx-community/Qwen3.5-2B-OptiQ-4bit" \
   --input ".vocabdeck/audits/hxh-audio-candidates.json" \
   --output ".vocabdeck/audits/hxh-contextual-reviews.jsonl" \
   --review-pass contextual --deterministic-clean-only \
   --max-per-target 2 --batch-size 4
 HF_HOME=".vocabdeck/huggingface" uv run vocabdeck \
   review-calibration-local \
+  --model "mlx-community/Qwen3.5-2B-OptiQ-4bit" \
   --input ".vocabdeck/audits/hxh-audio-candidates.json" \
   --output ".vocabdeck/audits/hxh-recoverability-reviews.jsonl" \
   --review-pass recoverability --deterministic-clean-only \
   --max-per-target 2 --batch-size 4
 HF_HOME=".vocabdeck/huggingface" uv run vocabdeck \
   review-calibration-local \
+  --model "mlx-community/Qwen3.5-2B-OptiQ-4bit" \
   --input ".vocabdeck/audits/hxh-audio-candidates.json" \
   --output ".vocabdeck/audits/hxh-contextual-gloss-reviews.jsonl" \
   --review-pass contextual_gloss --deterministic-clean-only \

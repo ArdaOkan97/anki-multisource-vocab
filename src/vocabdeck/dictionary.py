@@ -262,3 +262,72 @@ class JMDictResolver:
                 if best is None or score > best[0]:
                     best = (score, match)
         return best[1] if best else None
+
+    @lru_cache(maxsize=100_000)
+    def sense_candidates(
+        self,
+        lemma: str,
+        reading: str,
+        part_of_speech: str,
+        japanese_context: str = "",
+    ) -> Tuple[DictionaryMatch, ...]:
+        """Enumerate only spelling-, reading-, and POS-compatible JMdict senses.
+
+        Unlike :meth:`resolve`, this method never consults the English subtitle;
+        it is the closed candidate set for Japanese-only sense verification.
+        """
+        result = self.dictionary.lookup(
+            lemma, lookup_chars=False, lookup_ne=False
+        )
+        wanted_reading = _hiragana(reading)
+        reaction_question = _standalone_question(japanese_context, lemma)
+        candidates = []
+        seen = set()
+        for entry in result.entries:
+            spellings = [form.text for form in entry.kanji_forms]
+            readings = [form.text for form in entry.kana_forms]
+            if lemma not in spellings and lemma not in readings:
+                continue
+            if wanted_reading and readings and wanted_reading not in readings:
+                continue
+            for sense_index, sense in enumerate(entry.senses):
+                glosses = [
+                    gloss.text for gloss in sense.gloss
+                    if gloss.lang in ("", "eng")
+                ]
+                if not glosses:
+                    continue
+                pos_text = " ".join(str(pos).lower() for pos in sense.pos)
+                pos_match = any(
+                    hint in pos_text
+                    for hint in _POS_HINTS.get(part_of_speech, ())
+                )
+                interjection_question = (
+                    reaction_question and "interjection" in pos_text
+                )
+                if (
+                    _POS_HINTS.get(part_of_speech)
+                    and not pos_match
+                    and not interjection_question
+                ):
+                    continue
+                if part_of_speech == "感動詞" and not pos_match:
+                    continue
+                identity = (int(entry.idseq), sense_index)
+                if identity in seen:
+                    continue
+                seen.add(identity)
+                concise = []
+                for gloss in glosses:
+                    if gloss not in concise:
+                        concise.append(gloss)
+                    if len(concise) == 3:
+                        break
+                candidates.append(DictionaryMatch(
+                    gloss="; ".join(concise),
+                    entry_id=identity[0],
+                    sense_index=identity[1],
+                    confidence=0.0,
+                ))
+        candidates.sort(key=lambda value: (value.entry_id, value.sense_index))
+        return tuple(candidates)
