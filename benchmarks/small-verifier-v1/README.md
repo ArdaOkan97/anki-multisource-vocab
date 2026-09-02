@@ -1,0 +1,40 @@
+# Small verifier benchmark v1
+
+This benchmark compares conservative local filters; it does not replace the
+frozen Qwen 9B generation baseline. All candidates received the same 20 gold
+cases, versioned prompts, deterministic decoding, two shuffled sense votes,
+separate subtitle-support vote, and fail-closed acceptance rule. Models ran in
+separate processes with a 4 GiB MLX limit and a post-run lock cleanup probe.
+
+## Smoke result
+
+| Candidate | Accepted | False accepts | Precision | Positive coverage | Invalid | Cards/s | Peak GiB | Artifact GiB | Result |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| Qwen3.5 2B OptiQ | 7 | 2 | 0.714 | 0.50 | 0 | 1.026 | 1.798 | 2.108 | failed |
+| Gemma 2 2B JPN | 7 | 3 | 0.571 | 0.40 | 0 | 0.879 | 1.723 | 1.390 | failed |
+| Qwen3 1.7B | 3 | 1 | 0.667 | 0.20 | 15 | 1.121 | 1.218 | 0.916 | failed |
+| Phi-4 Mini fallback | 0 | 0 | — | 0.00 | 20 | 0.852 | 2.528 | 2.030 | nonviable |
+
+Every process completed its cleanup probe and stayed below the memory limit.
+The three primary candidates either produced known false accepts or unusable
+coverage, which triggered the Phi fallback. Phi produced additional text after
+the option letter on every response; the exact-label parser correctly rejected
+those outputs. Gemma's literal tokenizer end marker is normalized, but prose is
+never silently accepted.
+
+No candidate passed the smoke gate, so running 185 cases would add cost without
+being eligible for adoption. `smoke-comparison.json` explicitly records the
+development, held-out HxH, second-show, and hard-negative stages as
+`not_run_smoke_gate`. The recommendation is therefore to retain the deterministic
+baseline. Even a zero-error result on the current small gold set would remain
+insufficient for a 99.5% production-precision claim.
+
+`config.json` pins model revisions and the complete execution policy;
+`smoke-dataset.json` freezes the exact cohort; `smoke-comparison.json` contains
+the machine-readable aggregate and failure-category results.
+
+The tested model repositories are the MLX Community releases for
+[Qwen3.5 2B OptiQ](https://huggingface.co/mlx-community/Qwen3.5-2B-OptiQ-4bit),
+[Gemma 2 2B JPN](https://huggingface.co/mlx-community/gemma-2-2b-jpn-it-4bit),
+[Qwen3 1.7B](https://huggingface.co/mlx-community/Qwen3-1.7B-4bit), and the
+[Phi-4 Mini fallback](https://huggingface.co/mlx-community/Phi-4-mini-instruct-4bit).

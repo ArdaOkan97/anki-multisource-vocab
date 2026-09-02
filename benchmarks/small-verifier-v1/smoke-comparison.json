@@ -1,0 +1,1262 @@
+{
+  "schema_version": 1,
+  "comparison_policy_version": 1,
+  "candidates": [
+    {
+      "model": "mlx-community/Qwen3.5-2B-OptiQ-4bit@adc8669eb431e3168aeb4e320bd7b757914350e2",
+      "revision": "adc8669eb431e3168aeb4e320bd7b757914350e2",
+      "role": "primary",
+      "status": "failed_smoke_false_accept",
+      "summary": {
+        "gold_evaluated": 20,
+        "accepted": 7,
+        "true_accepts": 5,
+        "false_accepts": 2,
+        "true_rejects": 8,
+        "false_rejects": 5,
+        "accepted_precision": 0.714286,
+        "accepted_precision_95ci": [
+          0.358934,
+          0.917781
+        ],
+        "acceptance_coverage": 0.35,
+        "positive_coverage": 0.5,
+        "abstentions": 13,
+        "abstention_rate": 0.65,
+        "option_order_unstable": 5,
+        "invalid_outputs": 0,
+        "cards_per_second": 1.026,
+        "peak_memory_gb": 1.798,
+        "artifact_size_gb": 2.108,
+        "cleanup_verified": true,
+        "precision_target": 0.995,
+        "minimum_accepted_gold": 600,
+        "precision_claim_supported": false,
+        "precision_claim_reason": "insufficient_accepted_gold"
+      },
+      "subgroups": {
+        "audio_quality": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 0,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "compound_segmentation": {
+          "false_accept": 1,
+          "evaluated": 1,
+          "abstentions": 0,
+          "invalid_outputs": 0,
+          "option_order_unstable": 0,
+          "accepted_precision": 0.0,
+          "accepted_precision_95ci": [
+            0.0,
+            0.793451
+          ],
+          "acceptance_coverage": 1.0,
+          "positive_coverage": null,
+          "abstention_rate": 0.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "fragment": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 0,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "homograph_or_alternate_reading": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 0,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "larger_expression": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 0,
+          "option_order_unstable": 1,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 1.0
+        },
+        "near_duplicate_learning_unit": {
+          "true_reject": 2,
+          "evaluated": 2,
+          "abstentions": 2,
+          "invalid_outputs": 0,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "nearby_wrong_subtitle": {
+          "true_reject": 3,
+          "evaluated": 3,
+          "abstentions": 3,
+          "invalid_outputs": 0,
+          "option_order_unstable": 1,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.333333
+        },
+        "one_word": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 0,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "overlapping_speech": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 0,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "semantic_duplicate": {
+          "true_reject": 2,
+          "evaluated": 2,
+          "abstentions": 2,
+          "invalid_outputs": 0,
+          "option_order_unstable": 2,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 1.0
+        },
+        "slang": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 0,
+          "option_order_unstable": 1,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 1.0
+        },
+        "subtitle_contamination": {
+          "false_accept": 1,
+          "evaluated": 1,
+          "abstentions": 0,
+          "invalid_outputs": 0,
+          "option_order_unstable": 0,
+          "accepted_precision": 0.0,
+          "accepted_precision_95ci": [
+            0.0,
+            0.793451
+          ],
+          "acceptance_coverage": 1.0,
+          "positive_coverage": null,
+          "abstention_rate": 0.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "translation_quality": {
+          "false_accept": 1,
+          "evaluated": 1,
+          "abstentions": 0,
+          "invalid_outputs": 0,
+          "option_order_unstable": 0,
+          "accepted_precision": 0.0,
+          "accepted_precision_95ci": [
+            0.0,
+            0.793451
+          ],
+          "acceptance_coverage": 1.0,
+          "positive_coverage": null,
+          "abstention_rate": 0.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "unknown_context_under_count": {
+          "false_accept": 1,
+          "evaluated": 1,
+          "abstentions": 0,
+          "invalid_outputs": 0,
+          "option_order_unstable": 0,
+          "accepted_precision": 0.0,
+          "accepted_precision_95ci": [
+            0.0,
+            0.793451
+          ],
+          "acceptance_coverage": 1.0,
+          "positive_coverage": null,
+          "abstention_rate": 0.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "wrong_contextual_sense": {
+          "true_reject": 2,
+          "evaluated": 2,
+          "abstentions": 2,
+          "invalid_outputs": 0,
+          "option_order_unstable": 2,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 1.0
+        },
+        "wrong_sense": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 0,
+          "option_order_unstable": 1,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 1.0
+        }
+      },
+      "full_split_status": {
+        "development": "not_run_smoke_gate",
+        "heldout_hxh": "not_run_smoke_gate",
+        "second_show": "not_run_smoke_gate",
+        "hard_negatives": "not_run_smoke_gate"
+      }
+    },
+    {
+      "model": "mlx-community/gemma-2-2b-jpn-it-4bit@c6437fd222e0833f5400b04c58a0e156b225d4b1",
+      "revision": "c6437fd222e0833f5400b04c58a0e156b225d4b1",
+      "role": "primary",
+      "status": "failed_smoke_false_accept",
+      "summary": {
+        "gold_evaluated": 20,
+        "accepted": 7,
+        "true_accepts": 4,
+        "false_accepts": 3,
+        "true_rejects": 7,
+        "false_rejects": 6,
+        "accepted_precision": 0.571429,
+        "accepted_precision_95ci": [
+          0.250458,
+          0.84178
+        ],
+        "acceptance_coverage": 0.35,
+        "positive_coverage": 0.4,
+        "abstentions": 13,
+        "abstention_rate": 0.65,
+        "option_order_unstable": 1,
+        "invalid_outputs": 0,
+        "cards_per_second": 0.879,
+        "peak_memory_gb": 1.723,
+        "artifact_size_gb": 1.39,
+        "cleanup_verified": true,
+        "precision_target": 0.995,
+        "minimum_accepted_gold": 600,
+        "precision_claim_supported": false,
+        "precision_claim_reason": "insufficient_accepted_gold"
+      },
+      "subgroups": {
+        "audio_quality": {
+          "false_accept": 1,
+          "evaluated": 1,
+          "abstentions": 0,
+          "invalid_outputs": 0,
+          "option_order_unstable": 0,
+          "accepted_precision": 0.0,
+          "accepted_precision_95ci": [
+            0.0,
+            0.793451
+          ],
+          "acceptance_coverage": 1.0,
+          "positive_coverage": null,
+          "abstention_rate": 0.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "compound_segmentation": {
+          "false_accept": 1,
+          "evaluated": 1,
+          "abstentions": 0,
+          "invalid_outputs": 0,
+          "option_order_unstable": 0,
+          "accepted_precision": 0.0,
+          "accepted_precision_95ci": [
+            0.0,
+            0.793451
+          ],
+          "acceptance_coverage": 1.0,
+          "positive_coverage": null,
+          "abstention_rate": 0.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "fragment": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 0,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "homograph_or_alternate_reading": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 0,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "larger_expression": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 0,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "near_duplicate_learning_unit": {
+          "true_reject": 2,
+          "evaluated": 2,
+          "abstentions": 2,
+          "invalid_outputs": 0,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "nearby_wrong_subtitle": {
+          "true_reject": 3,
+          "evaluated": 3,
+          "abstentions": 3,
+          "invalid_outputs": 0,
+          "option_order_unstable": 1,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.333333
+        },
+        "one_word": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 0,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "overlapping_speech": {
+          "false_accept": 1,
+          "evaluated": 1,
+          "abstentions": 0,
+          "invalid_outputs": 0,
+          "option_order_unstable": 0,
+          "accepted_precision": 0.0,
+          "accepted_precision_95ci": [
+            0.0,
+            0.793451
+          ],
+          "acceptance_coverage": 1.0,
+          "positive_coverage": null,
+          "abstention_rate": 0.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "semantic_duplicate": {
+          "true_reject": 2,
+          "evaluated": 2,
+          "abstentions": 2,
+          "invalid_outputs": 0,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "slang": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 0,
+          "option_order_unstable": 1,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 1.0
+        },
+        "subtitle_contamination": {
+          "false_accept": 1,
+          "evaluated": 1,
+          "abstentions": 0,
+          "invalid_outputs": 0,
+          "option_order_unstable": 0,
+          "accepted_precision": 0.0,
+          "accepted_precision_95ci": [
+            0.0,
+            0.793451
+          ],
+          "acceptance_coverage": 1.0,
+          "positive_coverage": null,
+          "abstention_rate": 0.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "translation_quality": {
+          "false_accept": 1,
+          "evaluated": 1,
+          "abstentions": 0,
+          "invalid_outputs": 0,
+          "option_order_unstable": 0,
+          "accepted_precision": 0.0,
+          "accepted_precision_95ci": [
+            0.0,
+            0.793451
+          ],
+          "acceptance_coverage": 1.0,
+          "positive_coverage": null,
+          "abstention_rate": 0.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "unknown_context_under_count": {
+          "false_accept": 1,
+          "evaluated": 1,
+          "abstentions": 0,
+          "invalid_outputs": 0,
+          "option_order_unstable": 0,
+          "accepted_precision": 0.0,
+          "accepted_precision_95ci": [
+            0.0,
+            0.793451
+          ],
+          "acceptance_coverage": 1.0,
+          "positive_coverage": null,
+          "abstention_rate": 0.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "wrong_contextual_sense": {
+          "true_reject": 2,
+          "evaluated": 2,
+          "abstentions": 2,
+          "invalid_outputs": 0,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "wrong_sense": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 0,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.0
+        }
+      },
+      "full_split_status": {
+        "development": "not_run_smoke_gate",
+        "heldout_hxh": "not_run_smoke_gate",
+        "second_show": "not_run_smoke_gate",
+        "hard_negatives": "not_run_smoke_gate"
+      }
+    },
+    {
+      "model": "mlx-community/Qwen3-1.7B-4bit@3b1b1768f8f8cf8351c712464f906e86c2b8269e",
+      "revision": "3b1b1768f8f8cf8351c712464f906e86c2b8269e",
+      "role": "primary",
+      "status": "failed_smoke_false_accept",
+      "summary": {
+        "gold_evaluated": 20,
+        "accepted": 3,
+        "true_accepts": 2,
+        "false_accepts": 1,
+        "true_rejects": 9,
+        "false_rejects": 8,
+        "accepted_precision": 0.666667,
+        "accepted_precision_95ci": [
+          0.20766,
+          0.938508
+        ],
+        "acceptance_coverage": 0.15,
+        "positive_coverage": 0.2,
+        "abstentions": 17,
+        "abstention_rate": 0.85,
+        "option_order_unstable": 0,
+        "invalid_outputs": 15,
+        "cards_per_second": 1.121,
+        "peak_memory_gb": 1.218,
+        "artifact_size_gb": 0.916,
+        "cleanup_verified": true,
+        "precision_target": 0.995,
+        "minimum_accepted_gold": 600,
+        "precision_claim_supported": false,
+        "precision_claim_reason": "insufficient_accepted_gold"
+      },
+      "subgroups": {
+        "audio_quality": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 1,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "compound_segmentation": {
+          "false_accept": 1,
+          "evaluated": 1,
+          "abstentions": 0,
+          "invalid_outputs": 0,
+          "option_order_unstable": 0,
+          "accepted_precision": 0.0,
+          "accepted_precision_95ci": [
+            0.0,
+            0.793451
+          ],
+          "acceptance_coverage": 1.0,
+          "positive_coverage": null,
+          "abstention_rate": 0.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "fragment": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 1,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "homograph_or_alternate_reading": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 1,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "larger_expression": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 1,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "near_duplicate_learning_unit": {
+          "true_reject": 2,
+          "evaluated": 2,
+          "abstentions": 2,
+          "invalid_outputs": 2,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "nearby_wrong_subtitle": {
+          "true_reject": 3,
+          "evaluated": 3,
+          "abstentions": 3,
+          "invalid_outputs": 3,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "one_word": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 1,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "overlapping_speech": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 1,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "semantic_duplicate": {
+          "true_reject": 2,
+          "evaluated": 2,
+          "abstentions": 2,
+          "invalid_outputs": 2,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "slang": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 1,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "subtitle_contamination": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 1,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "translation_quality": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 1,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "unknown_context_under_count": {
+          "false_accept": 1,
+          "evaluated": 1,
+          "abstentions": 0,
+          "invalid_outputs": 0,
+          "option_order_unstable": 0,
+          "accepted_precision": 0.0,
+          "accepted_precision_95ci": [
+            0.0,
+            0.793451
+          ],
+          "acceptance_coverage": 1.0,
+          "positive_coverage": null,
+          "abstention_rate": 0.0,
+          "invalid_output_rate": 0.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "wrong_contextual_sense": {
+          "true_reject": 2,
+          "evaluated": 2,
+          "abstentions": 2,
+          "invalid_outputs": 2,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "wrong_sense": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 1,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        }
+      },
+      "full_split_status": {
+        "development": "not_run_smoke_gate",
+        "heldout_hxh": "not_run_smoke_gate",
+        "second_show": "not_run_smoke_gate",
+        "hard_negatives": "not_run_smoke_gate"
+      }
+    },
+    {
+      "model": "mlx-community/Phi-4-mini-instruct-4bit@ac1c269cb4222a4e136a3d09edad301056c1f36a",
+      "revision": "ac1c269cb4222a4e136a3d09edad301056c1f36a",
+      "role": "fallback",
+      "status": "failed_smoke_zero_coverage",
+      "summary": {
+        "gold_evaluated": 20,
+        "accepted": 0,
+        "true_accepts": 0,
+        "false_accepts": 0,
+        "true_rejects": 10,
+        "false_rejects": 10,
+        "accepted_precision": 0.0,
+        "accepted_precision_95ci": [
+          0.0,
+          1.0
+        ],
+        "acceptance_coverage": 0.0,
+        "positive_coverage": 0.0,
+        "abstentions": 20,
+        "abstention_rate": 1.0,
+        "option_order_unstable": 0,
+        "invalid_outputs": 20,
+        "cards_per_second": 0.852,
+        "peak_memory_gb": 2.528,
+        "artifact_size_gb": 2.03,
+        "cleanup_verified": true,
+        "precision_target": 0.995,
+        "minimum_accepted_gold": 600,
+        "precision_claim_supported": false,
+        "precision_claim_reason": "insufficient_accepted_gold"
+      },
+      "subgroups": {
+        "audio_quality": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 1,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "compound_segmentation": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 1,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "fragment": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 1,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "homograph_or_alternate_reading": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 1,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "larger_expression": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 1,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "near_duplicate_learning_unit": {
+          "true_reject": 2,
+          "evaluated": 2,
+          "abstentions": 2,
+          "invalid_outputs": 2,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "nearby_wrong_subtitle": {
+          "true_reject": 3,
+          "evaluated": 3,
+          "abstentions": 3,
+          "invalid_outputs": 3,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "one_word": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 1,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "overlapping_speech": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 1,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "semantic_duplicate": {
+          "true_reject": 2,
+          "evaluated": 2,
+          "abstentions": 2,
+          "invalid_outputs": 2,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "slang": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 1,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "subtitle_contamination": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 1,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "translation_quality": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 1,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "unknown_context_under_count": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 1,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "wrong_contextual_sense": {
+          "true_reject": 2,
+          "evaluated": 2,
+          "abstentions": 2,
+          "invalid_outputs": 2,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        },
+        "wrong_sense": {
+          "true_reject": 1,
+          "evaluated": 1,
+          "abstentions": 1,
+          "invalid_outputs": 1,
+          "option_order_unstable": 0,
+          "accepted_precision": null,
+          "accepted_precision_95ci": [
+            0.0,
+            1.0
+          ],
+          "acceptance_coverage": 0.0,
+          "positive_coverage": null,
+          "abstention_rate": 1.0,
+          "invalid_output_rate": 1.0,
+          "option_order_disagreement_rate": 0.0
+        }
+      },
+      "full_split_status": {
+        "development": "not_run_smoke_gate",
+        "heldout_hxh": "not_run_smoke_gate",
+        "second_show": "not_run_smoke_gate",
+        "hard_negatives": "not_run_smoke_gate"
+      }
+    }
+  ],
+  "recommendation": {
+    "decision": "retain_deterministic_baseline",
+    "reason": "No candidate passed the smoke gate; no candidate has sufficient held-out evidence for the production precision claim."
+  }
+}

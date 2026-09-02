@@ -1,0 +1,959 @@
+{
+  "schema_version": 1,
+  "dataset_id": "vocab-verifier-gold-v1-smoke-20",
+  "description": "Sequential guarded smoke cohort; all records are gold.",
+  "prompt_versions": {
+    "sense": 1,
+    "subtitle_support": 1,
+    "acceptance_policy": 1
+  },
+  "source_policy": {
+    "llm_outputs_are_gold": false,
+    "unreviewed_queues_are_scored": false,
+    "human_review_baseline": "hxh-e01-e10-hybrid-qwen9b-200-v1"
+  },
+  "source_artifacts": {
+    "baseline": {
+      "name": "expected-cards.json",
+      "sha256": "839c88e6e31404cef0a4575f932f192d6509b278c7b9b938da69c58c378492aa"
+    },
+    "human_review": {
+      "name": "human-review.json",
+      "sha256": "ba4b7a59777e876ebdae411dee71e7e0122246392f5801b17d65acf9afce7f63"
+    },
+    "heldout_hxh": {
+      "name": "hxh-e11-e20-candidates.json",
+      "sha256": "837561c7bd214da581a2b297b4535cdf3616d32a8a72c68d0c05e489872279de"
+    },
+    "second_show": {
+      "name": "high-score-girl-e01-candidates.json",
+      "sha256": "fd57a87c30fb790ac843e522ce3217306608a24628ddfc2e42c6c4e34dfcdcf6"
+    }
+  },
+  "splits": {
+    "smoke": [
+      {
+        "schema_version": 1,
+        "case_id": "development-d86181e788ac7626ebe7",
+        "split": "development",
+        "review_status": "gold",
+        "card": {
+          "position": 56,
+          "audit_position": 1797,
+          "candidate_key": "f0fec73049bbb44cbcbd3f36::jmdict:1307500:0:882:1:4",
+          "learning_unit_key": "f0fec73049bbb44cbcbd3f36::jmdict:1307500:0",
+          "sense_key": "jmdict:1307500:0",
+          "lemma": "始まる",
+          "reading": "ハジマル",
+          "part_of_speech": "動詞",
+          "gloss": "to begin; to start; to commence",
+          "target_surface": "始まってる",
+          "japanese": "≪始まってるのかよ≫ ≪これが試験？≫",
+          "english": "It's already begun? This is part of the test?",
+          "series": "Hunter x Hunter",
+          "season": 1,
+          "episode": 3,
+          "cue_index": 313,
+          "sentence_id": 882,
+          "start_ms": 1252145,
+          "end_ms": 1256098,
+          "target_start": 1,
+          "target_end": 6
+        },
+        "labels": {
+          "sense": "expected",
+          "correct_sense_key": "jmdict:1307500:0",
+          "subtitle_support": "expressed",
+          "production": "reject",
+          "reasons": [
+            "audio_quality",
+            "overlapping_speech"
+          ]
+        },
+        "provenance": {
+          "kind": "human_review",
+          "reviewer": "project-owner",
+          "decision": "explicit_flag",
+          "position": 56,
+          "user_note": "Audio quality is not good; backchannel speech may be present."
+        },
+        "tags": [
+          "audio_quality",
+          "overlapping_speech"
+        ]
+      },
+      {
+        "schema_version": 1,
+        "case_id": "development-5239867804f018f1ef0c",
+        "split": "development",
+        "review_status": "gold",
+        "card": {
+          "position": 68,
+          "audit_position": 2142,
+          "candidate_key": "35be10a4b8a74fcc41cbd707::jmdict:2593990:0:2267:7:8",
+          "learning_unit_key": "35be10a4b8a74fcc41cbd707::jmdict:2593990:0",
+          "sense_key": "jmdict:2593990:0",
+          "lemma": "勝",
+          "reading": "ショウ",
+          "part_of_speech": "名詞",
+          "gloss": "win; victory",
+          "target_surface": "勝",
+          "japanese": "残りの４人が２勝すれば こっちの勝ちなんだから。",
+          "english": "Sedokan 149-year sentence, serial bombings If we defeat two of the remaining four, then we win.",
+          "series": "Hunter x Hunter",
+          "season": 1,
+          "episode": 8,
+          "cue_index": 321,
+          "sentence_id": 2267,
+          "start_ms": 1257006,
+          "end_ms": 1262011,
+          "target_start": 7,
+          "target_end": 8
+        },
+        "labels": {
+          "sense": "expected",
+          "correct_sense_key": "jmdict:2593990:0",
+          "subtitle_support": "ambiguous",
+          "production": "reject",
+          "reasons": [
+            "subtitle_contamination",
+            "translation_quality"
+          ]
+        },
+        "provenance": {
+          "kind": "human_review",
+          "reviewer": "project-owner",
+          "decision": "explicit_flag",
+          "position": 68,
+          "user_note": "Wrong translation; a cheaper LLM filtering mechanism is needed."
+        },
+        "tags": [
+          "subtitle_contamination",
+          "translation_quality"
+        ]
+      },
+      {
+        "schema_version": 1,
+        "case_id": "development-c0504fef8cf4aeb2991d",
+        "split": "development",
+        "review_status": "gold",
+        "card": {
+          "position": 78,
+          "audit_position": 310,
+          "candidate_key": "7b9ab3b04488d7d836704c48::jmdict:1269130:0:537:8:10",
+          "learning_unit_key": "7b9ab3b04488d7d836704c48::jmdict:1269130:0",
+          "sense_key": "jmdict:1269130:0",
+          "lemma": "くれる",
+          "reading": "クレル",
+          "part_of_speech": "動詞",
+          "gloss": "to give; to let (one) have",
+          "target_surface": "くれ",
+          "japanese": "さて １つ答えてくれ。",
+          "english": "Now I need you to answer my question.",
+          "series": "Hunter x Hunter",
+          "season": 1,
+          "episode": 2,
+          "cue_index": 279,
+          "sentence_id": 537,
+          "start_ms": 1029480,
+          "end_ms": 1032867,
+          "target_start": 8,
+          "target_end": 10
+        },
+        "labels": {
+          "sense": "unsupported",
+          "correct_sense_key": null,
+          "subtitle_support": "expressed",
+          "production": "reject",
+          "reasons": [
+            "wrong_contextual_sense",
+            "semantic_duplicate"
+          ]
+        },
+        "provenance": {
+          "kind": "human_review",
+          "reviewer": "project-owner",
+          "decision": "explicit_flag",
+          "position": 78,
+          "user_note": "Might be a second occurrence of くれる."
+        },
+        "tags": [
+          "semantic_duplicate",
+          "wrong_contextual_sense"
+        ]
+      },
+      {
+        "schema_version": 1,
+        "case_id": "hard_negatives-b42688f6fe88fadec1fb",
+        "split": "hard_negatives",
+        "review_status": "gold",
+        "card": {
+          "position": 40,
+          "audit_position": 1178,
+          "candidate_key": "85db033965fcc93b6c2f69b5::jmdict:1577100:4:2244:0:1",
+          "learning_unit_key": "85db033965fcc93b6c2f69b5::jmdict:1577100:4",
+          "sense_key": "jmdict:1577100:4",
+          "lemma": "何",
+          "reading": "ナニ",
+          "part_of_speech": "代名詞",
+          "gloss": "what?; huh?",
+          "target_surface": "何",
+          "japanese": "何？",
+          "english": "Wh-What?",
+          "series": "Hunter x Hunter",
+          "season": 1,
+          "episode": 8,
+          "cue_index": 291,
+          "sentence_id": 2244,
+          "start_ms": 1156506,
+          "end_ms": 1158508,
+          "target_start": 0,
+          "target_end": 1
+        },
+        "labels": {
+          "sense": "expected",
+          "correct_sense_key": "jmdict:1577100:4",
+          "subtitle_support": "expressed",
+          "production": "reject",
+          "reasons": [
+            "near_duplicate_learning_unit"
+          ]
+        },
+        "provenance": {
+          "kind": "human_review",
+          "reviewer": "project-owner",
+          "decision": "explicit_flag",
+          "position": 40,
+          "user_note": "Second occurrence of 何 with なに reading.",
+          "copied_from": "development-fac4ecbe42a7bf1fe93f"
+        },
+        "tags": [
+          "homograph_or_alternate_reading",
+          "near_duplicate_learning_unit"
+        ]
+      },
+      {
+        "schema_version": 1,
+        "case_id": "hard_negatives-dc8933488f3b3e3df37d",
+        "split": "hard_negatives",
+        "review_status": "gold",
+        "card": {
+          "position": 7,
+          "audit_position": 101,
+          "candidate_key": "85db033965fcc93b6c2f69b5::jmdict:1577100:0:1520:0:1",
+          "learning_unit_key": "85db033965fcc93b6c2f69b5::jmdict:1577100:0",
+          "sense_key": "jmdict:1577100:0",
+          "lemma": "何",
+          "reading": "ナニ",
+          "part_of_speech": "代名詞",
+          "gloss": "what",
+          "target_surface": "何",
+          "japanese": "何!?",
+          "english": "Now!",
+          "series": "Hunter x Hunter",
+          "season": 1,
+          "episode": 6,
+          "cue_index": 110,
+          "sentence_id": 1520,
+          "start_ms": 480571,
+          "end_ms": 482071,
+          "target_start": 0,
+          "target_end": 1
+        },
+        "labels": {
+          "sense": "unsupported",
+          "correct_sense_key": null,
+          "subtitle_support": "not_expressed",
+          "production": "reject",
+          "reasons": [
+            "nearby_incorrect_subtitle"
+          ]
+        },
+        "provenance": {
+          "kind": "synthetic_rule",
+          "reviewer": "deterministic-fixture",
+          "mutation": "english-from-8"
+        },
+        "tags": [
+          "nearby_wrong_subtitle",
+          "one_word"
+        ]
+      },
+      {
+        "schema_version": 1,
+        "case_id": "hard_negatives-eb5bcaaa19a605fd6741",
+        "split": "hard_negatives",
+        "review_status": "gold",
+        "card": {
+          "position": 78,
+          "audit_position": 310,
+          "candidate_key": "7b9ab3b04488d7d836704c48::jmdict:1269130:0:537:8:10",
+          "learning_unit_key": "7b9ab3b04488d7d836704c48::jmdict:1269130:0",
+          "sense_key": "jmdict:1269130:0",
+          "lemma": "くれる",
+          "reading": "クレル",
+          "part_of_speech": "動詞",
+          "gloss": "to give; to let (one) have",
+          "target_surface": "くれ",
+          "japanese": "さて １つ答えてくれ。",
+          "english": "Now I need you to answer my question.",
+          "series": "Hunter x Hunter",
+          "season": 1,
+          "episode": 2,
+          "cue_index": 279,
+          "sentence_id": 537,
+          "start_ms": 1029480,
+          "end_ms": 1032867,
+          "target_start": 8,
+          "target_end": 10
+        },
+        "labels": {
+          "sense": "unsupported",
+          "correct_sense_key": null,
+          "subtitle_support": "expressed",
+          "production": "reject",
+          "reasons": [
+            "wrong_contextual_sense",
+            "semantic_duplicate"
+          ]
+        },
+        "provenance": {
+          "kind": "human_review",
+          "reviewer": "project-owner",
+          "decision": "explicit_flag",
+          "position": 78,
+          "user_note": "Might be a second occurrence of くれる.",
+          "copied_from": "development-c0504fef8cf4aeb2991d"
+        },
+        "tags": [
+          "larger_expression",
+          "semantic_duplicate",
+          "wrong_contextual_sense",
+          "wrong_sense"
+        ]
+      },
+      {
+        "schema_version": 1,
+        "case_id": "hard_negatives-c7a43c1ffe297d265f22",
+        "split": "hard_negatives",
+        "review_status": "gold",
+        "card": {
+          "position": 72,
+          "audit_position": 2325,
+          "candidate_key": "736c9c888c1670655752840a::jmdict:1218380:3:790:5:8",
+          "learning_unit_key": "736c9c888c1670655752840a::jmdict:1218380:3",
+          "sense_key": "jmdict:1218380:3",
+          "lemma": "危ない",
+          "reading": "アブナイ",
+          "part_of_speech": "形容詞",
+          "gloss": "close (call); narrow (escape)",
+          "target_surface": "危ねぇ",
+          "japanese": "マジか！ 危ねぇ！",
+          "english": "Wh-What's with the sudden change?",
+          "series": "Hunter x Hunter",
+          "season": 1,
+          "episode": 3,
+          "cue_index": 201,
+          "sentence_id": 790,
+          "start_ms": 802696,
+          "end_ms": 805081,
+          "target_start": 5,
+          "target_end": 8
+        },
+        "labels": {
+          "sense": "unsupported",
+          "correct_sense_key": null,
+          "subtitle_support": "not_expressed",
+          "production": "reject",
+          "reasons": [
+            "nearby_incorrect_subtitle"
+          ]
+        },
+        "provenance": {
+          "kind": "synthetic_rule",
+          "reviewer": "deterministic-fixture",
+          "mutation": "english-from-73"
+        },
+        "tags": [
+          "nearby_wrong_subtitle",
+          "slang"
+        ]
+      },
+      {
+        "schema_version": 1,
+        "case_id": "hard_negatives-257ed1245ff45d38e2bd",
+        "split": "hard_negatives",
+        "review_status": "gold",
+        "card": {
+          "position": 24,
+          "audit_position": 707,
+          "candidate_key": "486423c0af5371df187ecb2f::jmdict:1577120:0:947:5:7",
+          "learning_unit_key": "486423c0af5371df187ecb2f::jmdict:1577120:0",
+          "sense_key": "jmdict:1577120:0",
+          "lemma": "なぜ",
+          "reading": "ナゼ",
+          "part_of_speech": "副詞",
+          "gloss": "why; how",
+          "target_surface": "なぜ",
+          "japanese": "《じゃあ なぜ…》",
+          "english": "Leorio, are you okay?",
+          "series": "Hunter x Hunter",
+          "season": 1,
+          "episode": 4,
+          "cue_index": 55,
+          "sentence_id": 947,
+          "start_ms": 262562,
+          "end_ms": 264547,
+          "target_start": 5,
+          "target_end": 7
+        },
+        "labels": {
+          "sense": "unsupported",
+          "correct_sense_key": null,
+          "subtitle_support": "not_expressed",
+          "production": "reject",
+          "reasons": [
+            "nearby_incorrect_subtitle"
+          ]
+        },
+        "provenance": {
+          "kind": "synthetic_rule",
+          "reviewer": "deterministic-fixture",
+          "mutation": "english-from-25"
+        },
+        "tags": [
+          "fragment",
+          "nearby_wrong_subtitle"
+        ]
+      },
+      {
+        "schema_version": 1,
+        "case_id": "development-09a634fad48244ff07e7",
+        "split": "development",
+        "review_status": "gold",
+        "card": {
+          "position": 69,
+          "audit_position": 2241,
+          "candidate_key": "7c1781b64986f50301801dba::jmdict:1523180:0:1134:2:4",
+          "learning_unit_key": "7c1781b64986f50301801dba::jmdict:1523180:0",
+          "sense_key": "jmdict:1523180:0",
+          "lemma": "本物",
+          "reading": "ホンモノ",
+          "part_of_speech": "名詞",
+          "gloss": "genuine article; real thing; real deal",
+          "target_surface": "本物",
+          "japanese": "俺が本物の試験官だ！",
+          "english": "I'm the real examiner.",
+          "series": "Hunter x Hunter",
+          "season": 1,
+          "episode": 4,
+          "cue_index": 268,
+          "sentence_id": 1134,
+          "start_ms": 1088532,
+          "end_ms": 1091052,
+          "target_start": 2,
+          "target_end": 4
+        },
+        "labels": {
+          "sense": "expected",
+          "correct_sense_key": "jmdict:1523180:0",
+          "subtitle_support": "expressed",
+          "production": "reject",
+          "reasons": [
+            "unknown_context_under_count",
+            "compound_segmentation"
+          ]
+        },
+        "provenance": {
+          "kind": "human_review",
+          "reviewer": "project-owner",
+          "decision": "explicit_flag",
+          "position": 69,
+          "user_note": "Unclear whether 官 in 試験官 was learned before."
+        },
+        "tags": [
+          "compound_segmentation",
+          "unknown_context_under_count"
+        ]
+      },
+      {
+        "schema_version": 1,
+        "case_id": "development-fac4ecbe42a7bf1fe93f",
+        "split": "development",
+        "review_status": "gold",
+        "card": {
+          "position": 40,
+          "audit_position": 1178,
+          "candidate_key": "85db033965fcc93b6c2f69b5::jmdict:1577100:4:2244:0:1",
+          "learning_unit_key": "85db033965fcc93b6c2f69b5::jmdict:1577100:4",
+          "sense_key": "jmdict:1577100:4",
+          "lemma": "何",
+          "reading": "ナニ",
+          "part_of_speech": "代名詞",
+          "gloss": "what?; huh?",
+          "target_surface": "何",
+          "japanese": "何？",
+          "english": "Wh-What?",
+          "series": "Hunter x Hunter",
+          "season": 1,
+          "episode": 8,
+          "cue_index": 291,
+          "sentence_id": 2244,
+          "start_ms": 1156506,
+          "end_ms": 1158508,
+          "target_start": 0,
+          "target_end": 1
+        },
+        "labels": {
+          "sense": "expected",
+          "correct_sense_key": "jmdict:1577100:4",
+          "subtitle_support": "expressed",
+          "production": "reject",
+          "reasons": [
+            "near_duplicate_learning_unit"
+          ]
+        },
+        "provenance": {
+          "kind": "human_review",
+          "reviewer": "project-owner",
+          "decision": "explicit_flag",
+          "position": 40,
+          "user_note": "Second occurrence of 何 with なに reading."
+        },
+        "tags": [
+          "near_duplicate_learning_unit"
+        ]
+      },
+      {
+        "schema_version": 1,
+        "case_id": "development-e465e3eb7288085f6dc3",
+        "split": "development",
+        "review_status": "gold",
+        "card": {
+          "position": 62,
+          "audit_position": 1959,
+          "candidate_key": "813a9bc74e29502085a9e4bf::jmdict:1219510:0:562:0:3",
+          "learning_unit_key": "813a9bc74e29502085a9e4bf::jmdict:1219510:0",
+          "sense_key": "jmdict:1219510:0",
+          "lemma": "嬉しい",
+          "reading": "ウレシイ",
+          "part_of_speech": "形容詞",
+          "gloss": "happy; glad; pleased",
+          "target_surface": "嬉しい",
+          "japanese": "嬉しいねぇ。",
+          "english": "I'm ecstatic!",
+          "series": "Hunter x Hunter",
+          "season": 1,
+          "episode": 2,
+          "cue_index": 306,
+          "sentence_id": 562,
+          "start_ms": 1140875,
+          "end_ms": 1142877,
+          "target_start": 0,
+          "target_end": 3
+        },
+        "labels": {
+          "sense": "expected",
+          "correct_sense_key": "jmdict:1219510:0",
+          "subtitle_support": "expressed",
+          "production": "accept",
+          "reasons": []
+        },
+        "provenance": {
+          "kind": "human_review",
+          "reviewer": "project-owner",
+          "decision": "implicit_pass_in_reviewed_range",
+          "position": 62
+        },
+        "tags": []
+      },
+      {
+        "schema_version": 1,
+        "case_id": "development-13d58c87c65e16fbab82",
+        "split": "development",
+        "review_status": "gold",
+        "card": {
+          "position": 26,
+          "audit_position": 749,
+          "candidate_key": "0954a722653d8a126273c746::jmdict:1596930:0:734:0:2",
+          "learning_unit_key": "0954a722653d8a126273c746::jmdict:1596930:0",
+          "sense_key": "jmdict:1596930:0",
+          "lemma": "確か",
+          "reading": "タシカ",
+          "part_of_speech": "形状詞",
+          "gloss": "sure; certain; positive",
+          "target_surface": "確かに",
+          "japanese": "確かに。",
+          "english": "Indeed.",
+          "series": "Hunter x Hunter",
+          "season": 1,
+          "episode": 3,
+          "cue_index": 138,
+          "sentence_id": 734,
+          "start_ms": 557960,
+          "end_ms": 559962,
+          "target_start": 0,
+          "target_end": 3
+        },
+        "labels": {
+          "sense": "expected",
+          "correct_sense_key": "jmdict:1596930:0",
+          "subtitle_support": "expressed",
+          "production": "accept",
+          "reasons": []
+        },
+        "provenance": {
+          "kind": "human_review",
+          "reviewer": "project-owner",
+          "decision": "implicit_pass_in_reviewed_range",
+          "position": 26
+        },
+        "tags": []
+      },
+      {
+        "schema_version": 1,
+        "case_id": "development-c4ac211ed94de401ed76",
+        "split": "development",
+        "review_status": "gold",
+        "card": {
+          "position": 81,
+          "audit_position": 483,
+          "candidate_key": "8b7b1c29c9a546d5373ea3c6::jmdict:1445640:0:1385:8:9",
+          "learning_unit_key": "8b7b1c29c9a546d5373ea3c6::jmdict:1445640:0",
+          "sense_key": "jmdict:1445640:0",
+          "lemma": "奴",
+          "reading": "ヤツ",
+          "part_of_speech": "名詞",
+          "gloss": "fellow; guy; chap",
+          "target_surface": "奴",
+          "japanese": "あっれ～ ゴンの奴 やっぱり いないなぁ。",
+          "english": "Huh? Gon isn't here...",
+          "series": "Hunter x Hunter",
+          "season": 1,
+          "episode": 5,
+          "cue_index": 215,
+          "sentence_id": 1385,
+          "start_ms": 1112522,
+          "end_ms": 1117522,
+          "target_start": 8,
+          "target_end": 9
+        },
+        "labels": {
+          "sense": "expected",
+          "correct_sense_key": "jmdict:1445640:0",
+          "subtitle_support": "expressed",
+          "production": "accept",
+          "reasons": []
+        },
+        "provenance": {
+          "kind": "human_review",
+          "reviewer": "project-owner",
+          "decision": "implicit_pass_in_reviewed_range",
+          "position": 81
+        },
+        "tags": []
+      },
+      {
+        "schema_version": 1,
+        "case_id": "development-f48654eb2e53268bc7be",
+        "split": "development",
+        "review_status": "gold",
+        "card": {
+          "position": 84,
+          "audit_position": 2098,
+          "candidate_key": "1a505249a9e6b6322fe8254a::jmdict:1260720:0:1731:11:13",
+          "learning_unit_key": "1a505249a9e6b6322fe8254a::jmdict:1260720:0",
+          "sense_key": "jmdict:1260720:0",
+          "lemma": "元気",
+          "reading": "ゲンキ",
+          "part_of_speech": "名詞",
+          "gloss": "lively; full of spirit; energetic",
+          "target_surface": "元気な",
+          "japanese": "うん！ （レオリオ） 元気な奴ら。",
+          "english": "Yeah! How can they have so much energy?",
+          "series": "Hunter x Hunter",
+          "season": 1,
+          "episode": 7,
+          "cue_index": 34,
+          "sentence_id": 1731,
+          "start_ms": 213686,
+          "end_ms": 216689,
+          "target_start": 11,
+          "target_end": 14
+        },
+        "labels": {
+          "sense": "expected",
+          "correct_sense_key": "jmdict:1260720:0",
+          "subtitle_support": "expressed",
+          "production": "accept",
+          "reasons": []
+        },
+        "provenance": {
+          "kind": "human_review",
+          "reviewer": "project-owner",
+          "decision": "implicit_pass_in_reviewed_range",
+          "position": 84
+        },
+        "tags": []
+      },
+      {
+        "schema_version": 1,
+        "case_id": "development-66c2463394f7bad15bc9",
+        "split": "development",
+        "review_status": "gold",
+        "card": {
+          "position": 87,
+          "audit_position": 2505,
+          "candidate_key": "db92f538f023f605d1f5334e::jmdict:2029080:1:1103:0:2",
+          "learning_unit_key": "db92f538f023f605d1f5334e::jmdict:2029080:1",
+          "sense_key": "jmdict:2029080:1",
+          "lemma": "ねぇ",
+          "reading": "ネェ",
+          "part_of_speech": "感動詞",
+          "gloss": "hey; come on; listen",
+          "target_surface": "ねぇ",
+          "japanese": "ねぇ サトツさん ここが ２次試験会場なの？",
+          "english": "Hey, Satotz-san. Is this where the Second Phase of the exam takes place?",
+          "series": "Hunter x Hunter",
+          "season": 1,
+          "episode": 4,
+          "cue_index": 230,
+          "sentence_id": 1103,
+          "start_ms": 937131,
+          "end_ms": 941052,
+          "target_start": 0,
+          "target_end": 2
+        },
+        "labels": {
+          "sense": "expected",
+          "correct_sense_key": "jmdict:2029080:1",
+          "subtitle_support": "expressed",
+          "production": "accept",
+          "reasons": []
+        },
+        "provenance": {
+          "kind": "human_review",
+          "reviewer": "project-owner",
+          "decision": "implicit_pass_in_reviewed_range",
+          "position": 87
+        },
+        "tags": []
+      },
+      {
+        "schema_version": 1,
+        "case_id": "development-a5a0b14156e5e1d360fe",
+        "split": "development",
+        "review_status": "gold",
+        "card": {
+          "position": 8,
+          "audit_position": 166,
+          "candidate_key": "dd2b01b723b787559c22a67d::jmdict:1288850:0:1326:0:1",
+          "learning_unit_key": "dd2b01b723b787559c22a67d::jmdict:1288850:0",
+          "sense_key": "jmdict:1288850:0",
+          "lemma": "今",
+          "reading": "イマ",
+          "part_of_speech": "名詞",
+          "gloss": "now; the present time; just now",
+          "target_surface": "今だ",
+          "japanese": "今だ！",
+          "english": "Now!",
+          "series": "Hunter x Hunter",
+          "season": 1,
+          "episode": 5,
+          "cue_index": 153,
+          "sentence_id": 1326,
+          "start_ms": 819013,
+          "end_ms": 820513,
+          "target_start": 0,
+          "target_end": 2
+        },
+        "labels": {
+          "sense": "expected",
+          "correct_sense_key": "jmdict:1288850:0",
+          "subtitle_support": "expressed",
+          "production": "accept",
+          "reasons": []
+        },
+        "provenance": {
+          "kind": "human_review",
+          "reviewer": "project-owner",
+          "decision": "implicit_pass_in_reviewed_range",
+          "position": 8
+        },
+        "tags": []
+      },
+      {
+        "schema_version": 1,
+        "case_id": "development-2189bb5fa8820211e00f",
+        "split": "development",
+        "review_status": "gold",
+        "card": {
+          "position": 95,
+          "audit_position": 2910,
+          "candidate_key": "c3166481d6f2d52ad2a7b47f::jmdict:2194050:0:383:0:2",
+          "learning_unit_key": "c3166481d6f2d52ad2a7b47f::jmdict:2194050:0",
+          "sense_key": "jmdict:2194050:0",
+          "lemma": "えっ",
+          "reading": "エッ",
+          "part_of_speech": "感動詞",
+          "gloss": "huh?; what's up?",
+          "target_surface": "えっ",
+          "japanese": "えっ マジか？",
+          "english": "Huh? Seriously?",
+          "series": "Hunter x Hunter",
+          "season": 1,
+          "episode": 2,
+          "cue_index": 104,
+          "sentence_id": 383,
+          "start_ms": 443967,
+          "end_ms": 445468,
+          "target_start": 0,
+          "target_end": 2
+        },
+        "labels": {
+          "sense": "expected",
+          "correct_sense_key": "jmdict:2194050:0",
+          "subtitle_support": "expressed",
+          "production": "accept",
+          "reasons": []
+        },
+        "provenance": {
+          "kind": "human_review",
+          "reviewer": "project-owner",
+          "decision": "implicit_pass_in_reviewed_range",
+          "position": 95
+        },
+        "tags": []
+      },
+      {
+        "schema_version": 1,
+        "case_id": "development-bbf70f7d50c7959c9fa1",
+        "split": "development",
+        "review_status": "gold",
+        "card": {
+          "position": 18,
+          "audit_position": 96,
+          "candidate_key": "3e5bd75bfe7b272077963984::jmdict:2842390:0:1561:2:3",
+          "learning_unit_key": "3e5bd75bfe7b272077963984::jmdict:2842390:0",
+          "sense_key": "jmdict:2842390:0",
+          "lemma": "私",
+          "reading": "ワタクシ",
+          "part_of_speech": "代名詞",
+          "gloss": "I; me",
+          "target_surface": "私だ",
+          "japanese": "次は私だ！",
+          "english": "I am next!",
+          "series": "Hunter x Hunter",
+          "season": 1,
+          "episode": 6,
+          "cue_index": 157,
+          "sentence_id": 1561,
+          "start_ms": 672563,
+          "end_ms": 675049,
+          "target_start": 2,
+          "target_end": 4
+        },
+        "labels": {
+          "sense": "expected",
+          "correct_sense_key": "jmdict:2842390:0",
+          "subtitle_support": "expressed",
+          "production": "accept",
+          "reasons": []
+        },
+        "provenance": {
+          "kind": "human_review",
+          "reviewer": "project-owner",
+          "decision": "implicit_pass_in_reviewed_range",
+          "position": 18
+        },
+        "tags": []
+      },
+      {
+        "schema_version": 1,
+        "case_id": "development-9ab53fe08f31d64a015f",
+        "split": "development",
+        "review_status": "gold",
+        "card": {
+          "position": 27,
+          "audit_position": 753,
+          "candidate_key": "155fd4ac1ac54a7b26742f73::jmdict:1531330:0:2098:10:11",
+          "learning_unit_key": "155fd4ac1ac54a7b26742f73::jmdict:1531330:0",
+          "sense_key": "jmdict:1531330:0",
+          "lemma": "名",
+          "reading": "ナ",
+          "part_of_speech": "名詞",
+          "gloss": "name; given name",
+          "target_surface": "名",
+          "japanese": "[ｽﾋﾟｰｶ] 私の名はリッポー。",
+          "english": "My name is Lippo.",
+          "series": "Hunter x Hunter",
+          "season": 1,
+          "episode": 8,
+          "cue_index": 125,
+          "sentence_id": 2098,
+          "start_ms": 492892,
+          "end_ms": 494894,
+          "target_start": 10,
+          "target_end": 11
+        },
+        "labels": {
+          "sense": "expected",
+          "correct_sense_key": "jmdict:1531330:0",
+          "subtitle_support": "expressed",
+          "production": "accept",
+          "reasons": []
+        },
+        "provenance": {
+          "kind": "human_review",
+          "reviewer": "project-owner",
+          "decision": "implicit_pass_in_reviewed_range",
+          "position": 27
+        },
+        "tags": []
+      },
+      {
+        "schema_version": 1,
+        "case_id": "development-47a26d40ac6978235229",
+        "split": "development",
+        "review_status": "gold",
+        "card": {
+          "position": 64,
+          "audit_position": 2067,
+          "candidate_key": "abe62893cd3e6bddebe94b4e::jmdict:1255060:0:2430:0:1",
+          "learning_unit_key": "abe62893cd3e6bddebe94b4e::jmdict:1255060:0",
+          "sense_key": "jmdict:1255060:0",
+          "lemma": "血",
+          "reading": "チ",
+          "part_of_speech": "名詞",
+          "gloss": "blood",
+          "target_surface": "血",
+          "japanese": "血を！",
+          "english": "Blood!",
+          "series": "Hunter x Hunter",
+          "season": 1,
+          "episode": 9,
+          "cue_index": 166,
+          "sentence_id": 2430,
+          "start_ms": 760165,
+          "end_ms": 761666,
+          "target_start": 0,
+          "target_end": 1
+        },
+        "labels": {
+          "sense": "expected",
+          "correct_sense_key": "jmdict:1255060:0",
+          "subtitle_support": "expressed",
+          "production": "accept",
+          "reasons": []
+        },
+        "provenance": {
+          "kind": "human_review",
+          "reviewer": "project-owner",
+          "decision": "implicit_pass_in_reviewed_range",
+          "position": 64
+        },
+        "tags": []
+      }
+    ]
+  }
+}
