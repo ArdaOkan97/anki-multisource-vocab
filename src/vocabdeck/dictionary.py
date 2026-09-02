@@ -8,7 +8,7 @@ from typing import Optional, Tuple
 from jamdict import Jamdict
 
 
-DICTIONARY_RESOLVER_VERSION = 5
+DICTIONARY_RESOLVER_VERSION = 6
 
 _ENGLISH_WORD = re.compile(r"[a-z][a-z'-]+")
 _STOPWORDS = {
@@ -36,6 +36,22 @@ _CORE_GLOSS_OVERRIDES = {
     # 結う, so spelling/reading alone otherwise selects "to arrange hair".
     ("いう", "動詞"): ("to say; to utter; to call", 1587040, 0),
 }
+
+# Construction rules select a JMdict sense only when the target occurrence is
+# used as grammar. They do not merge the lexeme's genuinely distinct senses.
+_CONSTRUCTION_SENSES = {
+    ("くれる", "動詞", "verb_te_benefactive_request"): (1269130, 2),
+}
+
+
+def _verb_te_kureru(japanese_context: str, target_start: Optional[int]) -> bool:
+    if not japanese_context:
+        return False
+    if target_start is not None and 0 <= target_start <= len(japanese_context):
+        before = japanese_context[:target_start]
+        after = japanese_context[target_start:]
+        return bool(re.search(r"[てで]\s*$", before) and re.match(r"くれ", after))
+    return re.search(r"[てで]\s*くれ", japanese_context) is not None
 
 
 def _hiragana(value: str) -> str:
@@ -179,11 +195,17 @@ class JMDictResolver:
         english_context: str = "",
         strict_pos: bool = False,
         japanese_context: str = "",
+        target_start: Optional[int] = None,
     ) -> Optional[DictionaryMatch]:
         override = _CORE_GLOSS_OVERRIDES.get((lemma, part_of_speech))
         if override:
             gloss, entry_id, sense_index = override
             return DictionaryMatch(gloss, entry_id, sense_index, 5.0)
+        construction = self._construction_sense(
+            lemma, part_of_speech, japanese_context, target_start
+        )
+        if construction is not None:
+            return construction
         # Only JMdict word entries are used below. Kanjidic character expansion
         # and JMnedict proper-name lookup are both discarded and make corpus-wide
         # enrichment dramatically slower.
@@ -263,6 +285,31 @@ class JMDictResolver:
                     best = (score, match)
         return best[1] if best else None
 
+    def _construction_sense(
+        self, lemma: str, part_of_speech: str,
+        japanese_context: str, target_start: Optional[int],
+    ) -> Optional[DictionaryMatch]:
+        key = (lemma, part_of_speech, "verb_te_benefactive_request")
+        identity = _CONSTRUCTION_SENSES.get(key)
+        if identity is None or not _verb_te_kureru(japanese_context, target_start):
+            return None
+        entry_id, wanted_index = identity
+        result = self.dictionary.lookup(
+            lemma, lookup_chars=False, lookup_ne=False
+        )
+        for entry in result.entries:
+            if int(entry.idseq) != entry_id or wanted_index >= len(entry.senses):
+                continue
+            glosses = [
+                gloss.text for gloss in entry.senses[wanted_index].gloss
+                if gloss.lang in ("", "eng")
+            ]
+            if glosses:
+                return DictionaryMatch(
+                    "; ".join(glosses[:3]), entry_id, wanted_index, 6.0
+                )
+        return None
+
     @lru_cache(maxsize=100_000)
     def sense_candidates(
         self,
@@ -270,12 +317,18 @@ class JMDictResolver:
         reading: str,
         part_of_speech: str,
         japanese_context: str = "",
+        target_start: Optional[int] = None,
     ) -> Tuple[DictionaryMatch, ...]:
         """Enumerate only spelling-, reading-, and POS-compatible JMdict senses.
 
         Unlike :meth:`resolve`, this method never consults the English subtitle;
         it is the closed candidate set for Japanese-only sense verification.
         """
+        construction = self._construction_sense(
+            lemma, part_of_speech, japanese_context, target_start
+        )
+        if construction is not None:
+            return (construction,)
         result = self.dictionary.lookup(
             lemma, lookup_chars=False, lookup_ne=False
         )

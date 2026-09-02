@@ -546,6 +546,7 @@ class VocabularyDatabase:
                             token.lemma, token.reading, token.part_of_speech,
                             translation or "", strict_pos=True,
                             japanese_context=cue.text,
+                            target_start=token.start,
                         )
                         gloss = match.gloss if match is not None else None
                         entry_id = match.entry_id if match is not None else None
@@ -1283,6 +1284,7 @@ class VocabularyDatabase:
                     str(row["part_of_speech"]), str(row["english"] or ""),
                     strict_pos=True,
                     japanese_context=str(row["japanese"] or ""),
+                    target_start=int(row["start_char"]),
                 )
                 status = "matched" if match is not None else "missing"
                 sense_key = canonical_sense_key(
@@ -1595,6 +1597,7 @@ class VocabularyDatabase:
                     str(sentence["english"] or ""),
                     strict_pos=True,
                     japanese_context=str(sentence["japanese"]),
+                    target_start=token.start,
                 )
                 sense_key = canonical_sense_key(
                     match.entry_id if match else None,
@@ -1711,6 +1714,11 @@ class VocabularyDatabase:
                         str(candidate.get("english") or ""),
                         strict_pos=True,
                         japanese_context=str(candidate.get("japanese") or ""),
+                        target_start=(
+                            int(candidate["occurrence_start"])
+                            if candidate.get("occurrence_start") is not None
+                            else None
+                        ),
                     )
                     if contextual_match is not None:
                         if (

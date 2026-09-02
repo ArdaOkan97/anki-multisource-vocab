@@ -88,6 +88,42 @@ class DictionaryTest(unittest.TestCase):
         self.assertEqual(match.sense_index, 0)
         self.assertIn("in that way", match.gloss)
 
+    def test_verb_te_kureru_maps_to_benefactive_request_sense(self):
+        earlier = self.resolver.resolve(
+            "くれる", "クレル", "動詞", "Wait for me!", strict_pos=True,
+            japanese_context="待て 待て 待て！ 待ってくれよ～！",
+            target_start=13,
+        )
+        later = self.resolver.resolve(
+            "くれる", "クレル", "動詞",
+            "Now I need you to answer my question.", strict_pos=True,
+            japanese_context="さて １つ答えてくれ。", target_start=8,
+        )
+
+        self.assertEqual((earlier.entry_id, earlier.sense_index), (1269130, 2))
+        self.assertEqual((later.entry_id, later.sense_index), (1269130, 2))
+        self.assertIn("to do for one", later.gloss)
+
+    def test_ordinary_kureru_remains_a_distinct_give_sense(self):
+        match = self.resolver.resolve(
+            "くれる", "クレル", "動詞", "Give me the money.",
+            strict_pos=True, japanese_context="金をくれ。", target_start=2,
+        )
+
+        self.assertEqual((match.entry_id, match.sense_index), (1269130, 0))
+        self.assertIn("to give", match.gloss)
+
+    def test_construction_candidates_exclude_ordinary_give_sense(self):
+        candidates = self.resolver.sense_candidates(
+            "くれる", "クレル", "動詞", "さて １つ答えてくれ。",
+            target_start=8,
+        )
+
+        self.assertEqual(
+            [(match.entry_id, match.sense_index) for match in candidates],
+            [(1269130, 2)],
+        )
+
     def test_finds_exact_multi_token_expression(self):
         match = JMDictExpressionResolver().resolve("どうも", "ドウモ")
         self.assertIsNotNone(match)
