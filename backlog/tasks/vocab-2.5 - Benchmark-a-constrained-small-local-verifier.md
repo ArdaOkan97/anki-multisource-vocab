@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-08-27 11:36'
-updated_date: '2026-08-31 05:00'
+updated_date: '2026-09-02 07:42'
 labels: []
 dependencies:
   - VOCAB-2.1
@@ -46,4 +46,6 @@ Determine whether a 1.5B-4B Japanese-capable local model can replace the slow op
 Safety incident: overlapping Qwen3.5 9B MLX processes accumulated over 30 GB of unified memory and crashed the Mac. All inference is paused. Decision: permanently block the 9B artifact under the default local safety policy, enforce one inference process and a 4 GiB MLX limit, and run no model during guard implementation/testing.
 
 Implemented the local-inference safety guard in both MLX reviewer paths: exclusive cross-process flock, default 4 GiB MLX allocation limit, non-overridable 6 GiB hard maximum, 3.5 GiB artifact ceiling that rejects Qwen3.5 9B before model loading, 512 MiB cache cap, explicit cleanup, and CLI coverage. No model was loaded. Verification: 152 tests passed; no inference process remains.
+
+Pre-merge runtime clarification: preserved the immutable hxh-e01-e10-hybrid-qwen9b-200-v1 artifacts and pinned 9B configuration as the historical A/B baseline. Removed 9B as an executable CLI default; local review now requires an explicit model, documentation marks the 2B example as experimental, and the artifact/memory guard continues to block unsafe 9B execution on this Mac. Verification: 152 tests passed.
 <!-- SECTION:NOTES:END -->

@@ -273,7 +273,12 @@ def build_parser() -> argparse.ArgumentParser:
     local_review.add_argument("--input", required=True, type=Path)
     local_review.add_argument("--output", required=True, type=Path)
     local_review.add_argument(
-        "--model", default="mlx-community/Qwen3.5-9B-OptiQ-4bit"
+        "--model", required=True,
+        help=(
+            "Explicit MLX model repository or path. The frozen Qwen 9B "
+            "baseline remains a comparison artifact, not a safe runtime "
+            "default."
+        ),
     )
     local_review.add_argument("--batch-size", type=int, default=4)
     local_review.add_argument("--max-tokens", type=int, default=48)
