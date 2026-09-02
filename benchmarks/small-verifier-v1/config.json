@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "benchmark_id": "small-verifier-v1",
+  "dataset": "benchmarks/verifier-gold-v1/dataset.json",
+  "smoke_size": 20,
+  "resource_policy": {
+    "sequential_processes": true,
+    "memory_limit_gb": 4.0,
+    "hard_memory_limit_gb": 6.0,
+    "artifact_limit_gb": 3.5,
+    "require_cleanup_probe": true
+  },
+  "prompt_versions": {
+    "sense": 1,
+    "subtitle_support": 1,
+    "acceptance_policy": 1
+  },
+  "decoding": {
+    "temperature": 0.0,
+    "max_tokens": 4,
+    "max_kv_size": 1024,
+    "prompt_batch_size": 1,
+    "sense_votes": 2,
+    "vote_policy": "stable-sense-unanimity-then-explicit-subtitle-support"
+  },
+  "candidates": [
+    {
+      "model": "mlx-community/Qwen3.5-2B-OptiQ-4bit",
+      "revision": "adc8669eb431e3168aeb4e320bd7b757914350e2",
+      "role": "primary"
+    },
+    {
+      "model": "mlx-community/gemma-2-2b-jpn-it-4bit",
+      "revision": "c6437fd222e0833f5400b04c58a0e156b225d4b1",
+      "role": "primary"
+    },
+    {
+      "model": "mlx-community/Qwen3-1.7B-4bit",
+      "revision": "3b1b1768f8f8cf8351c712464f906e86c2b8269e",
+      "role": "primary"
+    }
+  ],
+  "fallback": {
+    "model": "mlx-community/Phi-4-mini-instruct-4bit",
+    "revision": "ac1c269cb4222a4e136a3d09edad301056c1f36a",
+    "run_only_if": "all_primary_candidates_fail_smoke_or_are_nonviable"
+  }
+}

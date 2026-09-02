@@ -21,6 +21,7 @@ NONE_TEXT = "None of these / ambiguous"
 PRECISION_TARGET = 0.995
 _LABELS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 _LABEL_RESPONSE = re.compile(r"^\s*([A-Z])(?:[.)])?\s*$")
+_EOS_MARKERS = ("<end_of_turn>", "<|end|>", "<|im_end|>", "<|endoftext|>")
 
 
 class LabelReviewer(Protocol):
@@ -116,7 +117,15 @@ def build_support_prompt(card: Mapping[str, Any], gloss: str) -> SensePrompt:
 
 
 def parse_label(raw: str, mapping: Mapping[str, Optional[str]]) -> Optional[str]:
-    match = _LABEL_RESPONSE.fullmatch(str(raw or ""))
+    normalized = str(raw or "").strip()
+    changed = True
+    while changed:
+        changed = False
+        for marker in _EOS_MARKERS:
+            if normalized.endswith(marker):
+                normalized = normalized[:-len(marker)].strip()
+                changed = True
+    match = _LABEL_RESPONSE.fullmatch(normalized)
     if match is None or match.group(1) not in mapping:
         raise ValueError("invalid constrained label")
     return mapping[match.group(1)]
@@ -228,6 +237,7 @@ def run_constrained_benchmark(
             "teacher_accepted": teacher_accepted,
             "accepted": accepted,
             "reason": reason,
+            "sense_raw": list(raw),
             "sense_votes": votes,
             "support_raw": support_raw,
         })
@@ -297,7 +307,10 @@ def run_constrained_dataset(
             row.pop("teacher_accepted", None)
             row["case_id"] = case["case_id"]
             row["abstained"] = not bool(row.get("accepted"))
-            row["invalid_output"] = row.get("reason") == "sense_invalid_or_disagreed" and not row.get("sense_votes")
+            row["invalid_output"] = (
+                row.get("reason") == "sense_invalid_or_disagreed"
+                and not row.get("sense_votes")
+            )
             records.append(row)
             for name, value in result.get("inference", {}).items():
                 inference[name] += value
@@ -315,6 +328,16 @@ def run_constrained_dataset(
             "abstained": sum(bool(row.get("abstained")) for row in records),
             "cards_per_second": round(len(records) / elapsed, 3) if elapsed else None,
             "peak_memory_gb": round(peak_memory, 3),
+            "artifact_size_gb": round(
+                float(getattr(reviewer, "artifact_size_bytes", 0)) / 1024**3, 3
+            ),
+            "decoding": {
+                "temperature": 0.0,
+                "max_tokens": int(getattr(reviewer, "max_tokens", 4)),
+                "max_kv_size": 1024,
+                "sense_votes": 2,
+                "prompt_batch_size": 1,
+            },
         },
         "inference": dict(inference),
         "records": records,
@@ -325,6 +348,7 @@ class MLXLabelReviewer:
     def __init__(
         self, model_name: str, *, max_tokens: int = 4,
         memory_limit_gb: float = 4.0,
+        revision: Optional[str] = None,
     ) -> None:
         from huggingface_hub import snapshot_download
 
@@ -337,8 +361,10 @@ class MLXLabelReviewer:
         try:
             model_path = Path(model_name).expanduser()
             if not model_path.exists():
-                model_path = Path(snapshot_download(model_name))
-            self._resource_guard.validate_model_path(model_path)
+                model_path = Path(snapshot_download(model_name, revision=revision))
+            self.artifact_size_bytes = self._resource_guard.validate_model_path(
+                model_path
+            )
             import mlx.core as mx
             self._resource_guard.configure_mlx(mx)
             from mlx_lm import batch_generate, load
@@ -350,7 +376,9 @@ class MLXLabelReviewer:
         except Exception:
             self._resource_guard.release()
             raise
-        self.model_name = model_name
+        self.model_id = model_name
+        self.model_revision = revision
+        self.model_name = f"{model_name}@{revision}" if revision else model_name
         self.max_tokens = max_tokens
         self._batch_generate = batch_generate
         self._sampler = make_sampler(temp=0.0)
@@ -376,20 +404,29 @@ class MLXLabelReviewer:
             )
             for prompt in prompts
         ]
-        response = self._batch_generate(
-            self._model,
-            self._tokenizer,
-            encoded,
-            max_tokens=self.max_tokens,
-            max_kv_size=1024,
-            sampler=self._sampler,
-            verbose=False,
-        )
-        stats = response.stats
-        return list(response.texts), {
-            "prompt_tokens": stats.prompt_tokens,
-            "generation_tokens": stats.generation_tokens,
-            "prompt_time": stats.prompt_time,
-            "generation_time": stats.generation_time,
-            "peak_memory": stats.peak_memory,
+        texts: List[str] = []
+        totals: Counter[str] = Counter()
+        peak_memory = 0.0
+        # Single-prompt calls avoid a Gemma 2 batch-mask incompatibility and
+        # keep the execution/memory policy identical across all candidates.
+        for prompt in encoded:
+            response = self._batch_generate(
+                self._model,
+                self._tokenizer,
+                [prompt],
+                max_tokens=self.max_tokens,
+                max_kv_size=1024,
+                sampler=self._sampler,
+                verbose=False,
+            )
+            texts.extend(response.texts)
+            stats = response.stats
+            totals["prompt_tokens"] += stats.prompt_tokens
+            totals["generation_tokens"] += stats.generation_tokens
+            totals["prompt_time"] += stats.prompt_time
+            totals["generation_time"] += stats.generation_time
+            peak_memory = max(peak_memory, float(stats.peak_memory))
+        return texts, {
+            **dict(totals),
+            "peak_memory": peak_memory,
         }

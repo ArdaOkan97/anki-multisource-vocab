@@ -365,11 +365,30 @@ def build_parser() -> argparse.ArgumentParser:
     run_verifier.add_argument(
         "--model", default="mlx-community/Qwen3.5-2B-OptiQ-4bit"
     )
+    run_verifier.add_argument("--revision", required=True)
     run_verifier.add_argument(
         "--memory-limit-gb", type=float, default=4.0,
         help="MLX allocation limit (hard maximum: 6 GiB)",
     )
     run_verifier.add_argument("--output", required=True, type=Path)
+
+    smoke_verifier = commands.add_parser(
+        "build-verifier-smoke-dataset",
+        help="Build the deterministic gold-only verifier smoke cohort",
+    )
+    smoke_verifier.add_argument("--dataset", required=True, type=Path)
+    smoke_verifier.add_argument("--size", type=int, default=20)
+    smoke_verifier.add_argument("--output", required=True, type=Path)
+
+    compare_verifiers = commands.add_parser(
+        "compare-verifier-benchmarks",
+        help="Build a fail-closed comparison from evaluated candidates",
+    )
+    compare_verifiers.add_argument("--config", required=True, type=Path)
+    compare_verifiers.add_argument(
+        "--evaluation", required=True, action="append", type=Path
+    )
+    compare_verifiers.add_argument("--output", required=True, type=Path)
 
     validate_reviewed = commands.add_parser(
         "validate-reviewed-cards",
@@ -602,6 +621,37 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "output": str(output), **result["summary"]
         }, ensure_ascii=False, indent=2))
         return 0
+    if args.command == "build-verifier-smoke-dataset":
+        from .gold_benchmark import write_json
+        from .small_verifier_benchmark import build_smoke_dataset
+
+        dataset = json.loads(args.dataset.read_text(encoding="utf-8"))
+        smoke = build_smoke_dataset(dataset, args.size)
+        output = write_json(smoke, args.output)
+        print(json.dumps({
+            "output": str(output),
+            "cases": sum(len(rows) for rows in smoke["splits"].values()),
+        }, ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "compare-verifier-benchmarks":
+        from .gold_benchmark import write_json
+        from .small_verifier_benchmark import (
+            build_comparison_report, load_candidate_config,
+        )
+
+        evaluations = [
+            json.loads(path.read_text(encoding="utf-8"))
+            for path in args.evaluation
+        ]
+        comparison = build_comparison_report(
+            evaluations, load_candidate_config(args.config)
+        )
+        output = write_json(comparison, args.output)
+        print(json.dumps({
+            "output": str(output),
+            "recommendation": comparison["recommendation"],
+        }, ensure_ascii=False, indent=2))
+        return 0
     if args.command == "build-verifier-gold-dataset":
         from .gold_benchmark import build_gold_dataset, write_json
 
@@ -643,12 +693,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         dataset = json.loads(args.dataset.read_text(encoding="utf-8"))
         validate_dataset(dataset)
         reviewer = MLXLabelReviewer(
-            args.model, memory_limit_gb=args.memory_limit_gb
+            args.model, revision=args.revision,
+            memory_limit_gb=args.memory_limit_gb,
         )
         try:
             predictions = run_constrained_dataset(dataset, reviewer)
         finally:
             reviewer.close()
+        from .inference_resources import InferenceResourceGuard
+        cleanup_probe = InferenceResourceGuard()
+        cleanup_probe.acquire()
+        cleanup_probe.release()
+        predictions["summary"]["cleanup_verified"] = True
         output = write_json(predictions, args.output)
         print(json.dumps({
             "output": str(output), **predictions["summary"],

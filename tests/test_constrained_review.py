@@ -120,6 +120,9 @@ class ConstrainedReviewTest(unittest.TestCase):
         prompt = build_support_prompt(card(), "word")
         self.assertEqual(parse_label("A", prompt.label_to_sense), "expressed")
         self.assertIsNone(parse_label("C", prompt.label_to_sense))
+        self.assertEqual(
+            parse_label("A\n<end_of_turn>", prompt.label_to_sense), "expressed"
+        )
         with self.assertRaises(ValueError):
             parse_label("The answer is A", prompt.label_to_sense)
 
@@ -144,6 +147,7 @@ class ConstrainedReviewTest(unittest.TestCase):
         )
         self.assertEqual(result["summary"]["accepted"], 1)
         self.assertEqual(result["summary"]["false_accepts"], 0)
+        self.assertEqual(result["records"][0]["sense_raw"], sense_labels)
         self.assertTrue(result["summary"]["adopt"])
 
     def test_false_accept_blocks_adoption(self):

@@ -123,6 +123,9 @@ class GoldBenchmarkTest(unittest.TestCase):
         )
         self.assertEqual(report["summary"]["false_accepts"], expected_rejects)
         self.assertEqual(report["summary"]["cards_per_second"], 3.5)
+        tagged = report["subgroups"]["near_duplicate_learning_unit"]
+        self.assertIn("accepted_precision_95ci", tagged)
+        self.assertIn("invalid_output_rate", tagged)
         self.assertFalse(report["summary"]["precision_claim_supported"])
         self.assertEqual(report["summary"]["precision_claim_reason"], "insufficient_accepted_gold")
 

@@ -35,6 +35,7 @@ guard (6 GiB hard ceiling):
 vocabdeck run-verifier-benchmark \
   --dataset benchmarks/verifier-gold-v1/dataset.json \
   --model mlx-community/Qwen3.5-2B-OptiQ-4bit \
+  --revision adc8669eb431e3168aeb4e320bd7b757914350e2 \
   --output predictions.json
 ```
 

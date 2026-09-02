@@ -321,6 +321,9 @@ def evaluate_predictions(
         for tag in case.get("tags", []):
             tags[tag][outcome] += 1
             tags[tag]["evaluated"] += 1
+            tags[tag]["abstentions"] += int(abstained)
+            tags[tag]["invalid_outputs"] += int(invalid)
+            tags[tag]["option_order_unstable"] += int(unstable)
         records.append({
             "case_id": case["case_id"], "split": case["split"],
             "expected_accept": expected_accept, "accepted": accepted,
@@ -334,6 +337,37 @@ def evaluate_predictions(
     eligible = accepted >= minimum_accepted_gold
     claim = eligible and interval[0] >= precision_target
     summary_in = predictions.get("summary", {})
+    subgroup_results = {}
+    for name, values in sorted(tags.items()):
+        subgroup_accepted = values["true_accept"] + values["false_accept"]
+        subgroup_positive = values["true_accept"] + values["false_reject"]
+        subgroup_results[name] = {
+            **dict(values),
+            "accepted_precision": round(
+                values["true_accept"] / subgroup_accepted, 6
+            ) if subgroup_accepted else None,
+            "accepted_precision_95ci": [
+                round(value, 6) for value in _wilson_interval(
+                    values["true_accept"], subgroup_accepted
+                )
+            ],
+            "acceptance_coverage": round(
+                subgroup_accepted / values["evaluated"], 6
+            ) if values["evaluated"] else 0.0,
+            "positive_coverage": round(
+                values["true_accept"] / subgroup_positive, 6
+            ) if subgroup_positive else None,
+            "abstention_rate": round(
+                values["abstentions"] / values["evaluated"], 6
+            ) if values["evaluated"] else 0.0,
+            "invalid_output_rate": round(
+                values["invalid_outputs"] / values["evaluated"], 6
+            ) if values["evaluated"] else 0.0,
+            "option_order_disagreement_rate": round(
+                values["option_order_unstable"] / values["evaluated"], 6
+            ) if values["evaluated"] else 0.0,
+        }
+    positives = counters["true_accept"] + counters["false_reject"]
     return {
         "schema_version": REPORT_SCHEMA_VERSION,
         "dataset_id": dataset.get("dataset_id"),
@@ -349,12 +383,17 @@ def evaluate_predictions(
             "accepted_precision": round(precision, 6),
             "accepted_precision_95ci": [round(value, 6) for value in interval],
             "acceptance_coverage": round(accepted / len(gold), 6) if gold else 0.0,
+            "positive_coverage": round(
+                counters["true_accept"] / positives, 6
+            ) if positives else 0.0,
             "abstentions": counters["abstained"],
             "abstention_rate": round(counters["abstained"] / len(gold), 6) if gold else 0.0,
             "option_order_unstable": counters["option_order_unstable"],
             "invalid_outputs": counters["invalid_outputs"],
             "cards_per_second": summary_in.get("cards_per_second"),
             "peak_memory_gb": summary_in.get("peak_memory_gb"),
+            "artifact_size_gb": summary_in.get("artifact_size_gb"),
+            "cleanup_verified": summary_in.get("cleanup_verified", False),
             "precision_target": precision_target,
             "minimum_accepted_gold": minimum_accepted_gold,
             "precision_claim_supported": claim,
@@ -364,7 +403,7 @@ def evaluate_predictions(
                 "confidence_bound_below_target"
             ),
         },
-        "subgroups": {name: dict(values) for name, values in sorted(tags.items())},
+        "subgroups": subgroup_results,
         "records": records,
     }
 
