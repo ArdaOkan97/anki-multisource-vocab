@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "dictionary_resolver_version": 6,
+  "source_baseline": "hxh-e01-e10-hybrid-qwen9b-200-v1",
+  "cases": [
+    {
+      "position": 58,
+      "japanese": "待て 待て 待て！ 待ってくれよ～！",
+      "before": {
+        "sense_key": "jmdict:1269130:2",
+        "gloss": "to do for one; to take the trouble to do"
+      },
+      "after": {
+        "sense_key": "jmdict:1269130:2",
+        "gloss": "to do for one; to take the trouble to do"
+      }
+    },
+    {
+      "position": 78,
+      "japanese": "さて １つ答えてくれ。",
+      "before": {
+        "sense_key": "jmdict:1269130:0",
+        "gloss": "to give; to let (one) have"
+      },
+      "after": {
+        "sense_key": "jmdict:1269130:2",
+        "gloss": "to do for one; to take the trouble to do"
+      }
+    }
+  ],
+  "result": "positions 58 and 78 now share one learner-facing learning unit"
+}

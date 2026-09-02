@@ -8,6 +8,7 @@ from vocabdeck.constrained_review import (
     parse_label,
     run_constrained_benchmark,
     run_constrained_dataset,
+    sense_options,
 )
 from vocabdeck.inference_resources import InferenceResourceGuard
 
@@ -59,6 +60,20 @@ def card():
 
 
 class ConstrainedReviewTest(unittest.TestCase):
+    def test_sense_options_honor_verb_te_construction(self):
+        value = card()
+        value.update({
+            "lemma": "くれる", "reading": "クレル",
+            "part_of_speech": "動詞",
+            "japanese": "さて １つ答えてくれ。", "target_start": 8,
+        })
+
+        options = sense_options(value)
+
+        self.assertEqual(
+            [option["sense_key"] for option in options], ["jmdict:1269130:2"]
+        )
+
     def test_resource_guard_rejects_oversized_model_before_load(self):
         with tempfile.TemporaryDirectory() as directory:
             model = Path(directory) / "model"

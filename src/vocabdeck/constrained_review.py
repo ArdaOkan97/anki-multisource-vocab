@@ -57,6 +57,7 @@ def sense_options(
             str(card.get("reading") or ""),
             str(card.get("part_of_speech") or ""),
             str(card.get("japanese") or ""),
+            card.get("target_start") if isinstance(card.get("target_start"), int) else None,
         )
     ]
 

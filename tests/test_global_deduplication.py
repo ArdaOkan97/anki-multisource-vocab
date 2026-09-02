@@ -154,6 +154,48 @@ class GlobalDeduplicationTest(unittest.TestCase):
         self.assertEqual(self.db.stats()["known"], 8)
         self.assertEqual(self.db.stats()["lexemes"], 10)
 
+    def test_verb_te_kureru_occurrences_share_benefactive_learning_unit(self):
+        source = self.db.add_source(
+            series="Construction Show", season=1, episode=1, title=None,
+            video_path=None, japanese_subtitle_path="construction.srt",
+            english_subtitle_path="construction-en.srt",
+        )
+        japanese = [
+            Cue(1, 0, 800, "待ってくれよ！"),
+            Cue(2, 1000, 1800, "答えてくれ。"),
+            Cue(3, 2000, 2800, "金をくれ。"),
+        ]
+        english = [
+            Cue(1, 0, 800, "Wait for me!"),
+            Cue(2, 1000, 1800, "Answer me."),
+            Cue(3, 2000, 2800, "Give me the money."),
+        ]
+        self.db.ingest_cues(source, japanese, english, JapaneseTokenizer())
+        rows = [
+            dict(row) for row in self.db.connection.execute(
+                """SELECT s.cue_index, l.lexeme_key, os.sense_key,
+                          os.dictionary_sense_index
+                   FROM occurrence_senses os
+                   JOIN lexemes l ON l.id = os.lexeme_id
+                   JOIN sentences s ON s.id = os.sentence_id
+                   WHERE s.source_id = ? AND l.lemma = 'くれる'
+                   ORDER BY s.cue_index""",
+                (source,),
+            )
+        ]
+
+        self.assertEqual(
+            [row["dictionary_sense_index"] for row in rows], [2, 2, 0]
+        )
+        construction_units = {
+            learning_unit_key(row["lexeme_key"], row["sense_key"])
+            for row in rows[:2]
+        }
+        self.assertEqual(len(construction_units), 1)
+        self.assertNotEqual(
+            next(iter(construction_units)),
+            learning_unit_key(rows[2]["lexeme_key"], rows[2]["sense_key"]),
+        )
     def test_ingest_records_standalone_reaction_sense(self):
         source_id = self.db.add_source(
             series="Reactions", season=1, episode=1, title=None,
