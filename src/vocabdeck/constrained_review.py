@@ -269,6 +269,58 @@ def run_constrained_benchmark(
     }
 
 
+def run_constrained_dataset(
+    dataset: Mapping[str, Any], reviewer: LabelReviewer, *,
+    resolver: Optional[JMDictResolver] = None,
+) -> Dict[str, Any]:
+    """Run the frozen prompt/rule policy without consulting gold labels."""
+    expected_versions = {
+        "sense": SENSE_PROMPT_VERSION,
+        "subtitle_support": SUPPORT_PROMPT_VERSION,
+        "acceptance_policy": 1,
+    }
+    if dataset.get("prompt_versions") != expected_versions:
+        raise ValueError("dataset prompt/rule versions do not match this runner")
+    resolver = resolver or JMDictResolver()
+    started = time.perf_counter()
+    records: List[Dict[str, Any]] = []
+    inference: Counter[str] = Counter()
+    peak_memory = 0.0
+    for split_rows in dataset.get("splits", {}).values():
+        for case in split_rows:
+            card = case["card"]
+            position = int(card["audit_position"])
+            result = run_constrained_benchmark(
+                [card], reviewer, {position: True}, resolver=resolver,
+            )
+            row = dict(result["records"][0])
+            row.pop("teacher_accepted", None)
+            row["case_id"] = case["case_id"]
+            row["abstained"] = not bool(row.get("accepted"))
+            row["invalid_output"] = row.get("reason") == "sense_invalid_or_disagreed" and not row.get("sense_votes")
+            records.append(row)
+            for name, value in result.get("inference", {}).items():
+                inference[name] += value
+            peak_memory = max(
+                peak_memory, float(result["summary"].get("peak_memory_gb") or 0.0)
+            )
+    elapsed = time.perf_counter() - started
+    return {
+        "schema_version": 1,
+        "model": reviewer.model_name,
+        "prompt_versions": expected_versions,
+        "summary": {
+            "evaluated": len(records),
+            "accepted": sum(bool(row.get("accepted")) for row in records),
+            "abstained": sum(bool(row.get("abstained")) for row in records),
+            "cards_per_second": round(len(records) / elapsed, 3) if elapsed else None,
+            "peak_memory_gb": round(peak_memory, 3),
+        },
+        "inference": dict(inference),
+        "records": records,
+    }
+
+
 class MLXLabelReviewer:
     def __init__(
         self, model_name: str, *, max_tokens: int = 4,

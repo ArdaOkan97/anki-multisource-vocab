@@ -7,6 +7,7 @@ from vocabdeck.constrained_review import (
     build_support_prompt,
     parse_label,
     run_constrained_benchmark,
+    run_constrained_dataset,
 )
 from vocabdeck.inference_resources import InferenceResourceGuard
 
@@ -163,6 +164,38 @@ class ConstrainedReviewTest(unittest.TestCase):
         )
         self.assertEqual(result["summary"]["false_accepts"], 1)
         self.assertFalse(result["summary"]["adopt"])
+
+    def test_dataset_runner_preserves_case_ids_and_prompt_versions(self):
+        options = [
+            {"sense_key": "jmdict:100:0", "gloss": "first meaning"},
+            {"sense_key": "jmdict:100:1", "gloss": "second meaning"},
+        ]
+        labels = []
+        for value in (1, 2):
+            prompt = build_sense_prompt(card(), options, value)
+            labels.append(next(
+                label for label, identity in prompt.label_to_sense.items()
+                if identity == "jmdict:100:1"
+            ))
+        dataset = {
+            "prompt_versions": {
+                "sense": 1, "subtitle_support": 1, "acceptance_policy": 1,
+            },
+            "splits": {"development": [{"case_id": "case-1", "card": card()}]},
+        }
+        result = run_constrained_dataset(
+            dataset, FakeReviewer([*labels, "A"]), resolver=FakeResolver()
+        )
+        self.assertEqual(result["records"][0]["case_id"], "case-1")
+        self.assertTrue(result["records"][0]["accepted"])
+        self.assertEqual(result["prompt_versions"], dataset["prompt_versions"])
+
+    def test_dataset_runner_rejects_changed_prompt_policy(self):
+        with self.assertRaisesRegex(ValueError, "prompt/rule versions"):
+            run_constrained_dataset(
+                {"prompt_versions": {}, "splits": {}}, FakeReviewer([]),
+                resolver=FakeResolver(),
+            )
 
 
 if __name__ == "__main__":
