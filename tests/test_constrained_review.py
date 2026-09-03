@@ -131,6 +131,31 @@ class ConstrainedReviewTest(unittest.TestCase):
         self.assertTrue(first.prompt.rstrip().endswith("None of these / ambiguous"))
         self.assertTrue(second.prompt.rstrip().endswith("None of these / ambiguous"))
 
+    def test_prompt_v2_is_conservative_and_requires_bare_label(self):
+        options = [
+            {"sense_key": "jmdict:100:0", "gloss": "first"},
+            {"sense_key": "jmdict:100:1", "gloss": "second"},
+        ]
+        sense = build_sense_prompt(card(), options, 1, prompt_version=2)
+        support = build_support_prompt(card(), "word", prompt_version=2)
+
+        self.assertIn("context is insufficient", sense.prompt)
+        self.assertIn("larger expression", sense.prompt)
+        self.assertIn("Do not repeat the option text", sense.prompt)
+        self.assertIn("contamination or misalignment", support.prompt)
+        self.assertIn("natural paraphrase", support.prompt)
+        self.assertTrue(sense.prompt.endswith("Answer:"))
+        self.assertTrue(support.prompt.endswith("Answer:"))
+
+    def test_prompt_v1_remains_the_default(self):
+        options = [{"sense_key": "jmdict:100:0", "gloss": "first"}]
+        prompt = build_sense_prompt(card(), options, 1)
+
+        self.assertTrue(prompt.prompt.startswith(
+            "Choose the meaning of the marked Japanese word in this sentence."
+        ))
+        self.assertNotIn("conservative Japanese lexical-sense", prompt.prompt)
+
     def test_invalid_or_ambiguous_labels_fail_closed(self):
         prompt = build_support_prompt(card(), "word")
         self.assertEqual(parse_label("A", prompt.label_to_sense), "expressed")
@@ -215,6 +240,35 @@ class ConstrainedReviewTest(unittest.TestCase):
                 {"prompt_versions": {}, "splits": {}}, FakeReviewer([]),
                 resolver=FakeResolver(),
             )
+
+    def test_dataset_runner_can_ab_test_prompt_v2_on_same_cases(self):
+        options = [
+            {"sense_key": "jmdict:100:0", "gloss": "first meaning"},
+            {"sense_key": "jmdict:100:1", "gloss": "second meaning"},
+        ]
+        labels = []
+        for value in (1, 2):
+            prompt = build_sense_prompt(
+                card(), options, value, prompt_version=2,
+            )
+            labels.append(next(
+                label for label, identity in prompt.label_to_sense.items()
+                if identity == "jmdict:100:1"
+            ))
+        dataset = {
+            "prompt_versions": {
+                "sense": 1, "subtitle_support": 1, "acceptance_policy": 1,
+            },
+            "splits": {"development": [{"case_id": "case-1", "card": card()}]},
+        }
+
+        result = run_constrained_dataset(
+            dataset, FakeReviewer([*labels, "A"]), resolver=FakeResolver(),
+            prompt_version=2,
+        )
+
+        self.assertTrue(result["records"][0]["accepted"])
+        self.assertEqual(result["prompt_versions"]["sense"], 2)
 
 
 if __name__ == "__main__":

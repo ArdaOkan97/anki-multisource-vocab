@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "experiment": "constrained-prompt-v1-v2-smoke-ab",
+  "dataset": "vocab-verifier-gold-v1-smoke-20",
+  "acceptance_policy_version": 1,
+  "decoding": {
+    "temperature": 0.0,
+    "max_tokens": 4,
+    "sense_votes": 2,
+    "prompt_batch_size": 1,
+    "memory_limit_gb": 4.0
+  },
+  "semantic_metric_definition": "A semantic positive has the expected dictionary sense and an English subtitle that expresses it. Audio, curriculum, duplicate, and unknown-word failures are scored by their own gates rather than charged to the text-only verifier.",
+  "results": [
+    {
+      "model": "Qwen3.5 2B OptiQ",
+      "prompt_version": 1,
+      "accepted": 7,
+      "semantic_true_accepts": 6,
+      "semantic_false_accepts": 1,
+      "semantic_precision": 0.857143,
+      "semantic_positive_coverage": 0.428571,
+      "invalid_outputs": 0,
+      "option_order_unstable": 3,
+      "cards_per_second": 0.868,
+      "peak_memory_gb": 1.764
+    },
+    {
+      "model": "Qwen3.5 2B OptiQ",
+      "prompt_version": 2,
+      "accepted": 7,
+      "semantic_true_accepts": 7,
+      "semantic_false_accepts": 0,
+      "semantic_precision": 1.0,
+      "semantic_positive_coverage": 0.5,
+      "invalid_outputs": 0,
+      "option_order_unstable": 2,
+      "cards_per_second": 0.503,
+      "peak_memory_gb": 1.866
+    },
+    {
+      "model": "Gemma 2 2B JPN",
+      "prompt_version": 1,
+      "accepted": 7,
+      "semantic_true_accepts": 6,
+      "semantic_false_accepts": 1,
+      "semantic_precision": 0.857143,
+      "semantic_positive_coverage": 0.428571,
+      "invalid_outputs": 0,
+      "option_order_unstable": 1,
+      "cards_per_second": 0.719,
+      "peak_memory_gb": 1.676
+    },
+    {
+      "model": "Gemma 2 2B JPN",
+      "prompt_version": 2,
+      "accepted": 14,
+      "semantic_true_accepts": 12,
+      "semantic_false_accepts": 2,
+      "semantic_precision": 0.857143,
+      "semantic_positive_coverage": 0.857143,
+      "invalid_outputs": 0,
+      "option_order_unstable": 1,
+      "cards_per_second": 0.495,
+      "peak_memory_gb": 1.778
+    },
+    {
+      "model": "Qwen3 1.7B",
+      "prompt_version": 1,
+      "accepted": 3,
+      "semantic_true_accepts": 3,
+      "semantic_false_accepts": 0,
+      "semantic_precision": 1.0,
+      "semantic_positive_coverage": 0.214286,
+      "invalid_outputs": 13,
+      "option_order_unstable": 0,
+      "cards_per_second": 0.947,
+      "peak_memory_gb": 1.203
+    },
+    {
+      "model": "Qwen3 1.7B",
+      "prompt_version": 2,
+      "accepted": 9,
+      "semantic_true_accepts": 7,
+      "semantic_false_accepts": 2,
+      "semantic_precision": 0.777778,
+      "semantic_positive_coverage": 0.5,
+      "invalid_outputs": 7,
+      "option_order_unstable": 1,
+      "cards_per_second": 0.565,
+      "peak_memory_gb": 1.295
+    },
+    {
+      "model": "Phi-4 Mini",
+      "prompt_version": 1,
+      "accepted": 0,
+      "semantic_true_accepts": 0,
+      "semantic_false_accepts": 0,
+      "semantic_precision": 0.0,
+      "semantic_positive_coverage": 0.0,
+      "invalid_outputs": 18,
+      "option_order_unstable": 0,
+      "cards_per_second": 0.719,
+      "peak_memory_gb": 2.423
+    },
+    {
+      "model": "Phi-4 Mini",
+      "prompt_version": 2,
+      "accepted": 0,
+      "semantic_true_accepts": 0,
+      "semantic_false_accepts": 0,
+      "semantic_precision": 0.0,
+      "semantic_positive_coverage": 0.0,
+      "invalid_outputs": 18,
+      "option_order_unstable": 0,
+      "cards_per_second": 0.484,
+      "peak_memory_gb": 2.606
+    }
+  ],
+  "recommendation": {
+    "production_default": 1,
+    "decision": "retain_v1_pending_larger_semantic_gold_test",
+    "reason": "Prompt v2 removed Qwen3.5's only semantic false accept and gained one semantic true accept on the smoke cohort, but seven accepted examples are too few for adoption. It also reduced throughput by 42 percent. Other models gained unsafe false accepts or remained nonviable."
+  }
+}

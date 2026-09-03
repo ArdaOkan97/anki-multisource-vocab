@@ -17,6 +17,7 @@ from .local_review import load_review_records
 
 SENSE_PROMPT_VERSION = 1
 SUPPORT_PROMPT_VERSION = 1
+EXPERIMENTAL_PROMPT_VERSION = 2
 NONE_TEXT = "None of these / ambiguous"
 PRECISION_TARGET = 0.995
 _LABELS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -63,7 +64,8 @@ def sense_options(
 
 
 def build_sense_prompt(
-    card: Mapping[str, Any], options: Sequence[Mapping[str, str]], round_index: int
+    card: Mapping[str, Any], options: Sequence[Mapping[str, str]], round_index: int,
+    *, prompt_version: int = SENSE_PROMPT_VERSION,
 ) -> SensePrompt:
     if len(options) + 1 > len(_LABELS):
         raise ValueError("too many surviving senses for constrained labels")
@@ -90,30 +92,72 @@ def build_sense_prompt(
     label_to_sense[none_label] = None
     lines.append(f"{none_label}. {NONE_TEXT}")
     target = str(card.get("target_surface") or card.get("lemma") or "")
-    prompt = "\n".join([
-        "Choose the meaning of the marked Japanese word in this sentence.",
-        "Reply with exactly one option letter and nothing else.",
-        f"Sentence: {card.get('japanese') or ''}",
-        f"Target: {target}",
-        *lines,
-    ])
+    if prompt_version == 1:
+        prompt = "\n".join([
+            "Choose the meaning of the marked Japanese word in this sentence.",
+            "Reply with exactly one option letter and nothing else.",
+            f"Sentence: {card.get('japanese') or ''}",
+            f"Target: {target}",
+            *lines,
+        ])
+    elif prompt_version == EXPERIMENTAL_PROMPT_VERSION:
+        prompt = "\n".join([
+            "You are a conservative Japanese lexical-sense classifier.",
+            "Return exactly one option letter. Do not repeat the option text or explain.",
+            "Choose a meaning only when the Japanese sentence clearly establishes it.",
+            "Judge the meaning contributed by the target itself, not by nearby words.",
+            "If context is insufficient, multiple meanings remain plausible, or the target is",
+            "part of a larger expression whose meaning is not one of the choices, choose the",
+            "None of these / ambiguous option.",
+            f"Japanese sentence: {card.get('japanese') or ''}",
+            f"Exact target surface: {target}",
+            f"Dictionary lemma: {card.get('lemma') or ''}",
+            *lines,
+            "Answer:",
+        ])
+    else:
+        raise ValueError(f"unsupported sense prompt version: {prompt_version}")
     return SensePrompt(prompt=prompt, label_to_sense=label_to_sense)
 
 
-def build_support_prompt(card: Mapping[str, Any], gloss: str) -> SensePrompt:
+def build_support_prompt(
+    card: Mapping[str, Any], gloss: str, *,
+    prompt_version: int = SUPPORT_PROMPT_VERSION,
+) -> SensePrompt:
     mapping: Dict[str, Optional[str]] = {
         "A": "expressed", "B": "not_expressed", "C": None,
     }
-    prompt = "\n".join([
-        "Does the English subtitle explicitly express the supplied Japanese word meaning?",
-        "Judge subtitle support only. Reply with exactly one letter.",
-        f"Japanese: {card.get('japanese') or ''}",
-        f"Target meaning: {gloss}",
-        f"English subtitle: {card.get('english') or ''}",
-        "A. Expressed",
-        "B. Not expressed",
-        "C. Ambiguous",
-    ])
+    if prompt_version == 1:
+        prompt = "\n".join([
+            "Does the English subtitle explicitly express the supplied Japanese word meaning?",
+            "Judge subtitle support only. Reply with exactly one letter.",
+            f"Japanese: {card.get('japanese') or ''}",
+            f"Target meaning: {gloss}",
+            f"English subtitle: {card.get('english') or ''}",
+            "A. Expressed",
+            "B. Not expressed",
+            "C. Ambiguous",
+        ])
+    elif prompt_version == EXPERIMENTAL_PROMPT_VERSION:
+        prompt = "\n".join([
+            "You are a conservative Japanese-English subtitle alignment classifier.",
+            "Return exactly one option letter. Do not repeat the option text or explain.",
+            "Choose A only when the English is a clean translation of this Japanese sentence",
+            "and clearly expresses the supplied target meaning, including a natural paraphrase.",
+            "Choose B when that meaning is omitted or contradicted, or when the English contains",
+            "unrelated/concatenated dialogue indicating subtitle contamination or misalignment.",
+            "Choose C whenever support or alignment is uncertain.",
+            f"Japanese sentence: {card.get('japanese') or ''}",
+            f"Exact target surface: {card.get('target_surface') or card.get('lemma') or ''}",
+            f"Target meaning: {gloss}",
+            f"English subtitle: {card.get('english') or ''}",
+            "A. Expressed by a clean aligned translation",
+            "B. Not expressed, contradicted, or contaminated/misaligned",
+            "C. Ambiguous or uncertain",
+            "Answer:",
+        ])
+    else:
+        raise ValueError(f"unsupported subtitle prompt version: {prompt_version}")
     return SensePrompt(prompt=prompt, label_to_sense=mapping)
 
 
@@ -162,6 +206,7 @@ def run_constrained_benchmark(
     *,
     resolver: Optional[JMDictResolver] = None,
     precision_target: float = PRECISION_TARGET,
+    prompt_version: int = SENSE_PROMPT_VERSION,
 ) -> Dict[str, Any]:
     resolver = resolver or JMDictResolver()
     started = time.perf_counter()
@@ -184,7 +229,12 @@ def run_constrained_benchmark(
             })
             counters["abstained"] += 1
             continue
-        prompts = [build_sense_prompt(card, options, value) for value in (1, 2)]
+        prompts = [
+            build_sense_prompt(
+                card, options, value, prompt_version=prompt_version,
+            )
+            for value in (1, 2)
+        ]
         raw, stats = reviewer.review([value.prompt for value in prompts])
         for name in ("prompt_tokens", "generation_tokens"):
             aggregate_stats[name] += int(stats.get(name, 0))
@@ -209,7 +259,9 @@ def run_constrained_benchmark(
                     option for option in options
                     if option["sense_key"] == expected
                 )
-                support = build_support_prompt(card, selected["gloss"])
+                support = build_support_prompt(
+                    card, selected["gloss"], prompt_version=prompt_version,
+                )
                 support_values, support_stats = reviewer.review([support.prompt])
                 support_raw = support_values[0] if support_values else ""
                 for name in ("prompt_tokens", "generation_tokens"):
@@ -253,8 +305,8 @@ def run_constrained_benchmark(
         "schema_version": 1,
         "model": reviewer.model_name,
         "prompt_versions": {
-            "sense": SENSE_PROMPT_VERSION,
-            "subtitle_support": SUPPORT_PROMPT_VERSION,
+            "sense": prompt_version,
+            "subtitle_support": prompt_version,
         },
         "summary": {
             "evaluated": evaluated,
@@ -283,15 +335,25 @@ def run_constrained_benchmark(
 def run_constrained_dataset(
     dataset: Mapping[str, Any], reviewer: LabelReviewer, *,
     resolver: Optional[JMDictResolver] = None,
+    prompt_version: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Run the frozen prompt/rule policy without consulting gold labels."""
+    dataset_versions = dataset.get("prompt_versions") or {}
+    if dataset_versions.get("acceptance_policy") != 1:
+        raise ValueError("dataset prompt/rule versions do not match this runner")
+    if prompt_version is None:
+        sense_version = dataset_versions.get("sense")
+        support_version = dataset_versions.get("subtitle_support")
+        if sense_version != support_version:
+            raise ValueError("dataset prompt/rule versions do not match this runner")
+        prompt_version = int(sense_version or 0)
+    if prompt_version not in (1, EXPERIMENTAL_PROMPT_VERSION):
+        raise ValueError("dataset prompt/rule versions do not match this runner")
     expected_versions = {
-        "sense": SENSE_PROMPT_VERSION,
-        "subtitle_support": SUPPORT_PROMPT_VERSION,
+        "sense": prompt_version,
+        "subtitle_support": prompt_version,
         "acceptance_policy": 1,
     }
-    if dataset.get("prompt_versions") != expected_versions:
-        raise ValueError("dataset prompt/rule versions do not match this runner")
     resolver = resolver or JMDictResolver()
     started = time.perf_counter()
     records: List[Dict[str, Any]] = []
@@ -303,6 +365,7 @@ def run_constrained_dataset(
             position = int(card["audit_position"])
             result = run_constrained_benchmark(
                 [card], reviewer, {position: True}, resolver=resolver,
+                prompt_version=prompt_version,
             )
             row = dict(result["records"][0])
             row.pop("teacher_accepted", None)

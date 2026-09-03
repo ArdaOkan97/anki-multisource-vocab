@@ -170,6 +170,41 @@ class GoldBenchmarkTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "prompt/rule versions"):
             evaluate_predictions(dataset, {"prompt_versions": {}, "records": []})
 
+    def test_explicit_prompt_ab_keeps_the_acceptance_policy_fixed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            dataset = self._dataset(directory)
+        predictions = {
+            "prompt_versions": {
+                "sense": 2, "subtitle_support": 2,
+                "acceptance_policy": 1,
+            },
+            "records": [],
+        }
+
+        report = evaluate_predictions(
+            dataset, predictions, allow_prompt_version_override=True,
+        )
+
+        self.assertGreater(report["summary"]["gold_evaluated"], 0)
+        self.assertEqual(report["prompt_versions"]["sense"], 2)
+        self.assertEqual(report["dataset_prompt_versions"]["sense"], 1)
+
+    def test_prompt_ab_cannot_override_the_acceptance_policy(self):
+        with tempfile.TemporaryDirectory() as directory:
+            dataset = self._dataset(directory)
+        predictions = {
+            "prompt_versions": {
+                "sense": 2, "subtitle_support": 2,
+                "acceptance_policy": 2,
+            },
+            "records": [],
+        }
+
+        with self.assertRaisesRegex(ValueError, "prompt/rule versions"):
+            evaluate_predictions(
+                dataset, predictions, allow_prompt_version_override=True,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
