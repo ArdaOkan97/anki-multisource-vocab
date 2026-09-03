@@ -1,0 +1,196 @@
+{
+  "schema_version": 1,
+  "experiment": "constrained-prompt-v1-v2-smoke-ab",
+  "dataset": "vocab-verifier-gold-v1-smoke-20",
+  "acceptance_policy_version": 1,
+  "decoding": {
+    "temperature": 0.0,
+    "max_tokens": 4,
+    "sense_votes": 2,
+    "prompt_batch_size": 1,
+    "memory_limit_gb": 4.0
+  },
+  "semantic_metric_definition": "A semantic positive has the expected dictionary sense and an English subtitle that expresses it. Audio, curriculum, duplicate, and unknown-word failures are scored by their own gates rather than charged to the text-only verifier.",
+  "results": [
+    {
+      "model": "Qwen3.5 2B OptiQ",
+      "prompt_version": 1,
+      "accepted": 7,
+      "semantic_true_accepts": 6,
+      "semantic_false_accepts": 1,
+      "semantic_precision": 0.857143,
+      "semantic_positive_coverage": 0.428571,
+      "invalid_outputs": 0,
+      "option_order_unstable": 3,
+      "cards_per_second": 0.868,
+      "peak_memory_gb": 1.764
+    },
+    {
+      "model": "Qwen3.5 2B OptiQ",
+      "prompt_version": 2,
+      "accepted": 7,
+      "semantic_true_accepts": 7,
+      "semantic_false_accepts": 0,
+      "semantic_precision": 1.0,
+      "semantic_positive_coverage": 0.5,
+      "invalid_outputs": 0,
+      "option_order_unstable": 2,
+      "cards_per_second": 0.503,
+      "peak_memory_gb": 1.866
+    },
+    {
+      "model": "Gemma 2 2B JPN",
+      "prompt_version": 1,
+      "accepted": 7,
+      "semantic_true_accepts": 6,
+      "semantic_false_accepts": 1,
+      "semantic_precision": 0.857143,
+      "semantic_positive_coverage": 0.428571,
+      "invalid_outputs": 0,
+      "option_order_unstable": 1,
+      "cards_per_second": 0.719,
+      "peak_memory_gb": 1.676
+    },
+    {
+      "model": "Gemma 2 2B JPN",
+      "prompt_version": 2,
+      "accepted": 14,
+      "semantic_true_accepts": 12,
+      "semantic_false_accepts": 2,
+      "semantic_precision": 0.857143,
+      "semantic_positive_coverage": 0.857143,
+      "invalid_outputs": 0,
+      "option_order_unstable": 1,
+      "cards_per_second": 0.495,
+      "peak_memory_gb": 1.778
+    },
+    {
+      "model": "Qwen3 1.7B",
+      "prompt_version": 1,
+      "accepted": 3,
+      "semantic_true_accepts": 3,
+      "semantic_false_accepts": 0,
+      "semantic_precision": 1.0,
+      "semantic_positive_coverage": 0.214286,
+      "invalid_outputs": 13,
+      "option_order_unstable": 0,
+      "cards_per_second": 0.947,
+      "peak_memory_gb": 1.203
+    },
+    {
+      "model": "Qwen3 1.7B",
+      "prompt_version": 2,
+      "accepted": 9,
+      "semantic_true_accepts": 7,
+      "semantic_false_accepts": 2,
+      "semantic_precision": 0.777778,
+      "semantic_positive_coverage": 0.5,
+      "invalid_outputs": 7,
+      "option_order_unstable": 1,
+      "cards_per_second": 0.565,
+      "peak_memory_gb": 1.295
+    },
+    {
+      "model": "Qwen3.5 4B MLX 4-bit",
+      "revision": "32f3e8ecf65426fc3306969496342d504bfa13f3",
+      "prompt_version": 1,
+      "accepted": 10,
+      "semantic_true_accepts": 10,
+      "semantic_false_accepts": 0,
+      "semantic_precision": 1.0,
+      "semantic_positive_coverage": 0.714286,
+      "invalid_outputs": 0,
+      "option_order_unstable": 1,
+      "cards_per_second": 0.322,
+      "peak_memory_gb": 2.706,
+      "artifact_size_gb": 2.851
+    },
+    {
+      "model": "Qwen3.5 4B MLX 4-bit",
+      "revision": "32f3e8ecf65426fc3306969496342d504bfa13f3",
+      "prompt_version": 2,
+      "accepted": 8,
+      "semantic_true_accepts": 8,
+      "semantic_false_accepts": 0,
+      "semantic_precision": 1.0,
+      "semantic_positive_coverage": 0.571429,
+      "invalid_outputs": 0,
+      "option_order_unstable": 1,
+      "cards_per_second": 0.193,
+      "peak_memory_gb": 2.888,
+      "artifact_size_gb": 2.851
+    },
+    {
+      "model": "Phi-4 Mini",
+      "prompt_version": 1,
+      "accepted": 0,
+      "semantic_true_accepts": 0,
+      "semantic_false_accepts": 0,
+      "semantic_precision": 0.0,
+      "semantic_positive_coverage": 0.0,
+      "invalid_outputs": 18,
+      "option_order_unstable": 0,
+      "cards_per_second": 0.719,
+      "peak_memory_gb": 2.423
+    },
+    {
+      "model": "Phi-4 Mini",
+      "prompt_version": 2,
+      "accepted": 0,
+      "semantic_true_accepts": 0,
+      "semantic_false_accepts": 0,
+      "semantic_precision": 0.0,
+      "semantic_positive_coverage": 0.0,
+      "invalid_outputs": 18,
+      "option_order_unstable": 0,
+      "cards_per_second": 0.484,
+      "peak_memory_gb": 2.606
+    }
+  ],
+  "isolated_9b_10_case_safety_exception": {
+    "model": "Qwen3.5 9B OptiQ 4-bit",
+    "revision": "890b4c43f99ff392819d83605f7b1e59fa9688aa",
+    "authorization": "Explicit one-time user authorization after disclosure of the prior 8.1 GiB peak",
+    "limits": {
+      "sequential_processes": 1,
+      "cards": 10,
+      "mlx_memory_limit_gb": 9.0,
+      "absolute_authorized_ceiling_gb": 10.0
+    },
+    "prompt_v1": {
+      "accepted": 7,
+      "semantic_true_accepts": 6,
+      "semantic_false_accepts": 1,
+      "semantic_precision": 0.857143,
+      "semantic_positive_coverage": 0.857143,
+      "invalid_outputs": 0,
+      "option_order_unstable": 0,
+      "cards_per_second": 0.155,
+      "peak_memory_gb": 7.44,
+      "cleanup_verified": true
+    },
+    "prompt_v2": {
+      "accepted": 4,
+      "semantic_true_accepts": 4,
+      "semantic_false_accepts": 0,
+      "semantic_precision": 1.0,
+      "semantic_positive_coverage": 0.571429,
+      "invalid_outputs": 0,
+      "option_order_unstable": 0,
+      "cards_per_second": 0.097,
+      "peak_memory_gb": 7.547,
+      "cleanup_verified": true
+    },
+    "same_10_case_comparison": {
+      "qwen35_2b_prompt_v2": "3 semantic true accepts, 0 semantic false accepts",
+      "qwen35_4b_prompt_v1": "5 semantic true accepts, 0 semantic false accepts",
+      "qwen35_9b_prompt_v2": "4 semantic true accepts, 0 semantic false accepts"
+    },
+    "decision": "The 9B exception did not outperform safe Qwen3.5 4B with prompt v1 and remains blocked by default."
+  },
+  "recommendation": {
+    "production_default": 1,
+    "decision": "evaluate_qwen35_4b_v1_on_larger_semantic_gold",
+    "reason": "The safe 4B candidate with prompt v1 produced the strongest smoke result: ten semantic true accepts, zero semantic false accepts, and 71.4 percent semantic-positive coverage at a 2.706 GiB peak. On an identical 10-case subset, safe 4B v1 accepted five semantic true cases with no false accepts while the one-time 9B v2 exception accepted four. The 9B model used 7.547 GiB and was slower, so it remains blocked. Ten accepted 4B examples remain too few for adoption; the next useful experiment is a larger semantic-gold set with more hard negatives."
+  }
+}

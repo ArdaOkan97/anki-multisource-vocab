@@ -286,10 +286,21 @@ def _wilson_interval(successes: int, total: int, z: float = 1.959963984540054) -
 def evaluate_predictions(
     dataset: Mapping[str, Any], predictions: Mapping[str, Any], *,
     precision_target: float = 0.995, minimum_accepted_gold: int = 600,
+    allow_prompt_version_override: bool = False,
 ) -> Dict[str, Any]:
     validate_dataset(dataset)
     expected_prompts = dataset["prompt_versions"]
-    if predictions.get("prompt_versions") != expected_prompts:
+    prediction_prompts = predictions.get("prompt_versions") or {}
+    versions_match = prediction_prompts == expected_prompts
+    ab_override_is_safe = (
+        allow_prompt_version_override
+        and prediction_prompts.get("acceptance_policy")
+        == expected_prompts.get("acceptance_policy")
+        and prediction_prompts.get("sense")
+        == prediction_prompts.get("subtitle_support")
+        and isinstance(prediction_prompts.get("sense"), int)
+    )
+    if not versions_match and not ab_override_is_safe:
         raise ValueError("prediction prompt/rule versions do not match the dataset")
     by_id = {row.get("case_id"): row for row in predictions.get("records", [])}
     gold = [row for row in iter_cases(dataset) if row["review_status"] == "gold"]
@@ -299,6 +310,10 @@ def evaluate_predictions(
     for case in gold:
         prediction = by_id.get(case["case_id"])
         expected_accept = case["labels"]["production"] == "accept"
+        semantic_expected_accept = (
+            case["labels"]["sense"] == "expected"
+            and case["labels"]["subtitle_support"] == "expressed"
+        )
         if prediction is None:
             accepted, abstained, invalid = False, True, True
             prediction = {"case_id": case["case_id"], "reason": "missing_prediction"}
@@ -313,7 +328,13 @@ def evaluate_predictions(
             "false_accept" if accepted else
             "false_reject" if expected_accept else "true_reject"
         )
+        semantic_outcome = (
+            "true_accept" if accepted and semantic_expected_accept else
+            "false_accept" if accepted else
+            "false_reject" if semantic_expected_accept else "true_reject"
+        )
         counters[outcome] += 1
+        counters[f"semantic_{semantic_outcome}"] += 1
         counters["accepted" if accepted else "not_accepted"] += 1
         counters["abstained"] += int(abstained)
         counters["invalid_outputs"] += int(invalid)
@@ -328,6 +349,8 @@ def evaluate_predictions(
             "case_id": case["case_id"], "split": case["split"],
             "expected_accept": expected_accept, "accepted": accepted,
             "outcome": outcome, "abstained": abstained,
+            "semantic_expected_accept": semantic_expected_accept,
+            "semantic_outcome": semantic_outcome,
             "invalid_output": invalid, "option_order_unstable": unstable,
             "reason": prediction.get("reason"),
         })
@@ -368,11 +391,18 @@ def evaluate_predictions(
             ) if values["evaluated"] else 0.0,
         }
     positives = counters["true_accept"] + counters["false_reject"]
+    semantic_accepted = (
+        counters["semantic_true_accept"] + counters["semantic_false_accept"]
+    )
+    semantic_positives = (
+        counters["semantic_true_accept"] + counters["semantic_false_reject"]
+    )
     return {
         "schema_version": REPORT_SCHEMA_VERSION,
         "dataset_id": dataset.get("dataset_id"),
         "evaluated_at": datetime.now(timezone.utc).isoformat(),
-        "prompt_versions": dict(expected_prompts),
+        "prompt_versions": dict(prediction_prompts),
+        "dataset_prompt_versions": dict(expected_prompts),
         "model": predictions.get("model"),
         "summary": {
             "gold_evaluated": len(gold), "accepted": accepted,
@@ -386,6 +416,16 @@ def evaluate_predictions(
             "positive_coverage": round(
                 counters["true_accept"] / positives, 6
             ) if positives else 0.0,
+            "semantic_true_accepts": counters["semantic_true_accept"],
+            "semantic_false_accepts": counters["semantic_false_accept"],
+            "semantic_true_rejects": counters["semantic_true_reject"],
+            "semantic_false_rejects": counters["semantic_false_reject"],
+            "semantic_accepted_precision": round(
+                counters["semantic_true_accept"] / semantic_accepted, 6
+            ) if semantic_accepted else 0.0,
+            "semantic_positive_coverage": round(
+                counters["semantic_true_accept"] / semantic_positives, 6
+            ) if semantic_positives else 0.0,
             "abstentions": counters["abstained"],
             "abstention_rate": round(counters["abstained"] / len(gold), 6) if gold else 0.0,
             "option_order_unstable": counters["option_order_unstable"],

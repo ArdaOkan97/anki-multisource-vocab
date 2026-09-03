@@ -38,3 +38,61 @@ The tested model repositories are the MLX Community releases for
 [Gemma 2 2B JPN](https://huggingface.co/mlx-community/gemma-2-2b-jpn-it-4bit),
 [Qwen3 1.7B](https://huggingface.co/mlx-community/Qwen3-1.7B-4bit), and the
 [Phi-4 Mini fallback](https://huggingface.co/mlx-community/Phi-4-mini-instruct-4bit).
+
+## Prompt v2 A/B experiment
+
+Prompt v2 adds explicit bare-label output instructions, conservative ambiguity
+handling, larger-expression guidance, and a clean-alignment/contamination rule.
+Both prompt versions were rerun on the same current code, pinned revisions,
+20-card cohort, deterministic decoding, and sequential 4 GiB resource guard.
+
+The original production label mixes semantic, audio, curriculum, duplicate, and
+unknown-word failures. Because the verifier receives text only, the A/B report
+also measures semantic precision separately: a semantic positive has the expected
+JMdict sense and an English subtitle that expresses that sense.
+
+| Candidate | Prompt | Semantic accepted | Semantic false accepts | Semantic precision | Semantic positive coverage | Invalid | Cards/s |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Qwen3.5 2B OptiQ | v1 | 7 | 1 | 0.857 | 0.429 | 0 | 0.868 |
+| Qwen3.5 2B OptiQ | v2 | 7 | 0 | 1.000 | 0.500 | 0 | 0.503 |
+| Gemma 2 2B JPN | v1 | 7 | 1 | 0.857 | 0.429 | 0 | 0.719 |
+| Gemma 2 2B JPN | v2 | 14 | 2 | 0.857 | 0.857 | 0 | 0.495 |
+| Qwen3 1.7B | v1 | 3 | 0 | 1.000 | 0.214 | 13 | 0.947 |
+| Qwen3 1.7B | v2 | 9 | 2 | 0.778 | 0.500 | 7 | 0.565 |
+| Qwen3.5 4B MLX | v1 | 10 | 0 | 1.000 | 0.714 | 0 | 0.322 |
+| Qwen3.5 4B MLX | v2 | 8 | 0 | 1.000 | 0.571 | 0 | 0.193 |
+| Phi-4 Mini | v1 | 0 | 0 | — | 0.000 | 18 | 0.719 |
+| Phi-4 Mini | v2 | 0 | 0 | — | 0.000 | 18 | 0.484 |
+
+The stronger prompt helped Qwen3.5 on this small semantic slice: it removed the
+subtitle-contamination false accept, gained one semantic true accept, and reduced
+option-order disagreements from three to two. That is promising but only seven
+accepted observations, and throughput fell by about 42%. Prompt v1 therefore
+remains the production default; v2 stays opt-in until a larger semantic-gold run
+confirms the apparent precision improvement. Full values are recorded in
+`prompt-v2-ab.json`.
+
+As a safe quality-ceiling follow-up, the pinned Qwen3.5 4B MLX 4-bit revision
+`32f3e8ecf65426fc3306969496342d504bfa13f3` was tested under the same guard.
+Prompt v1 was stronger for this model: it accepted ten of fourteen semantic
+positives with zero semantic false accepts, compared with eight under v2. Its
+2.851 GiB artifact and 2.706 GiB peak remained inside both safety limits, though
+it ran at only 0.322 cards/s. This is the best smoke result so far, but ten
+accepted cases cannot establish production precision. The next useful test needs
+more human-gold semantic hard negatives rather than merely adding unreviewed or
+obviously positive cards.
+
+## Isolated 9B safety exception
+
+After explicit user authorization, the historical Qwen3.5 9B OptiQ revision was
+run sequentially on ten cards only, with a 9 GiB MLX limit and a disclosed 10 GiB
+absolute ceiling. Prompt v1 accepted six semantic true cases and one semantic
+false case at a 7.440 GiB peak. Prompt v2 accepted four semantic true cases with
+zero semantic false accepts at a 7.547 GiB peak. Both cleanup probes succeeded,
+and no other inference process overlapped either run.
+
+On the identical ten cards, Qwen3.5 2B v2 accepted 3/3 semantically, Qwen3.5 4B
+v1 accepted 5/5, and Qwen3.5 9B v2 accepted 4/4. The 9B model therefore failed
+to improve on the safe 4B configuration while consuming roughly 2.7 times its
+peak memory and running about twice as slowly. The default artifact and memory
+guards continue to block 9B execution.

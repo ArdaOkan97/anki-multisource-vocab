@@ -354,6 +354,10 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate_verifier.add_argument("--predictions", required=True, type=Path)
     evaluate_verifier.add_argument("--precision-target", type=float, default=0.995)
     evaluate_verifier.add_argument("--minimum-accepted-gold", type=int, default=600)
+    evaluate_verifier.add_argument(
+        "--allow-prompt-version-override", action="store_true",
+        help="Compare a versioned prompt experiment on the same frozen cases",
+    )
     evaluate_verifier.add_argument("--json-output", required=True, type=Path)
     evaluate_verifier.add_argument("--html-output", required=True, type=Path)
 
@@ -366,6 +370,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--model", default="mlx-community/Qwen3.5-2B-OptiQ-4bit"
     )
     run_verifier.add_argument("--revision", required=True)
+    run_verifier.add_argument(
+        "--prompt-version", type=int, choices=(1, 2), default=1,
+        help="Versioned constrained prompt policy (default: frozen v1)",
+    )
     run_verifier.add_argument(
         "--memory-limit-gb", type=float, default=4.0,
         help="MLX allocation limit (hard maximum: 6 GiB)",
@@ -677,6 +685,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         report = evaluate_predictions(
             dataset, predictions, precision_target=args.precision_target,
             minimum_accepted_gold=args.minimum_accepted_gold,
+            allow_prompt_version_override=args.allow_prompt_version_override,
         )
         json_output = write_json(report, args.json_output)
         html_output = render_blinded_html(dataset, report, args.html_output)
@@ -697,7 +706,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             memory_limit_gb=args.memory_limit_gb,
         )
         try:
-            predictions = run_constrained_dataset(dataset, reviewer)
+            predictions = run_constrained_dataset(
+                dataset, reviewer, prompt_version=args.prompt_version,
+            )
         finally:
             reviewer.close()
         from .inference_resources import InferenceResourceGuard
