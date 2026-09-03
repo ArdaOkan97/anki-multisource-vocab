@@ -59,6 +59,8 @@ JMdict sense and an English subtitle that expresses that sense.
 | Gemma 2 2B JPN | v2 | 14 | 2 | 0.857 | 0.857 | 0 | 0.495 |
 | Qwen3 1.7B | v1 | 3 | 0 | 1.000 | 0.214 | 13 | 0.947 |
 | Qwen3 1.7B | v2 | 9 | 2 | 0.778 | 0.500 | 7 | 0.565 |
+| Qwen3.5 4B MLX | v1 | 10 | 0 | 1.000 | 0.714 | 0 | 0.322 |
+| Qwen3.5 4B MLX | v2 | 8 | 0 | 1.000 | 0.571 | 0 | 0.193 |
 | Phi-4 Mini | v1 | 0 | 0 | — | 0.000 | 18 | 0.719 |
 | Phi-4 Mini | v2 | 0 | 0 | — | 0.000 | 18 | 0.484 |
 
@@ -69,3 +71,13 @@ accepted observations, and throughput fell by about 42%. Prompt v1 therefore
 remains the production default; v2 stays opt-in until a larger semantic-gold run
 confirms the apparent precision improvement. Full values are recorded in
 `prompt-v2-ab.json`.
+
+As a safe quality-ceiling follow-up, the pinned Qwen3.5 4B MLX 4-bit revision
+`32f3e8ecf65426fc3306969496342d504bfa13f3` was tested under the same guard.
+Prompt v1 was stronger for this model: it accepted ten of fourteen semantic
+positives with zero semantic false accepts, compared with eight under v2. Its
+2.851 GiB artifact and 2.706 GiB peak remained inside both safety limits, though
+it ran at only 0.322 cards/s. This is the best smoke result so far, but ten
+accepted cases cannot establish production precision. The next useful test needs
+more human-gold semantic hard negatives rather than merely adding unreviewed or
+obviously positive cards.

@@ -91,6 +91,36 @@
       "peak_memory_gb": 1.295
     },
     {
+      "model": "Qwen3.5 4B MLX 4-bit",
+      "revision": "32f3e8ecf65426fc3306969496342d504bfa13f3",
+      "prompt_version": 1,
+      "accepted": 10,
+      "semantic_true_accepts": 10,
+      "semantic_false_accepts": 0,
+      "semantic_precision": 1.0,
+      "semantic_positive_coverage": 0.714286,
+      "invalid_outputs": 0,
+      "option_order_unstable": 1,
+      "cards_per_second": 0.322,
+      "peak_memory_gb": 2.706,
+      "artifact_size_gb": 2.851
+    },
+    {
+      "model": "Qwen3.5 4B MLX 4-bit",
+      "revision": "32f3e8ecf65426fc3306969496342d504bfa13f3",
+      "prompt_version": 2,
+      "accepted": 8,
+      "semantic_true_accepts": 8,
+      "semantic_false_accepts": 0,
+      "semantic_precision": 1.0,
+      "semantic_positive_coverage": 0.571429,
+      "invalid_outputs": 0,
+      "option_order_unstable": 1,
+      "cards_per_second": 0.193,
+      "peak_memory_gb": 2.888,
+      "artifact_size_gb": 2.851
+    },
+    {
       "model": "Phi-4 Mini",
       "prompt_version": 1,
       "accepted": 0,
@@ -119,7 +149,7 @@
   ],
   "recommendation": {
     "production_default": 1,
-    "decision": "retain_v1_pending_larger_semantic_gold_test",
-    "reason": "Prompt v2 removed Qwen3.5's only semantic false accept and gained one semantic true accept on the smoke cohort, but seven accepted examples are too few for adoption. It also reduced throughput by 42 percent. Other models gained unsafe false accepts or remained nonviable."
+    "decision": "evaluate_qwen35_4b_v1_on_larger_semantic_gold",
+    "reason": "The safe 4B candidate with prompt v1 produced the strongest smoke result: ten semantic true accepts, zero semantic false accepts, and 71.4 percent semantic-positive coverage at a 2.706 GiB peak. Prompt v2 was unnecessarily conservative for 4B, accepting eight with no precision gain. Ten accepted examples remain too few for adoption, so the next useful experiment is a larger semantic-gold set with more hard negatives."
   }
 }
