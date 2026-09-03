@@ -81,3 +81,18 @@ it ran at only 0.322 cards/s. This is the best smoke result so far, but ten
 accepted cases cannot establish production precision. The next useful test needs
 more human-gold semantic hard negatives rather than merely adding unreviewed or
 obviously positive cards.
+
+## Isolated 9B safety exception
+
+After explicit user authorization, the historical Qwen3.5 9B OptiQ revision was
+run sequentially on ten cards only, with a 9 GiB MLX limit and a disclosed 10 GiB
+absolute ceiling. Prompt v1 accepted six semantic true cases and one semantic
+false case at a 7.440 GiB peak. Prompt v2 accepted four semantic true cases with
+zero semantic false accepts at a 7.547 GiB peak. Both cleanup probes succeeded,
+and no other inference process overlapped either run.
+
+On the identical ten cards, Qwen3.5 2B v2 accepted 3/3 semantically, Qwen3.5 4B
+v1 accepted 5/5, and Qwen3.5 9B v2 accepted 4/4. The 9B model therefore failed
+to improve on the safe 4B configuration while consuming roughly 2.7 times its
+peak memory and running about twice as slowly. The default artifact and memory
+guards continue to block 9B execution.
