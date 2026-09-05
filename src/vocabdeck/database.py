@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import hashlib
 import sqlite3
+from copy import deepcopy
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -199,12 +200,15 @@ def learning_unit_key(lexeme_key: str, sense_key: str) -> str:
 
 
 class VocabularyDatabase:
-    def __init__(self, path: Path):
+    def __init__(self, path: Path, *, read_only: bool = False):
         self.path = path
-        self.connection = sqlite3.connect(str(path))
+        self.connection = (
+            sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
+            if read_only else sqlite3.connect(str(path))
+        )
         self.connection.row_factory = sqlite3.Row
         self.connection.execute("PRAGMA foreign_keys = ON")
-        self._sentence_learning_unit_cache: Dict[int, set] = {}
+        self._sentence_dependency_cache: Dict[int, list] = {}
 
     def close(self) -> None:
         self.connection.close()
@@ -416,7 +420,7 @@ class VocabularyDatabase:
     ) -> Dict[str, int]:
         from .dictionary import JMDictResolver
 
-        self._sentence_learning_unit_cache.clear()
+        self._sentence_dependency_cache.clear()
         sentence_count = 0
         occurrence_count = 0
         contextual_resolver = JMDictResolver()
@@ -1250,7 +1254,7 @@ class VocabularyDatabase:
         """Refresh context-specific senses when resolver behavior changes."""
         from .dictionary import JMDictResolver
 
-        self._sentence_learning_unit_cache.clear()
+        self._sentence_dependency_cache.clear()
 
         where = "l.part_of_speech != '表現'"
         parameters: tuple = ()
@@ -1527,7 +1531,13 @@ class VocabularyDatabase:
         ]
 
     def sentence_learning_unit_keys(self, sentence_id: int) -> set:
-        """Return every lexical dependency without double-counting expressions.
+        return {
+            item["learning_unit_key"]
+            for item in self.sentence_meaning_dependencies(sentence_id)
+        }
+
+    def sentence_meaning_dependencies(self, sentence_id: int) -> list:
+        """Return occurrence meanings, including explicit unresolved expressions.
 
         Persisted occurrence senses are the preferred, sense-aware analysis. A
         database created by an older tokenizer can nevertheless omit a tracked
@@ -1538,13 +1548,14 @@ class VocabularyDatabase:
         the progressive unknown-word gate.
         """
         sentence_id = int(sentence_id)
-        cached = self._sentence_learning_unit_cache.get(sentence_id)
+        cached = self._sentence_dependency_cache.get(sentence_id)
         if cached is not None:
-            return set(cached)
+            return deepcopy(cached)
 
         rows = list(self.connection.execute(
             """SELECT os.start_char, os.end_char, os.sense_key,
-                      l.lexeme_key
+                      l.lexeme_key, l.lemma, l.reading, os.part_of_speech,
+                      os.gloss, os.dictionary_entry_id, os.dictionary_sense_index
                FROM occurrence_senses os
                JOIN lexemes l ON l.id = os.lexeme_id
                WHERE os.sentence_id = ? AND os.sense_key IS NOT NULL
@@ -1568,10 +1579,20 @@ class VocabularyDatabase:
                 for other in rows
             )
         ]
-        keys = {
-            learning_unit_key(str(row["lexeme_key"]), str(row["sense_key"]))
-            for row in rows
+        analyses = [dict(item) for item in self.expression_analyses_for_sentence(sentence_id)]
+        accepted_spans = {
+            (int(item["start_char"]), int(item["end_char"]))
+            for item in analyses if item["decision"] == "expression"
         }
+        dependencies = [{
+            "start": int(row["start_char"]), "end": int(row["end_char"]),
+            "learning_unit_key": learning_unit_key(str(row["lexeme_key"]), str(row["sense_key"])),
+            "lemma": str(row["lemma"]), "reading": str(row["reading"]),
+            "gloss": row["gloss"], "teachable": True,
+            "resolution": "expression" if (
+                int(row["start_char"]), int(row["end_char"])
+            ) in accepted_spans else "occurrence_sense",
+        } for row in rows]
         covered_spans = [
             (int(row["start_char"]), int(row["end_char"])) for row in rows
         ]
@@ -1582,9 +1603,26 @@ class VocabularyDatabase:
         if sentence is not None:
             from .dictionary import JMDictResolver
             from .tokenizer import JapaneseTokenizer
+            from .context_meanings import resolve_dependency_spans
 
             resolver = JMDictResolver()
-            for token in JapaneseTokenizer().tokenize(str(sentence["japanese"])):
+            tokenizer = JapaneseTokenizer()
+            japanese, english = str(sentence["japanese"]), str(sentence["english"] or "")
+            recorded = {(int(item["start_char"]), int(item["end_char"])) for item in analyses}
+            # Old imports may have no expression analysis at all. A dictionary
+            # match alone does not resolve phrase vs component meaning.
+            for token, match in tokenizer.expression_candidates(japanese):
+                if any(start < token.end and token.start < end for start, end in accepted_spans):
+                    # The contextual tokenizer deliberately skips already
+                    # claimed morphs; do not invent missing analyses there.
+                    continue
+                if (token.start, token.end) not in recorded:
+                    analyses.append({
+                        "start_char": token.start, "end_char": token.end,
+                        "surface": token.surface, "dictionary_entry_id": match.entry_id,
+                        "decision": "not_analyzed", "phrase_senses": list(match.senses),
+                    })
+            for token in tokenizer.tokenize(japanese):
                 if any(
                     start <= token.start and token.end <= end
                     for start, end in covered_spans
@@ -1605,10 +1643,17 @@ class VocabularyDatabase:
                     token.part_of_speech,
                     match.gloss if match else None,
                 )
-                keys.add(learning_unit_key(token.key, sense_key))
+                dependencies.append({
+                    "start": token.start, "end": token.end, "surface": token.surface,
+                    "lemma": token.lemma, "reading": token.reading,
+                    "gloss": match.gloss if match else None,
+                    "learning_unit_key": learning_unit_key(token.key, sense_key),
+                    "resolution": "recovered_component", "teachable": match is not None,
+                })
+            dependencies = resolve_dependency_spans(japanese, english, dependencies, analyses)
 
-        self._sentence_learning_unit_cache[sentence_id] = set(keys)
-        return keys
+        self._sentence_dependency_cache[sentence_id] = deepcopy(dependencies)
+        return dependencies
 
     def occurrence_candidates_for_targets(
         self,
@@ -1698,11 +1743,12 @@ class VocabularyDatabase:
                     if value
                 }
                 candidate["word_ids"] = word_ids
-                candidate["context_learning_unit_keys"] = sorted(
-                    self.sentence_learning_unit_keys(
-                        int(candidate["sentence_id"])
-                    )
+                candidate["context_meaning_dependencies"] = self.sentence_meaning_dependencies(
+                    int(candidate["sentence_id"])
                 )
+                candidate["context_learning_unit_keys"] = sorted({
+                    item["learning_unit_key"] for item in candidate["context_meaning_dependencies"]
+                })
                 candidate["lemma"] = str(target["lemma"])
                 if str(target.get("part_of_speech") or "") != "表現":
                     contextual_match = contextual_resolver.resolve(
@@ -1812,6 +1858,9 @@ class VocabularyDatabase:
                 card["context_learning_unit_keys"] = list(
                     candidate["context_learning_unit_keys"]
                 )
+                from .context_meanings import CONTEXT_MEANINGS_VERSION
+                card["context_meanings_version"] = CONTEXT_MEANINGS_VERSION
+                card["context_meaning_dependencies"] = candidate["context_meaning_dependencies"]
                 target_unit = str(card["learning_unit_key"])
                 card["initial_known_context_learning_unit_keys"] = sorted(
                     (
