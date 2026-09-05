@@ -492,6 +492,20 @@ def build_parser() -> argparse.ArgumentParser:
         "--max-unknown-later", type=int, default=2,
     )
 
+    accounting = commands.add_parser(
+        "explain-curriculum-candidates",
+        help="Account for every candidate against an existing selection, without inference",
+    )
+    accounting.add_argument("--input", required=True, type=Path)
+    accounting.add_argument("--validation", required=True, type=Path)
+    accounting.add_argument("--selection", required=True, type=Path)
+    accounting.add_argument("--json-output", required=True, type=Path)
+    accounting.add_argument("--html-output", required=True, type=Path)
+    accounting.add_argument(
+        "--harder-unknown-tolerance", required=True,
+        help="Policy used by the run: a nonnegative number, or 'none' for soft difficulty",
+    )
+
     compare_baseline = commands.add_parser(
         "compare-baseline",
         help="Compare a candidate curriculum with a frozen card baseline",
@@ -951,6 +965,48 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "preview": None if preview is None else str(preview),
             **selection["summary"],
         }, ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "explain-curriculum-candidates":
+        import hashlib
+        from .candidate_accounting import (
+            build_candidate_accounting, render_candidate_accounting,
+        )
+        from .validation import write_validation_report
+
+        sources = {}
+        payloads = {}
+        inputs = (args.input, args.validation, args.selection)
+        outputs = (args.json_output, args.html_output)
+        if any(a.resolve() == b.resolve() for a in inputs for b in outputs):
+            raise ValueError("accounting outputs must not overwrite input artifacts")
+        if outputs[0].resolve() == outputs[1].resolve():
+            raise ValueError("JSON and HTML outputs must be different paths")
+        for name, path in zip(("candidates", "validation", "selection"), inputs):
+            raw = path.expanduser().resolve().read_bytes()
+            sources[name] = {
+                "path": str(path.expanduser().resolve()),
+                "sha256": hashlib.sha256(raw).hexdigest(),
+            }
+            payloads[name] = json.loads(raw)
+        if not isinstance(payloads["candidates"].get("cards"), list):
+            raise ValueError("candidate artifact must contain a cards list")
+        if not isinstance(payloads["selection"].get("accepted"), list):
+            raise ValueError("selection artifact must contain an accepted list")
+        if not all(isinstance(payloads["validation"].get(key), list)
+                   for key in ("accepted", "rejected", "abstained")):
+            raise ValueError("validation artifact must contain all three outcome lists")
+        tolerance = (
+            None if args.harder_unknown_tolerance.lower() == "none"
+            else float(args.harder_unknown_tolerance)
+        )
+        report = build_candidate_accounting(
+            payloads["candidates"]["cards"], payloads["validation"], payloads["selection"],
+            harder_unknown_tolerance=tolerance,
+        )
+        report["sources"] = sources
+        write_validation_report(report, args.json_output)
+        render_candidate_accounting(report, args.html_output)
+        print(json.dumps(report["summary"], ensure_ascii=False, indent=2))
         return 0
     if args.command == "compare-baseline":
         from .comparison import (

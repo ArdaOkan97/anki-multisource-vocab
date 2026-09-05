@@ -38,6 +38,15 @@ class PreviewTest(unittest.TestCase):
         self.assertIn('<span class="target-answer">猫</span>がいる。', document)
         self.assertIn("cat", document)
         self.assertIn("Test Show S01E02", document)
+        self.assertIn("2 content words", document)
+        self.assertIn("1 other unknown word (excluding the target)", document)
+        row["scheduling"] = {"unknown_context_words": 0}
+        with tempfile.TemporaryDirectory() as directory:
+            scheduled = render_preview_html(
+                [row], Path(directory) / "scheduled.html", include_media=False,
+            ).read_text(encoding="utf-8")
+        self.assertIn("0 other unknown words (excluding the target)", scheduled)
+        self.assertNotIn("1 other unknown word", scheduled)
 
     def test_cloze_keeps_grammar_outside_lexical_blank(self):
         row = {

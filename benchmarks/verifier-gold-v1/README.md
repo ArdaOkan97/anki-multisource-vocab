@@ -77,24 +77,30 @@ which independent guardrail still needs work.
 
 ## Episodes 1–10 regression decision
 
-The end-to-end experiment searched 7,687 ranked sentence occurrences for 1,500
-word-senses. Each word-sense advanced to its next easiest sentence after a
-rejection and discarded its remaining alternatives after acceptance. Unknown
+The end-to-end experiment built 7,687 ranked target-occurrence candidates for
+1,500 word-senses, representing 2,260 distinct sentences. Only 460 candidates
+received model review; 7,227 did not. The planner retries feasible alternatives
+and stops reviewing a meaning once it is selected, but sentence reservations and
+dependency gates can block further attempts. This was not an exhaustive model
+review of every candidate. Unknown
 word counts remained hard limits; relative unknown difficulty was changed from
 an exclusion to a sorting preference after the hard rule caused a curriculum
 dead end.
 
 The verifier made 460 decisions, accepted 140 occurrences, and scheduled 138
-unique cards. The result passed unknown-word progression, contained no duplicate
+unique cards. The result passed the current stored-identity unknown-word checks, contained no duplicate
 sentences, had 97.1% lemma diversity, limited katakana targets to 2.9%, and
 represented all ten episodes. It also removed or replaced reported cards 68,
 69, and 78. It did not solve the duplicate-learning-unit issue on card 40 or the
 audio issue on card 56, which belong to separate gates.
 
-The decision is **fail closed**: 138 usable cards is below the requested 200, so
-the universal verifier is not adopted and the frozen baseline remains the
-production default. The next experiment should calibrate a risk router that
-allows deterministic clean cards through while requiring constrained model
-review for ambiguous sense, expression, or subtitle-alignment cases. Exact
-metrics and the pinned model revision are recorded in
-`qwen35-4b-prompt-v1-regression.json`.
+The decision is **fail closed**: the frozen baseline remains the production
+default. These 138 selected cards are not a claim of fully validated quality:
+context identities still have known expression errors and audio validation is
+not integrated in this path. The low yield alone does not establish that the
+verifier is too strict. The next steps are candidate accounting, context-meaning
+repair, equivalent-sense deduplication, coordinated sentence assignment, and
+audio integration before another 200-card attempt. We are not bypassing model
+validation to fill the quota. Exact metrics and the pinned model revision are
+recorded in `qwen35-4b-prompt-v1-regression.json`; the subsequent evidence and
+reproduction command are in [candidate accounting](candidate-accounting.md).
