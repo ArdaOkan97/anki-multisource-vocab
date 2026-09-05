@@ -1,10 +1,13 @@
 import unittest
 
+from vocabdeck.gold_benchmark import build_candidate_dataset
 from vocabdeck.local_review import card_fingerprint
 from vocabdeck.validation import (
+    ConstrainedPredictionValidator,
     DeterministicCardValidator,
     RecordedReviewValidator,
     UnanimousCardValidator,
+    merge_validation_reports,
     plan_review_frontier,
     select_validated_curriculum,
     validate_cards,
@@ -44,6 +47,18 @@ def audited_card(part_of_speech="動詞"):
     }
 
 
+def constrained_predictions(dataset, *, accepted=True, reason="accepted"):
+    case = dataset["splits"]["production_candidates"][0]
+    return {
+        "prompt_versions": dict(dataset["prompt_versions"]),
+        "records": [{
+            "case_id": case["case_id"],
+            "accepted": accepted,
+            "reason": reason,
+        }],
+    }
+
+
 def review(card, review_pass, verdict="correct", reason="supported"):
     return {
         "audit_position": card["audit_position"],
@@ -55,6 +70,65 @@ def review(card, review_pass, verdict="correct", reason="supported"):
 
 
 class ValidationTest(unittest.TestCase):
+    def test_validation_reports_merge_by_position(self):
+        first = {
+            "accepted": [{
+                "audit_position": 1, "lemma": "一", "lexeme_key": "one",
+                "decision": {"status": "accepted"},
+            }],
+            "rejected": [], "abstained": [],
+        }
+        current = {
+            "accepted": [],
+            "rejected": [{
+                "audit_position": 1, "lemma": "一", "lexeme_key": "one",
+                "decision": {"status": "rejected"},
+            }],
+            "abstained": [{
+                "audit_position": 2, "lemma": "二", "lexeme_key": "two",
+                "decision": {"status": "abstained"},
+            }],
+        }
+        merged = merge_validation_reports(first, current)
+        self.assertEqual(merged["summary"], {
+            "accepted": 0, "rejected": 1, "abstained": 1,
+        })
+        self.assertEqual(merged["rejected"][0]["audit_position"], 1)
+
+    def test_constrained_predictions_accept_reject_and_fail_stale(self):
+        card = audited_card()
+        dataset = build_candidate_dataset([card])
+
+        accepted = ConstrainedPredictionValidator(
+            dataset, constrained_predictions(dataset),
+        ).validate(card)
+        self.assertEqual(accepted.status, "accepted")
+
+        rejected = ConstrainedPredictionValidator(
+            dataset,
+            constrained_predictions(
+                dataset, accepted=False, reason="subtitle_not_supported",
+            ),
+        ).validate(card)
+        self.assertEqual(rejected.status, "rejected")
+
+        changed = dict(card, english="This changed after review.")
+        stale = ConstrainedPredictionValidator(
+            dataset, constrained_predictions(dataset),
+        ).validate(changed)
+        self.assertEqual(stale.status, "abstained")
+        self.assertEqual(
+            stale.reason_codes, ("missing_or_stale_constrained_review",),
+        )
+
+    def test_constrained_predictions_require_matching_policy_versions(self):
+        card = audited_card()
+        dataset = build_candidate_dataset([card])
+        predictions = constrained_predictions(dataset)
+        predictions["prompt_versions"]["sense"] = 2
+        with self.assertRaisesRegex(ValueError, "versions"):
+            ConstrainedPredictionValidator(dataset, predictions)
+
     def test_distinct_senses_of_one_lexeme_are_separate_curriculum_targets(self):
         reaction = audited_card()
         reaction.update({
@@ -88,6 +162,10 @@ class ValidationTest(unittest.TestCase):
         )
 
         self.assertEqual(selection["summary"]["accepted"], 2)
+        self.assertEqual(selection["accepted"][0]["unknown_context_words"], 0)
+        self.assertEqual(
+            selection["accepted"][0]["unknown_context_learning_unit_keys"], []
+        )
         self.assertEqual(
             {card["sense_key"] for card in selection["accepted"]},
             {"jmdict:2137720:0", "jmdict:2137720:2"},
@@ -157,6 +235,31 @@ class ValidationTest(unittest.TestCase):
         )
 
         self.assertEqual(plan["summary"]["planned_reviews"], 0)
+
+    def test_review_frontier_refills_unused_capacity_beyond_lexical_window(self):
+        first = audited_card()
+        first.update({
+            "audit_position": 1, "curriculum_position": 1,
+            "candidate_position": 1, "sentence_id": 10,
+            "lexeme_id": 10, "difficulty_score": 10.0,
+            "context_lexeme_ids": [10],
+            "initial_known_context_lexeme_ids": [],
+            "initial_unknown_context_lexeme_ids": [],
+        })
+        second = dict(first)
+        second.update({
+            "audit_position": 2, "curriculum_position": 2,
+            "sentence_id": 20, "lexeme_id": 20, "lexeme_key": "watashi",
+            "lemma": "私", "context_lexeme_ids": [20],
+        })
+
+        plan = plan_review_frontier(
+            [first, second], frontier_size=1, limit=2,
+        )
+
+        self.assertEqual(plan["summary"]["planned_reviews"], 2)
+        self.assertTrue(plan["summary"]["frontier_expanded"])
+        self.assertEqual({card["lexeme_id"] for card in plan["cards"]}, {10, 20})
 
     def test_deterministic_gate_fails_closed(self):
         validator = DeterministicCardValidator()

@@ -7,6 +7,7 @@ from vocabdeck.constrained_review import (
     build_support_prompt,
     parse_label,
     run_constrained_benchmark,
+    run_constrained_curriculum,
     run_constrained_dataset,
     sense_options,
 )
@@ -60,6 +61,66 @@ def card():
 
 
 class ConstrainedReviewTest(unittest.TestCase):
+    def test_curriculum_reviews_teachable_frontiers_until_complete(self):
+        value = card()
+        value.update({
+            "gloss": "second meaning",
+            "target_start": 2,
+            "target_end": 3,
+            "sentence_id": 10,
+            "curriculum_position": 1,
+            "candidate_position": 1,
+            "difficulty_score": 1.0,
+            "context_learning_unit_keys": ["word::jmdict:100:1"],
+            "initial_known_context_learning_unit_keys": [],
+            "example_progression": {"content_words": 2, "selection_score": 1.0},
+            "audit_findings": [],
+            "audit_criteria": [
+                {"code": code, "status": "passed"}
+                for code in (
+                    "translation_available", "translation_alignment",
+                    "translation_scope", "definition_available",
+                    "contextual_interpretation", "gloss_support",
+                    "context_difficulty", "contextual_reading",
+                    "expression_interpretation", "unique_example",
+                )
+            ],
+        })
+        options = sense_options(value, FakeResolver())
+        labels = [
+            next(
+                label for label, identity in
+                build_sense_prompt(value, options, round_index).label_to_sense.items()
+                if identity == value["sense_key"]
+            )
+            for round_index in (1, 2)
+        ]
+        result = run_constrained_curriculum(
+            [value], FakeReviewer([*labels, "A"]), limit=1,
+            resolver=FakeResolver(),
+        )
+
+        self.assertTrue(result["selection"]["summary"]["complete"])
+        self.assertEqual(result["selection"]["summary"]["accepted"], 1)
+        self.assertEqual(result["predictions"]["summary"]["evaluated"], 1)
+        self.assertEqual(result["predictions"]["summary"]["rounds"], 1)
+
+    def test_too_many_senses_abstains_instead_of_crashing(self):
+        class ManySenseResolver:
+            def sense_candidates(self, *args):
+                return tuple(
+                    FakeResolver.Match(f"meaning {index}", 100, index)
+                    for index in range(26)
+                )
+
+        result = run_constrained_benchmark(
+            [card()], FakeReviewer([]), {1: True},
+            resolver=ManySenseResolver(),
+        )
+
+        self.assertEqual(result["summary"]["accepted"], 0)
+        self.assertEqual(result["records"][0]["reason"], "too_many_sense_options")
+
     def test_sense_options_honor_verb_te_construction(self):
         value = card()
         value.update({

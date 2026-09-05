@@ -259,6 +259,10 @@ def build_parser() -> argparse.ArgumentParser:
     review_frontier.add_argument("--contextual-reviews", type=Path)
     review_frontier.add_argument("--recoverability-reviews", type=Path)
     review_frontier.add_argument("--contextual-gloss-reviews", type=Path)
+    review_frontier.add_argument(
+        "--validation", type=Path,
+        help="accumulated constrained-verifier validation decisions",
+    )
     review_frontier.add_argument("--limit", type=int, default=40)
     review_frontier.add_argument("--frontier-size", type=int, default=100)
     review_frontier.add_argument("--zero-unknown-through", type=int, default=20)
@@ -380,6 +384,35 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run_verifier.add_argument("--output", required=True, type=Path)
 
+    constrained_curriculum = commands.add_parser(
+        "run-constrained-curriculum",
+        help="Iteratively verify teachable frontiers and select a curriculum",
+    )
+    constrained_curriculum.add_argument("--input", required=True, type=Path)
+    constrained_curriculum.add_argument("--model", required=True)
+    constrained_curriculum.add_argument("--revision", required=True)
+    constrained_curriculum.add_argument("--prompt-version", type=int, choices=(1, 2), default=1)
+    constrained_curriculum.add_argument("--memory-limit-gb", type=float, default=4.0)
+    constrained_curriculum.add_argument("--limit", type=int, default=200)
+    constrained_curriculum.add_argument("--frontier-size", type=int, default=100)
+    constrained_curriculum.add_argument("--max-rounds", type=int, default=100)
+    constrained_curriculum.add_argument(
+        "--soft-harder-unknowns", action="store_true",
+        help=(
+            "rank harder unknown context after easier alternatives instead of "
+            "rejecting it; unknown-word count limits remain hard"
+        ),
+    )
+    constrained_curriculum.add_argument("--selection-output", required=True, type=Path)
+    constrained_curriculum.add_argument("--validation-output", required=True, type=Path)
+    constrained_curriculum.add_argument("--predictions-output", required=True, type=Path)
+    constrained_curriculum.add_argument("--preview", type=Path)
+    constrained_curriculum.add_argument("--no-media", action="store_true")
+    constrained_curriculum.add_argument(
+        "--resume", action="store_true",
+        help="resume from existing validation and prediction outputs",
+    )
+
     smoke_verifier = commands.add_parser(
         "build-verifier-smoke-dataset",
         help="Build the deterministic gold-only verifier smoke cohort",
@@ -387,6 +420,26 @@ def build_parser() -> argparse.ArgumentParser:
     smoke_verifier.add_argument("--dataset", required=True, type=Path)
     smoke_verifier.add_argument("--size", type=int, default=20)
     smoke_verifier.add_argument("--output", required=True, type=Path)
+
+    candidate_dataset = commands.add_parser(
+        "build-verifier-candidate-dataset",
+        help="Wrap production cards for fingerprinted constrained verification",
+    )
+    candidate_dataset.add_argument("--input", required=True, type=Path)
+    candidate_dataset.add_argument(
+        "--deterministic-clean-only", action="store_true",
+    )
+    candidate_dataset.add_argument("--output", required=True, type=Path)
+
+    validate_constrained = commands.add_parser(
+        "validate-constrained-cards",
+        help="Apply deterministic and constrained-verifier production gates",
+    )
+    validate_constrained.add_argument("--input", required=True, type=Path)
+    validate_constrained.add_argument("--dataset", required=True, type=Path)
+    validate_constrained.add_argument("--predictions", required=True, type=Path)
+    validate_constrained.add_argument("--existing-validation", type=Path)
+    validate_constrained.add_argument("--output", required=True, type=Path)
 
     compare_verifiers = commands.add_parser(
         "compare-verifier-benchmarks",
@@ -566,10 +619,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         ):
             if path and path.expanduser().resolve().exists():
                 reviews_by_pass[review_pass] = load_review_records(path)
+        validation_report = None
+        if args.validation:
+            validation_report = json.loads(
+                args.validation.expanduser().resolve().read_text(encoding="utf-8")
+            )
         plan = plan_review_frontier(
             cards,
             selected_cards=selected_cards,
             reviews_by_pass=reviews_by_pass,
+            validation_report=validation_report,
             limit=args.limit,
             frontier_size=args.frontier_size,
             zero_unknown_through=args.zero_unknown_through,
@@ -695,6 +754,26 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             **report["summary"],
         }, ensure_ascii=False, indent=2))
         return 0
+    if args.command == "build-verifier-candidate-dataset":
+        from .comparison import load_card_artifact
+        from .gold_benchmark import build_candidate_dataset, write_json
+        from .validation import DeterministicCardValidator
+
+        cards = load_card_artifact(args.input)
+        if args.deterministic_clean_only:
+            validator = DeterministicCardValidator()
+            cards = [
+                card for card in cards
+                if validator.validate(card).status == "accepted"
+            ]
+        dataset = build_candidate_dataset(
+            cards, source_artifact=str(args.input),
+        )
+        output = write_json(dataset, args.output)
+        print(json.dumps({
+            "output": str(output), "cases": len(cards),
+        }, ensure_ascii=False, indent=2))
+        return 0
     if args.command == "run-verifier-benchmark":
         from .constrained_review import MLXLabelReviewer, run_constrained_dataset
         from .gold_benchmark import validate_dataset, write_json
@@ -719,6 +798,99 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         output = write_json(predictions, args.output)
         print(json.dumps({
             "output": str(output), **predictions["summary"],
+        }, ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "validate-constrained-cards":
+        from .comparison import load_card_artifact
+        from .validation import (
+            ConstrainedPredictionValidator, DeterministicCardValidator,
+            UnanimousCardValidator, merge_validation_reports, validate_cards,
+            write_validation_report,
+        )
+
+        dataset = json.loads(args.dataset.read_text(encoding="utf-8"))
+        predictions = json.loads(args.predictions.read_text(encoding="utf-8"))
+        validator = UnanimousCardValidator([
+            DeterministicCardValidator(),
+            ConstrainedPredictionValidator(dataset, predictions),
+        ])
+        report = validate_cards(load_card_artifact(args.input), validator)
+        if args.existing_validation:
+            existing = json.loads(
+                args.existing_validation.expanduser().resolve().read_text(
+                    encoding="utf-8"
+                )
+            )
+            report = merge_validation_reports(existing, report)
+        output = write_validation_report(report, args.output)
+        print(json.dumps({
+            "output": str(output), **report["summary"],
+        }, ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "run-constrained-curriculum":
+        from .comparison import load_card_artifact
+        from .constrained_review import (
+            MLXLabelReviewer, run_constrained_curriculum,
+        )
+        from .gold_benchmark import write_json
+
+        initial_validation = None
+        initial_predictions = None
+        if args.resume:
+            if args.validation_output.exists():
+                initial_validation = json.loads(
+                    args.validation_output.read_text(encoding="utf-8")
+                )
+            if args.predictions_output.exists():
+                initial_predictions = json.loads(
+                    args.predictions_output.read_text(encoding="utf-8")
+                )
+
+        def checkpoint(value):
+            write_json(value["selection"], args.selection_output)
+            write_json(value["validation"], args.validation_output)
+            write_json(value["predictions"], args.predictions_output)
+
+        reviewer = MLXLabelReviewer(
+            args.model, revision=args.revision,
+            memory_limit_gb=args.memory_limit_gb,
+        )
+        try:
+            result = run_constrained_curriculum(
+                load_card_artifact(args.input), reviewer,
+                limit=args.limit, frontier_size=args.frontier_size,
+                max_rounds=args.max_rounds,
+                prompt_version=args.prompt_version,
+                harder_unknown_tolerance=(
+                    None if args.soft_harder_unknowns else 2.0
+                ),
+                initial_validation=initial_validation,
+                initial_predictions=initial_predictions,
+                checkpoint=checkpoint,
+            )
+        finally:
+            reviewer.close()
+        from .inference_resources import InferenceResourceGuard
+        cleanup_probe = InferenceResourceGuard()
+        cleanup_probe.acquire()
+        cleanup_probe.release()
+        result["predictions"]["summary"]["cleanup_verified"] = True
+        selection_output = write_json(result["selection"], args.selection_output)
+        validation_output = write_json(result["validation"], args.validation_output)
+        predictions_output = write_json(result["predictions"], args.predictions_output)
+        preview = None
+        if args.preview:
+            preview = render_preview_html(
+                result["selection"]["accepted"], args.preview,
+                include_media=not args.no_media,
+            )
+        print(json.dumps({
+            "selection_output": str(selection_output),
+            "validation_output": str(validation_output),
+            "predictions_output": str(predictions_output),
+            "preview": None if preview is None else str(preview),
+            **result["predictions"]["summary"],
+            "curriculum": result["selection"]["summary"],
         }, ensure_ascii=False, indent=2))
         return 0
     if args.command == "validate-reviewed-cards":

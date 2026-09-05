@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from vocabdeck.gold_benchmark import (
+    build_candidate_dataset,
     build_gold_dataset,
     evaluate_predictions,
     render_blinded_html,
@@ -77,6 +78,31 @@ class GoldBenchmarkTest(unittest.TestCase):
             duplicate["splits"] = dict(dataset["splits"])
             duplicate["splits"]["hard_negatives"] = [development[0], development[0]]
             validate_dataset(duplicate)
+
+    def test_candidate_dataset_is_unreviewed_and_prompt_fingerprinted(self):
+        card = _card(1)
+        dataset = build_candidate_dataset([card], source_artifact="candidates.json")
+        case = dataset["splits"]["production_candidates"][0]
+        self.assertEqual(case["review_status"], "unreviewed")
+        self.assertEqual(case["labels"]["production"], "unreviewed")
+        self.assertEqual(case["provenance"]["source_artifact"], "candidates.json")
+
+        changed = dict(card, english="A different subtitle")
+        other = build_candidate_dataset([changed])
+        self.assertNotEqual(
+            case["case_id"],
+            other["splits"]["production_candidates"][0]["case_id"],
+        )
+
+    def test_candidate_fingerprint_survives_artifact_reordering(self):
+        card = _card(1)
+        first = build_candidate_dataset([card])
+        reordered = build_candidate_dataset([dict(card, audit_position=999)])
+
+        self.assertEqual(
+            first["splits"]["production_candidates"][0]["case_id"],
+            reordered["splits"]["production_candidates"][0]["case_id"],
+        )
 
     def test_split_selection_is_stable_and_covers_hard_negative_classes(self):
         with tempfile.TemporaryDirectory() as directory:

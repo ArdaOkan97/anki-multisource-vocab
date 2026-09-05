@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import html
 import json
+import re
 from pathlib import Path
 from typing import Any, Mapping, Optional, Sequence
 
@@ -37,6 +38,9 @@ FINDING_RELEVANT_CATEGORIES = {
     "wrong_contextual_sense": {"sense", "gloss", "sentence"},
     "semantic_duplicate": {"sense", "gloss", "sentence"},
 }
+
+_KATAKANA = re.compile(r"[\u30a0-\u30ff]")
+_JAPANESE_LETTER = re.compile(r"[\u3040-\u30ff\u3400-\u9fff]")
 
 
 def load_card_artifact(path: Path) -> list[dict[str, Any]]:
@@ -191,6 +195,42 @@ def _curriculum_checks(cards: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _deck_quality_checks(cards: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    sentence_positions: dict[str, list[int]] = {}
+    episode_counts: dict[str, int] = {}
+    katakana_targets = 0
+    lemmas = set()
+    for position, card in enumerate(cards, start=1):
+        sentence_identity = str(
+            card.get("sentence_id")
+            or f"{card.get('series')}:{card.get('season')}:{card.get('episode')}:{card.get('cue_index')}"
+        )
+        sentence_positions.setdefault(sentence_identity, []).append(position)
+        episode = str(card.get("episode") or "unknown")
+        episode_counts[episode] = episode_counts.get(episode, 0) + 1
+        lemma = str(card.get("lemma") or "")
+        if lemma:
+            lemmas.add(lemma)
+        letters = _JAPANESE_LETTER.findall(lemma)
+        if letters and all(_KATAKANA.fullmatch(value) for value in letters):
+            katakana_targets += 1
+    duplicates = [
+        {"sentence_identity": identity, "positions": positions}
+        for identity, positions in sentence_positions.items()
+        if len(positions) > 1
+    ]
+    count = len(cards)
+    return {
+        "unique_sentences": not duplicates,
+        "duplicate_sentences": duplicates,
+        "unique_lemmas": len(lemmas),
+        "lemma_diversity": round(len(lemmas) / count, 6) if count else 0.0,
+        "katakana_targets": katakana_targets,
+        "katakana_ratio": round(katakana_targets / count, 6) if count else 0.0,
+        "episode_counts": dict(sorted(episode_counts.items(), key=lambda item: item[0])),
+    }
+
+
 def _human_finding_checks(
     review: Optional[Mapping[str, Any]],
     baseline_cards: Sequence[Mapping[str, Any]],
@@ -337,6 +377,7 @@ def compare_card_sets(
         "changed": changed,
         "checks": {
             "curriculum_unknown_words": _curriculum_checks(candidate_cards),
+            "deck_quality": _deck_quality_checks(candidate_cards),
             "human_findings": _human_finding_checks(
                 human_review, baseline_cards, candidate_by_key
             ),
@@ -366,6 +407,7 @@ def _render_card_rows(items: Sequence[Mapping[str, Any]], empty: str) -> str:
 def render_comparison_html(report: Mapping[str, Any], output: Path) -> Path:
     summary = report["summary"]
     curriculum = report["checks"]["curriculum_unknown_words"]
+    quality = report["checks"]["deck_quality"]
     finding_rows = []
     for item in report["checks"]["human_findings"]:
         finding_rows.append(
@@ -404,6 +446,7 @@ table {{ width:100%;border-collapse:collapse;background:#292a2d; }} th,td {{ pad
 </style></head><body><h1>Vocabulary baseline comparison</h1>
 <div class="metrics">{''.join(f'<div class="metric"><strong>{summary[name]}</strong>{name.replace("_", " ")}</div>' for name in ("baseline_cards", "candidate_cards", "retained", "removed", "added", "reordered", "learner_visible_changed"))}</div>
 <h2>Curriculum gate</h2><p class="{'passed' if curriculum['passed'] else 'failed'}">{'Passed' if curriculum['passed'] else 'Failed'} — {len(curriculum['violations'])} violation(s).</p>
+<h2>Deck quality</h2><p>{quality['unique_lemmas']} unique lemmas · {quality['katakana_targets']} katakana targets ({quality['katakana_ratio']:.1%}) · {len(quality['duplicate_sentences'])} duplicate sentence(s)</p>
 <h2>Frozen human findings</h2><table><thead><tr><th>Baseline #</th><th>Finding</th><th>Status</th><th>Review note</th></tr></thead><tbody>{''.join(finding_rows) or '<tr><td colspan="4">No human findings supplied.</td></tr>'}</tbody></table>
 <h2>Learner-visible changes</h2><table><thead><tr><th>Position</th><th>Word</th><th>Categories</th><th>Fields</th></tr></thead><tbody>{''.join(changed_rows) or '<tr><td colspan="4">No learner-visible changes.</td></tr>'}</tbody></table>
 <h2>Reordered cards</h2><table><thead><tr><th>Word</th><th>Baseline #</th><th>Candidate #</th></tr></thead><tbody>{''.join(reordered_rows) or '<tr><td colspan="3">No cards reordered.</td></tr>'}</tbody></table>
