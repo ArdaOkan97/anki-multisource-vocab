@@ -262,6 +262,17 @@ class JapaneseTokenizer:
         words = self._morphs(text)
         return list(self._component_tokens(words).values())
 
+    def expression_candidates(self, text: str) -> List[tuple]:
+        """Enumerate dictionary-backed spans without scoring or loading a model."""
+        words = self._morphs(text)
+        return [
+            candidate
+            for start in range(len(words))
+            for end in range(min(len(words), start + 4), start + 1, -1)
+            if (candidate := self._expression_candidate(text, words, start, end))
+            is not None
+        ]
+
     def tokenize_with_context(self, text: str, english: str) -> TokenizationResult:
         words = self._morphs(text)
         components = self._component_tokens(words)

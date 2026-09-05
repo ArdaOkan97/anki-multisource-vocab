@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Mapping, Protocol, Sequence, Tuple
 from .audit import READING_CHECK_POS
 from .local_review import card_fingerprint
 from .subtitles import translation_scope_issues
+from .context_meanings import context_meaning_issues, UNRESOLVED_PREFIX
 
 
 REQUIRED_DETERMINISTIC_CRITERIA = (
@@ -51,7 +52,7 @@ def _initial_known_learning_units(
 ) -> Optional[set[str]]:
     values = card.get("initial_known_context_learning_unit_keys")
     if isinstance(values, list):
-        return {str(value) for value in values}
+        return {str(value) for value in values if not str(value).startswith(UNRESOLVED_PREFIX)}
     legacy = card.get("initial_known_context_lexeme_ids")
     if isinstance(legacy, list):
         return {f"lexeme:{int(value)}" for value in legacy}
@@ -100,7 +101,7 @@ class DeterministicCardValidator:
         )
         start = card.get("target_start")
         end = card.get("target_end")
-        structural_reasons: List[str] = []
+        structural_reasons: List[str] = context_meaning_issues(card)
         if not english:
             structural_reasons.append("missing_translation")
         elif len(_ENGLISH_TOKEN.findall(english)) > max(
@@ -629,6 +630,7 @@ def select_validated_curriculum(
                 if (
                     decision is None
                     or decision.get("status") != "accepted"
+                    or context_meaning_issues(card)
                     or sentence_id in used_sentence_ids
                     or raw_context_ids is None
                     or raw_initial_known_ids is None
@@ -741,6 +743,7 @@ def select_validated_curriculum(
         blockers = set()
         minimum_unknown = None
         for card in accepted_candidates:
+            blockers.update(context_meaning_issues(card))
             raw_context_ids = _context_learning_units(card)
             if (
                 raw_context_ids is None
@@ -763,7 +766,7 @@ def select_validated_curriculum(
                 for value in unknown_ids
             ):
                 blockers.add("unscored_unknown_context")
-            if any(
+            if harder_unknown_tolerance is not None and any(
                 value in lexical_difficulties
                 and lexical_difficulties[value]
                 > lexical_difficulties[target_id] + harder_unknown_tolerance
