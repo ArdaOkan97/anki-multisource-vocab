@@ -4,7 +4,7 @@ title: Cluster learner-equivalent dictionary senses
 status: To Do
 assignee: []
 created_date: '2026-08-27 11:36'
-updated_date: '2026-09-05 09:11'
+updated_date: '2026-09-05 12:01'
 labels: []
 dependencies:
   - VOCAB-2.1
@@ -36,4 +36,6 @@ Suppress cards whose exact JMdict senses differ but whose learner-facing meaning
 
 <!-- SECTION:NOTES:BEGIN -->
 Generalized contextual equivalence must be justified by VOCAB-2.5.6 evidence before production clustering. Do not introduce word-specific merge maps or infer global/transitive sense equivalence from one accepted occurrence pair.
+
+Prioritization after the 100-pair embedding pilot: defer automatic cross-sense equivalence clustering and further large-scale equivalence annotation for now. The assistant owns future curation/benchmark work; the user is not expected to label 1,000 pairs. The pilot does not establish that duplicate learner meanings are rare in generated decks. Prefer retaining a possible duplicate over incorrectly merging distinct meanings, and preserve existing exact learning-unit deduplication. Revisit using measured duplicate incidence in a future deck-level review or stronger semantic evidence. This deferral applies only to equivalence clustering, not contextual sense correctness, audio checks, or unknown-context/scheduling guardrails. Task remains To Do; no acceptance criteria completed and no production behavior changed.
 <!-- SECTION:NOTES:END -->

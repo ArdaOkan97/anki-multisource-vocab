@@ -40,6 +40,9 @@ DIAGNOSTICS = [
 
 
 def make_pairs(dataset):
+    if "pairs" in dataset:
+        from .embedding_calibration import validate_pairs
+        return validate_pairs(dataset)
     pairs = [{"word": p["word"], "definitions": [m["gloss"] for m in p["meanings"]],
               "kind": p["kind"], "source_case_id": p["case_id"], "gold": None}
              for p in build_pairs(dataset)]
@@ -76,7 +79,7 @@ def start_rss_watchdog(limit_bytes, stop):
     return thread
 
 
-def run(model_key, dataset, output, rss_limit_gib=4.0):
+def run(model_key, dataset, output, rss_limit_gib=4.0, offline=False):
     if not 0 < rss_limit_gib <= 4.0:
         raise ValueError("RSS ceiling must be >0 and <=4 GiB")
     pairs = make_pairs(dataset)
@@ -95,16 +98,24 @@ def run(model_key, dataset, output, rss_limit_gib=4.0):
             load_started = time.perf_counter()
             # Only download the root safetensors and tokenizer/pooling configs;
             # exclude duplicate PyTorch, ONNX and OpenVINO weights.
-            info = HfApi().model_info(model_id, revision=revision, files_metadata=True)
-            files = [s for s in info.siblings if (
-                s.rfilename == "model.safetensors" or
-                (s.rfilename.endswith(".json") and not s.rfilename.startswith(("onnx/", "openvino/"))) or
-                s.rfilename in ("vocab.txt", "tokenizer.model", "sentencepiece.bpe.model")
-            )]
-            if any(s.size is None for s in files) or sum(s.size for s in files) > 2 * 1024**3:
-                raise ValueError("missing file sizes or embedding artifact exceeds 2 GiB")
-            model_path = snapshot_download(model_id, revision=revision,
-                                           allow_patterns=[s.rfilename for s in files], max_workers=1)
+            if offline:
+                model_path = snapshot_download(
+                    model_id, revision=revision, local_files_only=True,
+                    allow_patterns=["model.safetensors", "*.json", "vocab.txt",
+                                    "tokenizer.model", "sentencepiece.bpe.model"],
+                    ignore_patterns=["onnx/*", "openvino/*"],
+                )
+            else:
+                info = HfApi().model_info(model_id, revision=revision, files_metadata=True)
+                files = [s for s in info.siblings if (
+                    s.rfilename == "model.safetensors" or
+                    (s.rfilename.endswith(".json") and not s.rfilename.startswith(("onnx/", "openvino/"))) or
+                    s.rfilename in ("vocab.txt", "tokenizer.model", "sentencepiece.bpe.model")
+                )]
+                if any(s.size is None for s in files) or sum(s.size for s in files) > 2 * 1024**3:
+                    raise ValueError("missing file sizes or embedding artifact exceeds 2 GiB")
+                model_path = snapshot_download(model_id, revision=revision,
+                                               allow_patterns=[s.rfilename for s in files], max_workers=1)
             guard.validate_model_path(Path(model_path))
             download_seconds = time.perf_counter() - load_started
             encode_seconds = 0.0
@@ -139,6 +150,7 @@ def run(model_key, dataset, output, rss_limit_gib=4.0):
                       "input_prefix_both_sides": prefix, "pairs_hash": digest(pairs),
                       "records": records, "threshold_adopted": None, "gold_scored": 0,
                       "runtime": {"device": "cpu", "batch_size": 4, "cpu_threads": 2,
+                                  "offline": offline,
                                   "rss_limit_gib": rss_limit_gib, "cache_hit": cache_hit,
                                   "unique_definitions": len(texts), "download_seconds": download_seconds,
                                   "load_and_encode_seconds": encode_seconds,
@@ -157,8 +169,9 @@ def main():
     parser.add_argument("--dataset", required=True)
     parser.add_argument("--model", choices=MODELS, required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument("--offline", action="store_true", help="use only the cached pinned model revision")
     args = parser.parse_args()
-    run(args.model, json.loads(Path(args.dataset).read_text()), args.output)
+    run(args.model, json.loads(Path(args.dataset).read_text()), args.output, offline=args.offline)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,4392 @@
+{
+  "pairs_hash": "42506cc23379e1174718795abdfb4500e59abc5b97bd869a3b02026d08099850",
+  "source": "installed JMdict via jamdict",
+  "evidence": [
+    {
+      "case_id": "d79784344b1eed02145cffa5",
+      "word": "回",
+      "definitions": [
+        "a time; an instance",
+        "Hui (people)"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1199330:1",
+          "full_english_glosses": [
+            "a time",
+            "an instance"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1199330:4",
+          "full_english_glosses": [
+            "Hui (people)"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [
+            "abbreviation"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "e2aa59bda84bf5c5754c9be6",
+      "word": "これ",
+      "definitions": [
+        "this; this one",
+        "hey; oi; come on"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1628530:0",
+          "full_english_glosses": [
+            "this",
+            "this one"
+          ],
+          "pos": [
+            "pronoun"
+          ],
+          "field": [],
+          "misc": [
+            "word usually written using kana alone"
+          ],
+          "info": [
+            "indicating an item near the speaker, the action of the speaker, or the current topic"
+          ],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:2216120:0",
+          "full_english_glosses": [
+            "hey",
+            "oi",
+            "come on",
+            "look",
+            "listen"
+          ],
+          "pos": [
+            "interjection (kandoushi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [
+            "used to get the attention of one's equals or inferiors"
+          ],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "d9a748c69dd34e3da6fd3acc",
+      "word": "怪しい",
+      "definitions": [
+        "doubtful; unsure; uncertain",
+        "suspicious (of a potential amorous relation)"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1586700:1",
+          "full_english_glosses": [
+            "doubtful",
+            "unsure",
+            "uncertain",
+            "unlikely",
+            "implausible"
+          ],
+          "pos": [
+            "adjective (keiyoushi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1586700:5",
+          "full_english_glosses": [
+            "suspicious (of a potential amorous relation)"
+          ],
+          "pos": [
+            "adjective (keiyoushi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "52984b1728b895f7bba8c711",
+      "word": "今度",
+      "definitions": [
+        "this time; now",
+        "recently; lately; the other day"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1289370:0",
+          "full_english_glosses": [
+            "this time",
+            "now"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "adverb (fukushi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1289370:2",
+          "full_english_glosses": [
+            "recently",
+            "lately",
+            "the other day"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "adverb (fukushi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "2b9ad2d743187c352368c57d",
+      "word": "楽しみ",
+      "definitions": [
+        "enjoyment; pleasure; diversion",
+        "anticipation; looking forward to"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1207250:0",
+          "full_english_glosses": [
+            "enjoyment",
+            "pleasure",
+            "diversion",
+            "amusement",
+            "hobby"
+          ],
+          "pos": [
+            "adjectival nouns or quasi-adjectives (keiyodoshi)",
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1207250:1",
+          "full_english_glosses": [
+            "anticipation",
+            "looking forward to"
+          ],
+          "pos": [
+            "adjectival nouns or quasi-adjectives (keiyodoshi)",
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "55cb045631552281af4c58c1",
+      "word": "あと",
+      "definitions": [
+        "behind; rear",
+        "scar"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1269320:0",
+          "full_english_glosses": [
+            "behind",
+            "rear"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "nouns which may take the genitive case particle 'no'"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1383680:2",
+          "full_english_glosses": [
+            "scar"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [
+            "esp. 痕"
+          ],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "ea49eb5946bee9d8a776ace4",
+      "word": "もの",
+      "definitions": [
+        "one's things; possessions; property",
+        "used to emphasize emotion, judgment, etc.; used to indicate a common occurrence in the past (after a verb in past tense); used to indicate a general tendency"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1502390:1",
+          "full_english_glosses": [
+            "one's things",
+            "possessions",
+            "property",
+            "belongings"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [
+            "as 〜のもの, 〜のもん"
+          ],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1502390:5",
+          "full_english_glosses": [
+            "used to emphasize emotion, judgment, etc.",
+            "used to indicate a common occurrence in the past (after a verb in past tense)",
+            "used to indicate a general tendency",
+            "used to indicate something that should happen"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [
+            "word usually written using kana alone"
+          ],
+          "info": [
+            "formal noun often used as 〜ものだ"
+          ],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "e66f83c14f519e6688fa51f1",
+      "word": "ドキドキ",
+      "definitions": [
+        "thump-thump; bang-bang; pit-a-pat",
+        "to beat fast (of one's heart); to throb; to pound"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1009050:0",
+          "full_english_glosses": [
+            "thump-thump",
+            "bang-bang",
+            "pit-a-pat",
+            "pitapat",
+            "pitter-patter"
+          ],
+          "pos": [
+            "adverb (fukushi)",
+            "adverb taking the 'to' particle"
+          ],
+          "field": [],
+          "misc": [
+            "onomatopoeic or mimetic word"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1009050:1",
+          "full_english_glosses": [
+            "to beat fast (of one's heart)",
+            "to throb",
+            "to pound",
+            "to palpitate"
+          ],
+          "pos": [
+            "noun or participle which takes the aux. verb suru"
+          ],
+          "field": [],
+          "misc": [
+            "onomatopoeic or mimetic word"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "f8e097734ff457ac7ef62b20",
+      "word": "草",
+      "definitions": [
+        "ninja",
+        "LOL; haha"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1401910:1",
+          "full_english_glosses": [
+            "ninja"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [
+            "archaism"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1401910:3",
+          "full_english_glosses": [
+            "LOL",
+            "haha"
+          ],
+          "pos": [
+            "expressions (phrases, clauses, etc.)"
+          ],
+          "field": [],
+          "misc": [
+            "Internet slang"
+          ],
+          "info": [
+            "multiple repetitions of \"w\" (\"LOL\") resembles grass: wwwwww"
+          ],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "8f8d03ad90b5a3436b2feb1c",
+      "word": "面",
+      "definitions": [
+        "surface (esp. a geometrical surface)",
+        "chamfer"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1584695:3",
+          "full_english_glosses": [
+            "surface (esp. a geometrical surface)"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1584695:6",
+          "full_english_glosses": [
+            "chamfer"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "suffix"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "7c397a879cb5d71e916e0159",
+      "word": "道",
+      "definitions": [
+        "route; way",
+        "road (e.g. to victory); course"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1454080:1",
+          "full_english_glosses": [
+            "route",
+            "way"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1454080:3",
+          "full_english_glosses": [
+            "road (e.g. to victory)",
+            "course"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "fd56b5a7668d657f440dec77",
+      "word": "済む",
+      "definitions": [
+        "to merely result in something less severe than expected",
+        "to feel unease or guilt for troubling someone; to be sorry"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1295070:1",
+          "full_english_glosses": [
+            "to merely result in something less severe than expected"
+          ],
+          "pos": [
+            "Godan verb with 'mu' ending",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1295070:3",
+          "full_english_glosses": [
+            "to feel unease or guilt for troubling someone",
+            "to be sorry"
+          ],
+          "pos": [
+            "Godan verb with 'mu' ending",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [
+            "in the negative"
+          ],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "6522d622827cbe6e9a1e28c1",
+      "word": "後",
+      "definitions": [
+        "descendant; successor; heir",
+        "past; previous"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1269320:5",
+          "full_english_glosses": [
+            "descendant",
+            "successor",
+            "heir"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "nouns which may take the genitive case particle 'no'"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1269320:7",
+          "full_english_glosses": [
+            "past",
+            "previous"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "nouns which may take the genitive case particle 'no'"
+          ],
+          "field": [],
+          "misc": [
+            "archaism"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "e1e75d41e31dd2fee85ec5ea",
+      "word": "出る",
+      "definitions": [
+        "to leave; to exit; to go out",
+        "to come to; to get to; to lead to"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1338240:0",
+          "full_english_glosses": [
+            "to leave",
+            "to exit",
+            "to go out",
+            "to come out",
+            "to get out"
+          ],
+          "pos": [
+            "Ichidan verb",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1338240:3",
+          "full_english_glosses": [
+            "to come to",
+            "to get to",
+            "to lead to",
+            "to reach"
+          ],
+          "pos": [
+            "Ichidan verb",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "14b663fcc5d920871b30da10",
+      "word": "超える",
+      "definitions": [
+        "to cross over; to cross; to pass through",
+        "to exceed; to surpass; to be more (than)"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1593070:0",
+          "full_english_glosses": [
+            "to cross over",
+            "to cross",
+            "to pass through",
+            "to pass over (out of)",
+            "to go beyond",
+            "to go past"
+          ],
+          "pos": [
+            "Ichidan verb",
+            "transitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [
+            "esp. 越える"
+          ],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1593070:1",
+          "full_english_glosses": [
+            "to exceed",
+            "to surpass",
+            "to be more (than)"
+          ],
+          "pos": [
+            "Ichidan verb",
+            "transitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [
+            "esp. 超える"
+          ],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "b5d070938e123acb5d9e13c5",
+      "word": "ここ",
+      "definitions": [
+        "here; this place",
+        "each house; every house"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1288810:0",
+          "full_english_glosses": [
+            "here",
+            "this place"
+          ],
+          "pos": [
+            "pronoun"
+          ],
+          "field": [],
+          "misc": [
+            "word usually written using kana alone"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1639930:0",
+          "full_english_glosses": [
+            "each house",
+            "every house"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "60f995c5a8625ff64f804b24",
+      "word": "変わり",
+      "definitions": [
+        "change; alteration",
+        "difference; distinction"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1510720:0",
+          "full_english_glosses": [
+            "change",
+            "alteration"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1510720:1",
+          "full_english_glosses": [
+            "difference",
+            "distinction"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "4e53e9c64f6705d52c584a73",
+      "word": "涙",
+      "definitions": [
+        "tear; tears; lachrymal secretion",
+        "sympathy"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1555930:0",
+          "full_english_glosses": [
+            "tear",
+            "tears",
+            "lachrymal secretion"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1555930:1",
+          "full_english_glosses": [
+            "sympathy"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "56133a0662c81b30f3112ee1",
+      "word": "台",
+      "definitions": [
+        "setting (e.g. in jewellery)",
+        "viewing platform"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1412560:3",
+          "full_english_glosses": [
+            "setting (e.g. in jewellery)"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1412560:6",
+          "full_english_glosses": [
+            "viewing platform"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "6a3c72bc4674761062e07a24",
+      "word": "飯",
+      "definitions": [
+        "cooked rice",
+        "meal; food"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1482010:0",
+          "full_english_glosses": [
+            "cooked rice"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [
+            "male term or language"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1482010:1",
+          "full_english_glosses": [
+            "meal",
+            "food"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [
+            "male term or language"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "fe6d1636b05634a1c9c26f30",
+      "word": "女",
+      "definitions": [
+        "female; woman; female sex",
+        "female lover; girlfriend; mistress"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1344930:0",
+          "full_english_glosses": [
+            "female",
+            "woman",
+            "female sex"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "noun, used as a prefix"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [
+            "can be blunt when used alone"
+          ],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1344930:1",
+          "full_english_glosses": [
+            "female lover",
+            "girlfriend",
+            "mistress",
+            "(someone's) woman"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "47a330b3f14cc32c00d84c95",
+      "word": "情報",
+      "definitions": [
+        "information; news; intelligence",
+        "information; data contained in characters, signals, code, etc."
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1356370:0",
+          "full_english_glosses": [
+            "information",
+            "news",
+            "intelligence",
+            "advices"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1356370:1",
+          "full_english_glosses": [
+            "information",
+            "data contained in characters, signals, code, etc."
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "0171c209c3c4b4d725e75d9e",
+      "word": "ほう",
+      "definitions": [
+        "length (of each side of a square)",
+        "law; act; principle"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1516930:6",
+          "full_english_glosses": [
+            "length (of each side of a square)"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1517150:0",
+          "full_english_glosses": [
+            "law",
+            "act",
+            "principle"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "noun, used as a suffix"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "ced484ab3f0c637f8b2baaf3",
+      "word": "持つ",
+      "definitions": [
+        "to hold (in one's hand); to take; to carry",
+        "to last; to be durable; to keep"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1315720:0",
+          "full_english_glosses": [
+            "to hold (in one's hand)",
+            "to take",
+            "to carry"
+          ],
+          "pos": [
+            "Godan verb with 'tsu' ending",
+            "transitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1315720:3",
+          "full_english_glosses": [
+            "to last",
+            "to be durable",
+            "to keep",
+            "to survive"
+          ],
+          "pos": [
+            "Godan verb with 'tsu' ending",
+            "transitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "233b43943d8eba06c5f096c0",
+      "word": "調子",
+      "definitions": [
+        "vein; mood; way",
+        "impetus; spur of the moment; strain"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1429170:1",
+          "full_english_glosses": [
+            "vein",
+            "mood",
+            "way",
+            "manner",
+            "style",
+            "knack"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1429170:3",
+          "full_english_glosses": [
+            "impetus",
+            "spur of the moment",
+            "strain"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "d9a3f4e442960a221df02fd2",
+      "word": "姿",
+      "definitions": [
+        "appearance; dress; guise",
+        "form (of a waka)"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1307710:1",
+          "full_english_glosses": [
+            "appearance",
+            "dress",
+            "guise"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1307710:3",
+          "full_english_glosses": [
+            "form (of a waka)"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "ca035fbf08496ac9c3f3c68c",
+      "word": "求める",
+      "definitions": [
+        "to want; to wish for",
+        "to request; to demand; to require"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1229350:0",
+          "full_english_glosses": [
+            "to want",
+            "to wish for"
+          ],
+          "pos": [
+            "Ichidan verb",
+            "transitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1229350:1",
+          "full_english_glosses": [
+            "to request",
+            "to demand",
+            "to require",
+            "to ask for"
+          ],
+          "pos": [
+            "Ichidan verb",
+            "transitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "45922c59a35081422ed85600",
+      "word": "通り",
+      "definitions": [
+        "transmission (of sound); reach (e.g. of voice)",
+        "the same status or way; as (e.g. as expected, as I said)"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1432920:3",
+          "full_english_glosses": [
+            "transmission (of sound)",
+            "reach (e.g. of voice)"
+          ],
+          "pos": [
+            "adverb (fukushi)",
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1432920:5",
+          "full_english_glosses": [
+            "the same status or way",
+            "as (e.g. as expected, as I said)"
+          ],
+          "pos": [
+            "adverb (fukushi)",
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "5943f5145cbd616130febb02",
+      "word": "多く",
+      "definitions": [
+        "many; much; plenty",
+        "majority (of); greater part (of)"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1861770:0",
+          "full_english_glosses": [
+            "many",
+            "much",
+            "plenty",
+            "a lot"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "adverb (fukushi)",
+            "nouns which may take the genitive case particle 'no'"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1861770:1",
+          "full_english_glosses": [
+            "majority (of)",
+            "greater part (of)"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "7355650963283055e62f0e72",
+      "word": "食堂",
+      "definitions": [
+        "dining room; dining hall; cafeteria",
+        "restaurant; eatery; snack bar"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1358550:0",
+          "full_english_glosses": [
+            "dining room",
+            "dining hall",
+            "cafeteria",
+            "canteen",
+            "messroom"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1358550:1",
+          "full_english_glosses": [
+            "restaurant",
+            "eatery",
+            "snack bar",
+            "diner"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "9d045f1326d690d8474e197e",
+      "word": "認める",
+      "definitions": [
+        "to approve; to deem acceptable; to allow",
+        "to renown; to give renown to; to appreciate"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1467530:2",
+          "full_english_glosses": [
+            "to approve",
+            "to deem acceptable",
+            "to allow"
+          ],
+          "pos": [
+            "Ichidan verb",
+            "transitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1467530:5",
+          "full_english_glosses": [
+            "to renown",
+            "to give renown to",
+            "to appreciate",
+            "to acknowledge"
+          ],
+          "pos": [
+            "Ichidan verb",
+            "transitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "9c840922bc772d1943fed51e",
+      "word": "正しい",
+      "definitions": [
+        "right; correct",
+        "proper; righteous; just"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1376600:0",
+          "full_english_glosses": [
+            "right",
+            "correct"
+          ],
+          "pos": [
+            "adjective (keiyoushi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1376600:1",
+          "full_english_glosses": [
+            "proper",
+            "righteous",
+            "just",
+            "honest",
+            "truthful",
+            "lawful"
+          ],
+          "pos": [
+            "adjective (keiyoushi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "d8a41702334a41ad50c13e7e",
+      "word": "以下",
+      "definitions": [
+        "below (e.g. standard); under (e.g. a level)",
+        "the below-mentioned; the following; the rest"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1155060:1",
+          "full_english_glosses": [
+            "below (e.g. standard)",
+            "under (e.g. a level)"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1155060:2",
+          "full_english_glosses": [
+            "the below-mentioned",
+            "the following",
+            "the rest"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "f5f62708088f21d667024147",
+      "word": "わがまま",
+      "definitions": [
+        "selfish; egoist",
+        "self-indulgent; wilful; willful"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1197020:0",
+          "full_english_glosses": [
+            "selfish",
+            "egoist"
+          ],
+          "pos": [
+            "adjectival nouns or quasi-adjectives (keiyodoshi)",
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [
+            "word usually written using kana alone"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1197020:1",
+          "full_english_glosses": [
+            "self-indulgent",
+            "wilful",
+            "willful"
+          ],
+          "pos": [
+            "adjectival nouns or quasi-adjectives (keiyodoshi)",
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [
+            "archaism",
+            "word usually written using kana alone"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "229860410fba84d1d5b2b719",
+      "word": "静か",
+      "definitions": [
+        "quiet; silent",
+        "slow; unhurried"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1381820:0",
+          "full_english_glosses": [
+            "quiet",
+            "silent"
+          ],
+          "pos": [
+            "adjectival nouns or quasi-adjectives (keiyodoshi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1381820:1",
+          "full_english_glosses": [
+            "slow",
+            "unhurried"
+          ],
+          "pos": [
+            "adjectival nouns or quasi-adjectives (keiyodoshi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "a3e305067b172bb7cb169f6b",
+      "word": "親",
+      "definitions": [
+        "founder; inventor",
+        "key; parent (organization); main"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1365040:2",
+          "full_english_glosses": [
+            "founder",
+            "inventor"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1365040:4",
+          "full_english_glosses": [
+            "key",
+            "parent (organization)",
+            "main"
+          ],
+          "pos": [
+            "nouns which may take the genitive case particle 'no'",
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [
+            "親"
+          ],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "175d4236b0ab203f8342b248",
+      "word": "ゆっくり",
+      "definitions": [
+        "slowly; unhurriedly; without haste",
+        "easily (e.g. in time); well; sufficiently"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1013050:0",
+          "full_english_glosses": [
+            "slowly",
+            "unhurriedly",
+            "without haste",
+            "leisurely",
+            "at one's leisure"
+          ],
+          "pos": [
+            "adverb (fukushi)",
+            "adverb taking the 'to' particle",
+            "noun or participle which takes the aux. verb suru"
+          ],
+          "field": [],
+          "misc": [
+            "onomatopoeic or mimetic word"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1013050:1",
+          "full_english_glosses": [
+            "easily (e.g. in time)",
+            "well",
+            "sufficiently",
+            "amply",
+            "with time to spare"
+          ],
+          "pos": [
+            "adverb (fukushi)"
+          ],
+          "field": [],
+          "misc": [
+            "onomatopoeic or mimetic word"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "a0389fb61059affb0b937421",
+      "word": "まず",
+      "definitions": [
+        "probably; most likely; almost certainly",
+        "anyway; at any rate; for now (at least)"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1387240:1",
+          "full_english_glosses": [
+            "probably",
+            "most likely",
+            "almost certainly",
+            "virtually"
+          ],
+          "pos": [
+            "adverb (fukushi)"
+          ],
+          "field": [],
+          "misc": [
+            "word usually written using kana alone"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1387240:3",
+          "full_english_glosses": [
+            "anyway",
+            "at any rate",
+            "for now (at least)",
+            "for the time being"
+          ],
+          "pos": [
+            "adverb (fukushi)"
+          ],
+          "field": [],
+          "misc": [
+            "word usually written using kana alone"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "8a1806e9177a356338e74658",
+      "word": "いち",
+      "definitions": [
+        "one",
+        "ace (playing card)"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1160790:0",
+          "full_english_glosses": [
+            "one"
+          ],
+          "pos": [
+            "numeric",
+            "prefix"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [
+            "壱, 弌 and 壹 are used in legal documents"
+          ],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1160790:5",
+          "full_english_glosses": [
+            "ace (playing card)"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "9b5905c9b02376e7d8db6090",
+      "word": "皆",
+      "definitions": [
+        "everyone; everybody; all",
+        "everything; all"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1202150:0",
+          "full_english_glosses": [
+            "everyone",
+            "everybody",
+            "all"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "pronoun",
+            "adverb (fukushi)"
+          ],
+          "field": [],
+          "misc": [
+            "word usually written using kana alone"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1202150:1",
+          "full_english_glosses": [
+            "everything",
+            "all"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "adverb (fukushi)"
+          ],
+          "field": [],
+          "misc": [
+            "word usually written using kana alone"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "b28d65896f48b12039fc09f4",
+      "word": "ごはん",
+      "definitions": [
+        "cooked rice",
+        "misjudgement; misjudgment; erroneous judgement"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1270590:0",
+          "full_english_glosses": [
+            "cooked rice"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1693260:0",
+          "full_english_glosses": [
+            "misjudgement",
+            "misjudgment",
+            "erroneous judgement",
+            "miscarriage of justice"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "a8c589bc471f86b6ee24867b",
+      "word": "度",
+      "definitions": [
+        "alcohol content (percentage); alcohol by volume",
+        "presence of mind; composure"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1445160:3",
+          "full_english_glosses": [
+            "alcohol content (percentage)",
+            "alcohol by volume"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "noun, used as a suffix"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1445160:5",
+          "full_english_glosses": [
+            "presence of mind",
+            "composure"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "4354909b42851d9f9ff6d6d1",
+      "word": "生きる",
+      "definitions": [
+        "to live; to exist",
+        "to be in effect; to be in use; to function"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1378520:0",
+          "full_english_glosses": [
+            "to live",
+            "to exist"
+          ],
+          "pos": [
+            "Ichidan verb",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1378520:2",
+          "full_english_glosses": [
+            "to be in effect",
+            "to be in use",
+            "to function"
+          ],
+          "pos": [
+            "Ichidan verb",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "e16f3dbaf02e6b48dc658cc8",
+      "word": "左脚",
+      "definitions": [
+        "left foot",
+        "left leg"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1290970:0",
+          "full_english_glosses": [
+            "left foot"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1290970:1",
+          "full_english_glosses": [
+            "left leg"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "bf64b2cad393e1cc838f8daf",
+      "word": "いい",
+      "definitions": [
+        "sufficient; enough; ready",
+        "OK; all right; fine"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:2820690:1",
+          "full_english_glosses": [
+            "sufficient",
+            "enough",
+            "ready",
+            "prepared"
+          ],
+          "pos": [
+            "adjective (keiyoushi) - yoi/ii class"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:2820690:3",
+          "full_english_glosses": [
+            "OK",
+            "all right",
+            "fine",
+            "no problem"
+          ],
+          "pos": [
+            "adjective (keiyoushi) - yoi/ii class"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [
+            "as て(も)いい, と(も)いい, etc.; indicates permission or compromise"
+          ],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "9e6166ec702b49e95c4b9a9b",
+      "word": "イカれる",
+      "definitions": [
+        "to be crazy; to be nuts",
+        "to be infatuated with"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:2007250:1",
+          "full_english_glosses": [
+            "to be crazy",
+            "to be nuts"
+          ],
+          "pos": [
+            "Ichidan verb",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [
+            "usu. as イカれて（い）る"
+          ],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:2007250:2",
+          "full_english_glosses": [
+            "to be infatuated with"
+          ],
+          "pos": [
+            "Ichidan verb",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "e3bac4dc1246e5a84ce1cfae",
+      "word": "問題",
+      "definitions": [
+        "question (e.g. on a test); problem",
+        "problem (e.g. societal, political); question; issue"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1536010:0",
+          "full_english_glosses": [
+            "question (e.g. on a test)",
+            "problem"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1536010:1",
+          "full_english_glosses": [
+            "problem (e.g. societal, political)",
+            "question",
+            "issue",
+            "subject (e.g. of research)",
+            "case",
+            "matter"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "2488fb579b0f7957549465ef",
+      "word": "世界",
+      "definitions": [
+        "the world; society; the universe",
+        "sphere; circle; world"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1373860:0",
+          "full_english_glosses": [
+            "the world",
+            "society",
+            "the universe"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1373860:1",
+          "full_english_glosses": [
+            "sphere",
+            "circle",
+            "world"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "fd1c2670b74a3fe651ad672e",
+      "word": "森",
+      "definitions": [
+        "forest",
+        "shrine grove"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1362490:0",
+          "full_english_glosses": [
+            "forest"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1362490:1",
+          "full_english_glosses": [
+            "shrine grove"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [
+            "esp. 杜"
+          ],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "d4748526de9132a93d3f0722",
+      "word": "はず",
+      "definitions": [
+        "nock (of a bow)",
+        "nock (of an arrow)"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1476430:1",
+          "full_english_glosses": [
+            "nock (of a bow)"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1476430:2",
+          "full_english_glosses": [
+            "nock (of an arrow)"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "26f24b830a5a386f669e85c0",
+      "word": "ほうがいい",
+      "definitions": [
+        "had better",
+        "had better not"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:2827401:0",
+          "full_english_glosses": [
+            "had better"
+          ],
+          "pos": [
+            "expressions (phrases, clauses, etc.)",
+            "adjective (keiyoushi) - yoi/ii class"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [
+            "after past tense verb"
+          ],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:2827401:1",
+          "full_english_glosses": [
+            "had better not"
+          ],
+          "pos": [
+            "expressions (phrases, clauses, etc.)",
+            "adjective (keiyoushi) - yoi/ii class"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [
+            "after negative verb"
+          ],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "58f9f117c2b4575b9280447a",
+      "word": "戻る",
+      "definitions": [
+        "to turn back (e.g. half-way)",
+        "to recover (e.g. something lost); to be returned"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1535880:0",
+          "full_english_glosses": [
+            "to turn back (e.g. half-way)"
+          ],
+          "pos": [
+            "Godan verb with 'ru' ending",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1535880:2",
+          "full_english_glosses": [
+            "to recover (e.g. something lost)",
+            "to be returned"
+          ],
+          "pos": [
+            "Godan verb with 'ru' ending",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "84fe5ed12fc1bc16572843a4",
+      "word": "嵐",
+      "definitions": [
+        "storm; tempest",
+        "uproar; hullabaloo; storm (e.g. of protest)"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1549340:0",
+          "full_english_glosses": [
+            "storm",
+            "tempest"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1549340:1",
+          "full_english_glosses": [
+            "uproar",
+            "hullabaloo",
+            "storm (e.g. of protest)",
+            "winds (e.g. of change)"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [
+            "idiomatic expression"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "9cdaa35862db31c68dc14834",
+      "word": "聞く",
+      "definitions": [
+        "to hear",
+        "to hear about; to hear of; to learn of"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1591110:0",
+          "full_english_glosses": [
+            "to hear"
+          ],
+          "pos": [
+            "Godan verb with 'ku' ending",
+            "transitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1591110:3",
+          "full_english_glosses": [
+            "to hear about",
+            "to hear of",
+            "to learn of"
+          ],
+          "pos": [
+            "Godan verb with 'ku' ending",
+            "transitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "04ddc98c585496023eb858a6",
+      "word": "仕事",
+      "definitions": [
+        "work; job; labor",
+        "work"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1304970:0",
+          "full_english_glosses": [
+            "work",
+            "job",
+            "labor",
+            "labour",
+            "business",
+            "task",
+            "assignment",
+            "occupation",
+            "employment"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "noun or participle which takes the aux. verb suru"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1304970:1",
+          "full_english_glosses": [
+            "work"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [
+            "physics"
+          ],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "6ce57a121bd0bca3896ef390",
+      "word": "寝る",
+      "definitions": [
+        "to sleep (lying down)",
+        "to lie down"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1360010:0",
+          "full_english_glosses": [
+            "to sleep (lying down)"
+          ],
+          "pos": [
+            "Ichidan verb",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1360010:2",
+          "full_english_glosses": [
+            "to lie down"
+          ],
+          "pos": [
+            "Ichidan verb",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "6675c6218a39a2c01efa0e67",
+      "word": "旦那",
+      "definitions": [
+        "master (of a house, shop, etc.)",
+        "sir; boss; master"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1418410:0",
+          "full_english_glosses": [
+            "master (of a house, shop, etc.)"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1418410:2",
+          "full_english_glosses": [
+            "sir",
+            "boss",
+            "master",
+            "governor"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [
+            "used to address a male patron, customer, or person of high status"
+          ],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "9d26f47ebda8133cf6c91429",
+      "word": "見つける",
+      "definitions": [
+        "to discover; to find (e.g. an error in a book); to come across",
+        "to locate; to find (e.g. something missing); to find fault"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1604570:0",
+          "full_english_glosses": [
+            "to discover",
+            "to find (e.g. an error in a book)",
+            "to come across",
+            "to detect",
+            "to spot"
+          ],
+          "pos": [
+            "Ichidan verb",
+            "transitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1604570:1",
+          "full_english_glosses": [
+            "to locate",
+            "to find (e.g. something missing)",
+            "to find fault"
+          ],
+          "pos": [
+            "Ichidan verb",
+            "transitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "b90ed4a84c53f15e24b17fef",
+      "word": "名前",
+      "definitions": [
+        "name",
+        "given name; first name"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1531710:0",
+          "full_english_glosses": [
+            "name"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1531710:1",
+          "full_english_glosses": [
+            "given name",
+            "first name"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "d946ef5035bfc226e860f5be",
+      "word": "長い",
+      "definitions": [
+        "long (distance, length)",
+        "long (time); protracted; prolonged"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1429750:0",
+          "full_english_glosses": [
+            "long (distance, length)"
+          ],
+          "pos": [
+            "adjective (keiyoushi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [
+            "長い"
+          ],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1429750:1",
+          "full_english_glosses": [
+            "long (time)",
+            "protracted",
+            "prolonged"
+          ],
+          "pos": [
+            "adjective (keiyoushi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "c40d5b3e2a7cb5aef39cc2b4",
+      "word": "写真",
+      "definitions": [
+        "photograph; photo; picture",
+        "moving picture; movie"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1321900:0",
+          "full_english_glosses": [
+            "photograph",
+            "photo",
+            "picture",
+            "snapshot",
+            "snap"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1321900:1",
+          "full_english_glosses": [
+            "moving picture",
+            "movie"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [
+            "obsolete term",
+            "abbreviation"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "32f6a0a9ff212e014feb44c4",
+      "word": "いただける",
+      "definitions": [
+        "to be able to eat; to be able to drink",
+        "to be acceptable; to be satisfactory"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1628260:1",
+          "full_english_glosses": [
+            "to be able to eat",
+            "to be able to drink"
+          ],
+          "pos": [
+            "Ichidan verb",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [
+            "humble (kenjougo) language",
+            "word usually written using kana alone"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1628260:2",
+          "full_english_glosses": [
+            "to be acceptable",
+            "to be satisfactory"
+          ],
+          "pos": [
+            "Ichidan verb",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [
+            "word usually written using kana alone"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "1e8cc464063f7e31a911743e",
+      "word": "そもそも",
+      "definitions": [
+        "in the first place; to begin with; from the start",
+        "beginning; start"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1006950:0",
+          "full_english_glosses": [
+            "in the first place",
+            "to begin with",
+            "from the start",
+            "originally",
+            "ab initio"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "adverb (fukushi)"
+          ],
+          "field": [],
+          "misc": [
+            "word usually written using kana alone"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1006950:2",
+          "full_english_glosses": [
+            "beginning",
+            "start"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "nouns which may take the genitive case particle 'no'"
+          ],
+          "field": [],
+          "misc": [
+            "word usually written using kana alone"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "23c012253edcb918200b62e6",
+      "word": "まだまだ",
+      "definitions": [
+        "still; much more; (not) yet",
+        "still a long way to go; still a long way off; not there yet"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1527150:0",
+          "full_english_glosses": [
+            "still",
+            "much more",
+            "(not) yet"
+          ],
+          "pos": [
+            "adverb (fukushi)"
+          ],
+          "field": [],
+          "misc": [
+            "word usually written using kana alone"
+          ],
+          "info": [
+            "more emphatic than まだ"
+          ],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1527150:1",
+          "full_english_glosses": [
+            "still a long way to go",
+            "still a long way off",
+            "not there yet"
+          ],
+          "pos": [
+            "expressions (phrases, clauses, etc.)"
+          ],
+          "field": [],
+          "misc": [
+            "word usually written using kana alone"
+          ],
+          "info": [
+            "as 〜だ, 〜です, etc."
+          ],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "96d3f432fe718cfbca950573",
+      "word": "あっち",
+      "definitions": [
+        "that way; that direction; over there",
+        "there; over there; foreign country (esp. a Western nation)"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1483185:0",
+          "full_english_glosses": [
+            "that way",
+            "that direction",
+            "over there",
+            "yonder"
+          ],
+          "pos": [
+            "pronoun"
+          ],
+          "field": [],
+          "misc": [
+            "word usually written using kana alone"
+          ],
+          "info": [
+            "direction distant from both speaker and listener"
+          ],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1483185:3",
+          "full_english_glosses": [
+            "there",
+            "over there",
+            "foreign country (esp. a Western nation)"
+          ],
+          "pos": [
+            "pronoun"
+          ],
+          "field": [],
+          "misc": [
+            "word usually written using kana alone"
+          ],
+          "info": [
+            "place distant from both speaker and listener"
+          ],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "d3e5e2934bcf5b374052b0ab",
+      "word": "しばらく",
+      "definitions": [
+        "for a while; for some time",
+        "for the time being; for now"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1304420:1",
+          "full_english_glosses": [
+            "for a while",
+            "for some time"
+          ],
+          "pos": [
+            "adverb (fukushi)"
+          ],
+          "field": [],
+          "misc": [
+            "word usually written using kana alone"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1304420:2",
+          "full_english_glosses": [
+            "for the time being",
+            "for now"
+          ],
+          "pos": [
+            "adverb (fukushi)"
+          ],
+          "field": [],
+          "misc": [
+            "word usually written using kana alone"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "fbb4147c256a9e17d0bc7479",
+      "word": "飛ぶ",
+      "definitions": [
+        "to be sent out (of an order); to fly (of false rumours, catcalls, etc.)",
+        "to be missing (of a page, stitch, etc.); to skip; to jump (e.g. of a conversation)"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1429700:7",
+          "full_english_glosses": [
+            "to be sent out (of an order)",
+            "to fly (of false rumours, catcalls, etc.)"
+          ],
+          "pos": [
+            "Godan verb with 'bu' ending",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1429700:9",
+          "full_english_glosses": [
+            "to be missing (of a page, stitch, etc.)",
+            "to skip",
+            "to jump (e.g. of a conversation)"
+          ],
+          "pos": [
+            "Godan verb with 'bu' ending",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "30a550e746fa845a1612daa8",
+      "word": "武器",
+      "definitions": [
+        "weapon; arms; ordnance",
+        "weapon (something used to gain an advantage); asset"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1498460:0",
+          "full_english_glosses": [
+            "weapon",
+            "arms",
+            "ordnance"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1498460:1",
+          "full_english_glosses": [
+            "weapon (something used to gain an advantage)",
+            "asset"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "ece1bb9000d2050a2178b7ad",
+      "word": "どこ",
+      "definitions": [
+        "where; what place",
+        "how much (long, far); what extent"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1577140:0",
+          "full_english_glosses": [
+            "where",
+            "what place"
+          ],
+          "pos": [
+            "pronoun"
+          ],
+          "field": [],
+          "misc": [
+            "word usually written using kana alone"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1577140:1",
+          "full_english_glosses": [
+            "how much (long, far)",
+            "what extent"
+          ],
+          "pos": [
+            "pronoun"
+          ],
+          "field": [],
+          "misc": [
+            "word usually written using kana alone"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "8a80a5978ffbcb5d8cbe9257",
+      "word": "どうせ",
+      "definitions": [
+        "anyhow; in any case; at any rate",
+        "at best; at most"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1008950:0",
+          "full_english_glosses": [
+            "anyhow",
+            "in any case",
+            "at any rate",
+            "after all",
+            "at all",
+            "no matter what"
+          ],
+          "pos": [
+            "adverb (fukushi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1008950:1",
+          "full_english_glosses": [
+            "at best",
+            "at most"
+          ],
+          "pos": [
+            "adverb (fukushi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "522a24edbd42f92edac3749c",
+      "word": "失う",
+      "definitions": [
+        "to lose",
+        "to lose (a loved one); to be bereaved of"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1319750:0",
+          "full_english_glosses": [
+            "to lose"
+          ],
+          "pos": [
+            "Godan verb with 'u' ending",
+            "transitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1319750:2",
+          "full_english_glosses": [
+            "to lose (a loved one)",
+            "to be bereaved of"
+          ],
+          "pos": [
+            "Godan verb with 'u' ending",
+            "transitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "e94ec6338e94a83c16707f6d",
+      "word": "苦手",
+      "definitions": [
+        "poor (at); weak (in); not very good (at)",
+        "not one's cup of tea; not one's favorite"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1244470:0",
+          "full_english_glosses": [
+            "poor (at)",
+            "weak (in)",
+            "not very good (at)"
+          ],
+          "pos": [
+            "adjectival nouns or quasi-adjectives (keiyodoshi)",
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1244470:1",
+          "full_english_glosses": [
+            "not one's cup of tea",
+            "not one's favorite"
+          ],
+          "pos": [
+            "adjectival nouns or quasi-adjectives (keiyodoshi)",
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "d7c7d510c5c3ef16b20a617b",
+      "word": "朝",
+      "definitions": [
+        "morning",
+        "next morning"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1428280:0",
+          "full_english_glosses": [
+            "morning"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "adverb (fukushi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1428280:2",
+          "full_english_glosses": [
+            "next morning"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [
+            "archaism"
+          ],
+          "info": [],
+          "stagk": [
+            "朝"
+          ],
+          "stagr": [
+            "あした"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "e8c315a625f128574bddb1de",
+      "word": "戦う",
+      "definitions": [
+        "to compete (against)",
+        "to struggle (against adversities, etc.); to fight; to contend"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1596960:1",
+          "full_english_glosses": [
+            "to compete (against)"
+          ],
+          "pos": [
+            "Godan verb with 'u' ending",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [
+            "esp. 戦う"
+          ],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1596960:2",
+          "full_english_glosses": [
+            "to struggle (against adversities, etc.)",
+            "to fight",
+            "to contend",
+            "to resist"
+          ],
+          "pos": [
+            "Godan verb with 'u' ending",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [
+            "esp. 闘う"
+          ],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "44c66084435cfdfd9d01a1ef",
+      "word": "意識",
+      "definitions": [
+        "consciousness",
+        "mano-vijnana (mental consciousness, cognizer of sensory information)"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1156640:0",
+          "full_english_glosses": [
+            "consciousness"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "noun or participle which takes the aux. verb suru"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1156640:2",
+          "full_english_glosses": [
+            "mano-vijnana (mental consciousness, cognizer of sensory information)"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "noun or participle which takes the aux. verb suru"
+          ],
+          "field": [
+            "Buddhism"
+          ],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "aa8942bd86dd3751c5dde982",
+      "word": "進行",
+      "definitions": [
+        "progress (of a disease); disease progression",
+        "progression (harmonic, melodic)"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1366060:2",
+          "full_english_glosses": [
+            "progress (of a disease)",
+            "disease progression"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "noun or participle which takes the aux. verb suru"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1366060:3",
+          "full_english_glosses": [
+            "progression (harmonic, melodic)"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [
+            "music"
+          ],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "7df0252304b2ef385e8eec4d",
+      "word": "記録",
+      "definitions": [
+        "to record; to document",
+        "to set a record (e.g. in sports); to show a result; to reach a value"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1223440:2",
+          "full_english_glosses": [
+            "to record",
+            "to document"
+          ],
+          "pos": [
+            "noun or participle which takes the aux. verb suru"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1223440:3",
+          "full_english_glosses": [
+            "to set a record (e.g. in sports)",
+            "to show a result",
+            "to reach a value"
+          ],
+          "pos": [
+            "noun or participle which takes the aux. verb suru"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "d604ba6d7ac58ef5ab7c1bc2",
+      "word": "右手",
+      "definitions": [
+        "right hand",
+        "right-hand side; right-hand direction; (on) the right"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1171120:0",
+          "full_english_glosses": [
+            "right hand"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1171120:1",
+          "full_english_glosses": [
+            "right-hand side",
+            "right-hand direction",
+            "(on) the right"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "nouns which may take the genitive case particle 'no'"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "c94a85abab3f4c7f0c636197",
+      "word": "いける",
+      "definitions": [
+        "to be good (at); to go well",
+        "to hold one's liquor; to be able to hold one's drink"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1631370:0",
+          "full_english_glosses": [
+            "to be good (at)",
+            "to go well"
+          ],
+          "pos": [
+            "Ichidan verb",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [
+            "from 行ける"
+          ],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1631370:2",
+          "full_english_glosses": [
+            "to hold one's liquor",
+            "to be able to hold one's drink"
+          ],
+          "pos": [
+            "Ichidan verb",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "ab1993579b33227bf017f967",
+      "word": "助かる",
+      "definitions": [
+        "to be saved; to be rescued; to survive",
+        "to escape harm; to be spared damage"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1344380:0",
+          "full_english_glosses": [
+            "to be saved",
+            "to be rescued",
+            "to survive"
+          ],
+          "pos": [
+            "Godan verb with 'ru' ending",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1344380:1",
+          "full_english_glosses": [
+            "to escape harm",
+            "to be spared damage"
+          ],
+          "pos": [
+            "Godan verb with 'ru' ending",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "d2fba9f784da4ba1ebf810d0",
+      "word": "飛行",
+      "definitions": [
+        "aviation; flight; flying",
+        "to fly; to take a flight"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1485450:0",
+          "full_english_glosses": [
+            "aviation",
+            "flight",
+            "flying"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1485450:1",
+          "full_english_glosses": [
+            "to fly",
+            "to take a flight"
+          ],
+          "pos": [
+            "noun or participle which takes the aux. verb suru"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "19f3fc2ce9c2abfa423a2545",
+      "word": "変わる",
+      "definitions": [
+        "to change; to be transformed; to be altered",
+        "to be different; to be uncommon; to be unusual"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1510790:0",
+          "full_english_glosses": [
+            "to change",
+            "to be transformed",
+            "to be altered",
+            "to vary"
+          ],
+          "pos": [
+            "Godan verb with 'ru' ending",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1510790:2",
+          "full_english_glosses": [
+            "to be different",
+            "to be uncommon",
+            "to be unusual"
+          ],
+          "pos": [
+            "Godan verb with 'ru' ending",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [
+            "usu. as 変わった, 変わっている"
+          ],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "d41373aa9f3b026582c75295",
+      "word": "限る",
+      "definitions": [
+        "to be restricted to; to be limited to; to be confined to",
+        "to be best (for); to be the best plan; to be the only way (to)"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1264640:1",
+          "full_english_glosses": [
+            "to be restricted to",
+            "to be limited to",
+            "to be confined to"
+          ],
+          "pos": [
+            "Godan verb with 'ru' ending",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1264640:2",
+          "full_english_glosses": [
+            "to be best (for)",
+            "to be the best plan",
+            "to be the only way (to)"
+          ],
+          "pos": [
+            "Godan verb with 'ru' ending",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [
+            "as ...は...に限る"
+          ],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "28a84faaa9c96790c4304512",
+      "word": "脱落",
+      "definitions": [
+        "dropping out; falling behind; falling by the wayside",
+        "omission; being left out; missing part"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1416640:0",
+          "full_english_glosses": [
+            "dropping out",
+            "falling behind",
+            "falling by the wayside",
+            "desertion"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "noun or participle which takes the aux. verb suru"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1416640:1",
+          "full_english_glosses": [
+            "omission",
+            "being left out",
+            "missing part"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "noun or participle which takes the aux. verb suru"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "784e0ef337b1cf85647e2715",
+      "word": "伴う",
+      "definitions": [
+        "to accompany; to go hand in hand with; to be consequent upon",
+        "to be accompanied by; to bring with; to take with"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1478370:0",
+          "full_english_glosses": [
+            "to accompany",
+            "to go hand in hand with",
+            "to be consequent upon"
+          ],
+          "pos": [
+            "Godan verb with 'u' ending",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [
+            "usu. 〜に伴う"
+          ],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1478370:1",
+          "full_english_glosses": [
+            "to be accompanied by",
+            "to bring with",
+            "to take with",
+            "to be involved in"
+          ],
+          "pos": [
+            "Godan verb with 'u' ending",
+            "transitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [
+            "usu. 〜を伴う"
+          ],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "ebba18a0ca0c86974bc35f09",
+      "word": "自ら",
+      "definitions": [
+        "oneself",
+        "oneself; for oneself; personally"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1317340:0",
+          "full_english_glosses": [
+            "oneself"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1317340:1",
+          "full_english_glosses": [
+            "oneself",
+            "for oneself",
+            "personally",
+            "in person"
+          ],
+          "pos": [
+            "adverb (fukushi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "eb51529fb60e7a9e3d529b4f",
+      "word": "男",
+      "definitions": [
+        "man; male",
+        "male lover; boyfriend; man"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1419990:0",
+          "full_english_glosses": [
+            "man",
+            "male"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "noun, used as a prefix"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1419990:2",
+          "full_english_glosses": [
+            "male lover",
+            "boyfriend",
+            "man"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "eb89a80f354b25569fc67349",
+      "word": "聞こえる",
+      "definitions": [
+        "to be heard; to be audible",
+        "to be said to be; to be reputed"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1591150:0",
+          "full_english_glosses": [
+            "to be heard",
+            "to be audible"
+          ],
+          "pos": [
+            "Ichidan verb",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1591150:1",
+          "full_english_glosses": [
+            "to be said to be",
+            "to be reputed"
+          ],
+          "pos": [
+            "Ichidan verb",
+            "intransitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "cd99aa7adea2f8b3e3409fd5",
+      "word": "なければ",
+      "definitions": [
+        "if (it) doesn't exist; if there is no ...; if (one) doesn't have ...",
+        "have to ...; must ..."
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:2037140:0",
+          "full_english_glosses": [
+            "if (it) doesn't exist",
+            "if there is no ...",
+            "if (one) doesn't have ..."
+          ],
+          "pos": [
+            "expressions (phrases, clauses, etc.)"
+          ],
+          "field": [],
+          "misc": [
+            "word usually written using kana alone"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:2037140:2",
+          "full_english_glosses": [
+            "have to ...",
+            "must ..."
+          ],
+          "pos": [
+            "expressions (phrases, clauses, etc.)",
+            "auxiliary"
+          ],
+          "field": [],
+          "misc": [
+            "abbreviation",
+            "word usually written using kana alone"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "e938c6867190784989643bc4",
+      "word": "離れ",
+      "definitions": [
+        "detached building; solitary house; room detached from main house",
+        "separation from; loss of interest in; independence of"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:2013190:0",
+          "full_english_glosses": [
+            "detached building",
+            "solitary house",
+            "room detached from main house"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [
+            "abbreviation"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:2013190:1",
+          "full_english_glosses": [
+            "separation from",
+            "loss of interest in",
+            "independence of",
+            "distancing (of oneself) from",
+            "disillusionment with",
+            "alienation from (something)"
+          ],
+          "pos": [
+            "noun, used as a suffix"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [
+            "pronounced ばなれ"
+          ],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "4c258b2ef4032db8e3efab30",
+      "word": "単位",
+      "definitions": [
+        "credit (in school)",
+        "in units of (e.g. \"in thousands\"); in amounts of"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1417040:1",
+          "full_english_glosses": [
+            "credit (in school)"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1417040:2",
+          "full_english_glosses": [
+            "in units of (e.g. \"in thousands\")",
+            "in amounts of"
+          ],
+          "pos": [
+            "suffix"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "bd40b5fefcb50383a32f412f",
+      "word": "始める",
+      "definitions": [
+        "to start; to begin; to commence",
+        "to start ...; to begin to ..."
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1307550:0",
+          "full_english_glosses": [
+            "to start",
+            "to begin",
+            "to commence",
+            "to initiate",
+            "to originate"
+          ],
+          "pos": [
+            "Ichidan verb",
+            "transitive verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [
+            "始める"
+          ],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1307550:2",
+          "full_english_glosses": [
+            "to start ...",
+            "to begin to ..."
+          ],
+          "pos": [
+            "auxiliary verb",
+            "Ichidan verb"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [
+            "after the -masu stem of a verb"
+          ],
+          "stagk": [
+            "始める"
+          ],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "61d5467383f4d9de8629f47e",
+      "word": "血",
+      "definitions": [
+        "blood",
+        "(the) blood; feelings; passions"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1255060:0",
+          "full_english_glosses": [
+            "blood"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1255060:2",
+          "full_english_glosses": [
+            "(the) blood",
+            "feelings",
+            "passions"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "2c08c84e64fb5c811bbcaf56",
+      "word": "値",
+      "definitions": [
+        "value; worth; merit",
+        "value"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1581630:1",
+          "full_english_glosses": [
+            "value",
+            "worth",
+            "merit"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "nouns which may take the genitive case particle 'no'"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [
+            "esp. 価"
+          ],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1581630:2",
+          "full_english_glosses": [
+            "value"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "nouns which may take the genitive case particle 'no'"
+          ],
+          "field": [
+            "mathematics",
+            "computing"
+          ],
+          "misc": [],
+          "info": [
+            "esp. 価"
+          ],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "257ce3b631fa143e2aed1cf5",
+      "word": "種",
+      "definitions": [
+        "(biological) species",
+        "(logical) species"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1328810:1",
+          "full_english_glosses": [
+            "(biological) species"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "noun, used as a suffix"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1328810:2",
+          "full_english_glosses": [
+            "(logical) species"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "noun, used as a suffix"
+          ],
+          "field": [],
+          "misc": [
+            "abbreviation"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "f184a32d58f50272ccf3df47",
+      "word": "差",
+      "definitions": [
+        "difference; variation",
+        "difference"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1291070:0",
+          "full_english_glosses": [
+            "difference",
+            "variation"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "noun, used as a suffix"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1291070:1",
+          "full_english_glosses": [
+            "difference"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [
+            "mathematics"
+          ],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "b7830c04e53cabd5e88e9a8d",
+      "word": "瞳",
+      "definitions": [
+        "pupil (of eye)",
+        "eye"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1453900:0",
+          "full_english_glosses": [
+            "pupil (of eye)"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)",
+            "nouns which may take the genitive case particle 'no'"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1453900:1",
+          "full_english_glosses": [
+            "eye"
+          ],
+          "pos": [
+            "noun (common) (futsuumeishi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "52bf7b8d330cadf3a417d7af",
+      "word": "ような",
+      "definitions": [
+        "like; similar to",
+        "feels like; feels similar to; feels as if"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:2409180:0",
+          "full_english_glosses": [
+            "like",
+            "similar to"
+          ],
+          "pos": [
+            "pre-noun adjectival (rentaishi)"
+          ],
+          "field": [],
+          "misc": [
+            "word usually written using kana alone"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:2409180:2",
+          "full_english_glosses": [
+            "feels like",
+            "feels similar to",
+            "feels as if"
+          ],
+          "pos": [
+            "expressions (phrases, clauses, etc.)"
+          ],
+          "field": [],
+          "misc": [
+            "word usually written using kana alone",
+            "colloquialism",
+            "abbreviation"
+          ],
+          "info": [
+            "at sentence end; short for ような感じ（がする）"
+          ],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "ab8a34ac859908564bd46f5c",
+      "word": "いかに",
+      "definitions": [
+        "how; in what way",
+        "how (much); to what extent"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1466970:0",
+          "full_english_glosses": [
+            "how",
+            "in what way"
+          ],
+          "pos": [
+            "adverb (fukushi)"
+          ],
+          "field": [],
+          "misc": [
+            "word usually written using kana alone"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:1466970:1",
+          "full_english_glosses": [
+            "how (much)",
+            "to what extent"
+          ],
+          "pos": [
+            "adverb (fukushi)"
+          ],
+          "field": [],
+          "misc": [
+            "word usually written using kana alone"
+          ],
+          "info": [],
+          "stagk": [],
+          "stagr": []
+        }
+      ]
+    },
+    {
+      "case_id": "67cf3f926a35f85ecc8b437d",
+      "word": "それ",
+      "definitions": [
+        "there",
+        "there!; look!"
+      ],
+      "dictionary_evidence": [
+        {
+          "sense_key": "jmdict:1006970:2",
+          "full_english_glosses": [
+            "there"
+          ],
+          "pos": [
+            "pronoun"
+          ],
+          "field": [],
+          "misc": [
+            "archaism"
+          ],
+          "info": [
+            "indicating a place near the listener"
+          ],
+          "stagk": [],
+          "stagr": []
+        },
+        {
+          "sense_key": "jmdict:2216210:0",
+          "full_english_glosses": [
+            "there!",
+            "look!"
+          ],
+          "pos": [
+            "interjection (kandoushi)"
+          ],
+          "field": [],
+          "misc": [],
+          "info": [
+            "used to call someone's attention to something"
+          ],
+          "stagk": [],
+          "stagr": [
+            "それ"
+          ]
+        }
+      ]
+    }
+  ],
+  "evidence_hash": "92b4d560c647bd6a35d7b7d098da9c191b0991d6e3c20813b17d699d09bc9c8c"
+}
