@@ -453,6 +453,48 @@ The candidate may be a plain card array or a selection artifact containing an
 translation, audio, and unknown-context changes; checks the staged curriculum
 unknown-word limits; and shows the status of every frozen human-review finding.
 
+## Audio-validated curriculum (opt-in)
+
+Add `--audio-gate` to `run-constrained-curriculum` to validate each candidate's
+clip **before** accepting it or reserving its sentence. A failed clip leaves the
+learning meaning available for another occurrence. Dictionary-supported reading
+repairs update the candidate identity and require a fresh semantic review; an
+old text verdict cannot approve a repaired reading.
+
+```bash
+uv run vocabdeck run-constrained-curriculum \
+  --input .vocabdeck/audits/candidates.json \
+  --model YOUR_CACHED_MODEL --revision YOUR_PINNED_REVISION \
+  --audio-gate --memory-limit-gb 4 --limit 200 \
+  --selection-output .vocabdeck/audits/audio-selection.json \
+  --validation-output .vocabdeck/audits/audio-validation.json \
+  --predictions-output .vocabdeck/audits/audio-predictions.json \
+  --preview .vocabdeck/previews/audio-selection.html
+```
+
+This path uses **offline cached models only**. The semantic reviewer, pinned
+Whisper turbo model, and kana CTC model run in separate sequential child
+processes; each must exit before the next starts. CTC uses CPU. A shared
+inference lock, a maximum 4 GiB monitored process-RSS budget, and MLX allocation
+limits constrain inference. The RSS watchdog is not an OS-enforced or total
+machine-memory guarantee. Missing model caches, exceeded limits, or failed
+children stop the run rather than waive validation. Models above the existing
+3.5 GiB artifact limit remain blocked; this does not replace the frozen 9B
+baseline or promote an unbenchmarked smaller model.
+
+With `--resume`, keep the original input and the matching validation, prediction,
+and `*-audio-state.json` checkpoint files together. The audio state persists
+repaired candidates and evidence; source, media, gate-policy, or checkpoint
+mismatches fail closed. `--audio-state-output` overrides its default location
+beside the validation file. Audio cache version 4 invalidates older cached
+decisions to avoid restoring stale card metadata.
+
+The HTML preview uses the accepted card's corrected reading and clip bounds.
+This opt-in integration does not change the frozen baseline, and it does not
+retroactively validate previous previews. See the
+[integration test and A/B notes](benchmarks/verifier-gold-v1/audio-curriculum-integration.md)
+for evidence and limitations.
+
 ## Project backlog
 
 Planned and completed work is tracked with

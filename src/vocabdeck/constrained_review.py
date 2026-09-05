@@ -426,6 +426,9 @@ def run_constrained_curriculum(
     initial_validation: Optional[Mapping[str, Any]] = None,
     initial_predictions: Optional[Mapping[str, Any]] = None,
     checkpoint: Optional[Callable[[Mapping[str, Any]], None]] = None,
+    audio_gate: Optional[Any] = None,
+    audio_cache_directory: Path = Path(".vocabdeck/audio-review"),
+    initial_audio_state: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Iteratively verify only teachable frontiers and build a curriculum."""
     from .gold_benchmark import build_candidate_dataset
@@ -440,6 +443,16 @@ def run_constrained_curriculum(
         "accepted": [], "rejected": [], "abstained": [],
         "summary": {"accepted": 0, "rejected": 0, "abstained": 0},
     })
+    audio_session = None
+    if audio_gate is not None:
+        if not getattr(reviewer, "isolated_phases", False):
+            raise ValueError("audio curriculum requires an isolated-phase semantic reviewer")
+        from .audio_curriculum import AudioCurriculumSession
+        audio_session = AudioCurriculumSession(
+            cards, audio_gate, audio_cache_directory, state=initial_audio_state,
+            validation=validation)
+        validation = audio_session.gate_resumed_validation(validation)
+        cards = list(audio_session.cards.values())
     selection: Dict[str, Any] = select_validated_curriculum(
         cards, validation, frontier_size=frontier_size, limit=limit,
         harder_unknown_tolerance=harder_unknown_tolerance,
@@ -455,25 +468,39 @@ def run_constrained_curriculum(
             cards,
             selected_cards=selection["accepted"],
             validation_report=validation,
-            limit=max(40, limit - len(selection["accepted"])),
+            limit=(40 if audio_session else max(40, limit - len(selection["accepted"]))),
             frontier_size=frontier_size,
             harder_unknown_tolerance=harder_unknown_tolerance,
         )
         frontier_cards = list(frontier["cards"])
+        planned_count = len(frontier_cards)
         if not frontier_cards:
             break
-        dataset = build_candidate_dataset(frontier_cards)
-        predictions = run_constrained_dataset(
-            dataset, reviewer, prompt_version=prompt_version,
-            resolver=resolver,
-        )
-        current = validate_cards(
-            frontier_cards,
-            UnanimousCardValidator([
-                DeterministicCardValidator(),
-                ConstrainedPredictionValidator(dataset, predictions),
-            ]),
-        )
+        if audio_session:
+            frontier_cards, validation = audio_session.gate_frontier(frontier_cards, validation)
+            cards = list(audio_session.cards.values())
+        if frontier_cards:
+            dataset = build_candidate_dataset(frontier_cards)
+            dataset["prompt_versions"] = {"sense": prompt_version, "subtitle_support": prompt_version,
+                                          "acceptance_policy": 1}
+            if hasattr(reviewer, "review_dataset"):
+                predictions = reviewer.review_dataset(dataset, prompt_version)
+            else:
+                predictions = run_constrained_dataset(
+                    dataset, reviewer, prompt_version=prompt_version, resolver=resolver)
+            current = validate_cards(
+                frontier_cards,
+                UnanimousCardValidator([
+                    DeterministicCardValidator(),
+                    ConstrainedPredictionValidator(dataset, predictions),
+                ]),
+            )
+            if audio_session:
+                current = audio_session.attach_semantic_results(current)
+        else:
+            predictions = {"records": [], "summary": {}}
+            current = {"accepted": [], "rejected": [], "abstained": [],
+                       "summary": {"accepted": 0, "rejected": 0, "abstained": 0}}
         validation = merge_validation_reports(validation, current)
         selection = select_validated_curriculum(
             cards, validation, frontier_size=frontier_size, limit=limit,
@@ -485,12 +512,15 @@ def run_constrained_curriculum(
         )
         round_summaries.append({
             "round": round_number,
-            "planned": len(frontier_cards),
+            "planned": planned_count,
+            "semantic_reviewed": len(frontier_cards),
             "verified_accepted": current["summary"]["accepted"],
             "curriculum_accepted": selection["summary"]["accepted"],
+            "semantic_runtime": predictions.get("runtime"),
         })
         if checkpoint is not None:
             checkpoint({
+                "audio_state": audio_session.snapshot(validation) if audio_session else None,
                 "selection": selection,
                 "validation": validation,
                 "predictions": {
@@ -517,6 +547,7 @@ def run_constrained_curriculum(
     evaluated = len(all_predictions)
     session_evaluated = evaluated - initial_evaluated
     return {
+        "audio_state": audio_session.snapshot(validation) if audio_session else None,
         "selection": selection,
         "validation": validation,
         "predictions": {
@@ -589,6 +620,9 @@ class MLXLabelReviewer:
         self._model, self._tokenizer = model, tokenizer
 
     def close(self) -> None:
+        self._model, self._tokenizer = None, None
+        import gc
+        gc.collect()
         self._resource_guard.release(self._mx)
 
     def __del__(self) -> None:
