@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "candidate_hash": "dbe758879b8c3368d219dede793241986ad91fb1396b18f81850124632beab0d",
+  "validation_hash": "201cf07b5bfea8db8eca1f6c9429f122cf98050974b266cbbc7c802c8a7aae39",
+  "config": {
+    "limit": 200,
+    "harder_unknown_tolerance": 2.0,
+    "zero_unknown_through": 20,
+    "one_unknown_through": 200,
+    "later_unknown_limit": 2,
+    "frontier_size": 100,
+    "max_reassignment_states": 64,
+    "max_reassignment_depth": 3
+  },
+  "input_candidates": 7687,
+  "validation_statuses": {
+    "accepted": 140,
+    "rejected": 208,
+    "abstained": 112
+  },
+  "unreviewed": 7227,
+  "legacy_context_candidates": 7687,
+  "yield_delta": 0,
+  "added_units": [],
+  "removed_units": [],
+  "changed_assignments": [],
+  "watched_words": {
+    "誰": {
+      "candidates": 18,
+      "statuses": {
+        "unreviewed": 17,
+        "accepted": 1
+      },
+      "selected_before": [],
+      "selected_after": []
+    },
+    "お前": {
+      "candidates": 64,
+      "statuses": {
+        "accepted": 1,
+        "unreviewed": 63
+      },
+      "selected_before": [
+        2185
+      ],
+      "selected_after": [
+        2185
+      ]
+    },
+    "君": {
+      "candidates": 22,
+      "statuses": {
+        "accepted": 1,
+        "unreviewed": 21
+      },
+      "selected_before": [
+        2545
+      ],
+      "selected_after": [
+        2545
+      ]
+    }
+  },
+  "planned_replacements": [
+    2124,
+    2355,
+    2551,
+    4983,
+    5633,
+    7189,
+    7374,
+    4417,
+    7584
+  ],
+  "note": "Matched saved-evidence scheduling replay, not new semantic/audio validation or a fresh baseline-quality review.",
+  "runs": {
+    "greedy": {
+      "summary": {
+        "curriculum_targets": 1500,
+        "accepted": 113,
+        "deferred": 1387,
+        "frontier_size": 100,
+        "frontier_expansions": 97,
+        "zero_unknown_through": 20,
+        "one_unknown_through": 200,
+        "later_unknown_limit": 2,
+        "harder_unknown_tolerance": 2.0,
+        "requested_limit": 200,
+        "complete": false,
+        "scheduling_strategy": "greedy"
+      },
+      "search": {
+        "evaluated_states": 0,
+        "max_states": 64,
+        "max_depth": 3,
+        "depth_limit_reached": false,
+        "state_limit_reached": false,
+        "baseline_accepted": 113,
+        "improvements": [],
+        "note": "Unreviewed/rejected alternatives are never accepted; bounded search is not exhaustive."
+      },
+      "seconds": 0.9021841670037247,
+      "structural_checks": {
+        "unique_sentences": true,
+        "unique_exact_learning_units": true,
+        "accepted_validation_only": true,
+        "prior_known_only_unknown_limits": true,
+        "configured_difficulty_gap_preserved": true,
+        "context_metadata_policy_preserved": true
+      }
+    },
+    "reassign": {
+      "summary": {
+        "curriculum_targets": 1500,
+        "accepted": 113,
+        "deferred": 1387,
+        "frontier_size": 100,
+        "frontier_expansions": 97,
+        "zero_unknown_through": 20,
+        "one_unknown_through": 200,
+        "later_unknown_limit": 2,
+        "harder_unknown_tolerance": 2.0,
+        "requested_limit": 200,
+        "complete": false,
+        "scheduling_strategy": "reassign"
+      },
+      "search": {
+        "evaluated_states": 0,
+        "max_states": 64,
+        "max_depth": 3,
+        "depth_limit_reached": false,
+        "state_limit_reached": false,
+        "baseline_accepted": 113,
+        "improvements": [],
+        "note": "Unreviewed/rejected alternatives are never accepted; bounded search is not exhaustive."
+      },
+      "seconds": 0.8613397920271382,
+      "structural_checks": {
+        "unique_sentences": true,
+        "unique_exact_learning_units": true,
+        "accepted_validation_only": true,
+        "prior_known_only_unknown_limits": true,
+        "configured_difficulty_gap_preserved": true,
+        "context_metadata_policy_preserved": true
+      }
+    }
+  }
+}
