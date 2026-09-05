@@ -309,6 +309,21 @@ word without letting an unrelated easy or katakana-heavy word reshape the pool.
 Candidate order remains a ranking of examples for the same target, not a second
 vocabulary ranking.
 
+When a sentence reservation blocks another meaning, the selector now tries
+bounded reassignment to already validated alternate examples (at most 64 replays,
+three assignment constraints deep). Every replay rebuilds the teaching order
+from the initial known set. It retains all previously teachable meanings and
+replaces the greedy result only when yield increases; quality and unknown-word
+gates are unchanged. Reports expose sentence conflicts, remaining unreviewed
+alternatives, and search-limit exhaustion rather than claiming no solution exists.
+The review frontier can also request a replacement example for a selected word
+whose sentence is needed elsewhere. Exact-sense identities remain unchanged;
+cross-sense equivalence clustering is deferred.
+
+For a no-inference A/B, use `python -m vocabdeck.scheduling_ab --help`.
+The Python selector also accepts `strategy="greedy"` to replay the old behavior.
+See [the scheduling A/B report](benchmarks/verifier-gold-v1/scheduling-ab.md).
+
 The validation policy fails closed. The contextual pass checks the occurrence's
 word boundary, part of speech, and dictionary sense. A separate, narrowly
 prompted recoverability pass checks that the English subtitle actually expresses

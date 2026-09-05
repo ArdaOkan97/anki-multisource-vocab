@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections import Counter
+from collections import Counter, deque
 from dataclasses import asdict, dataclass
 import json
 from pathlib import Path
@@ -429,6 +429,20 @@ def plan_review_frontier(
         position for position in sorted(grouped)
         if _learning_unit_key(grouped[position][0]) not in selected_target_ids
     ]
+    # A selected word can still need a replacement example: its reservation may
+    # be another target's only usable sentence. Review alternatives without
+    # assuming they will fit at the earlier teaching position; replay owns that.
+    contested_sentences = {
+        int(c.get("sentence_id") or 0)
+        for position in remaining_positions for c in grouped[position]
+        if int(c.get("sentence_id") or 0) in used_sentence_ids
+        and constrained_decisions.get(int(c["audit_position"]), {}).get("status")
+        not in {"rejected", "abstained"}
+    }
+    replacement_units = {_learning_unit_key(c) for c in selected_cards
+                         if int(c.get("sentence_id") or 0) in contested_sentences}
+    replacement_positions = [p for p in sorted(grouped)
+                             if _learning_unit_key(grouped[p][0]) in replacement_units]
 
     def candidates_in(positions: Sequence[int]):
         planned = []
@@ -509,6 +523,7 @@ def plan_review_frontier(
 
     frontier = remaining_positions[:frontier_size]
     planned = candidates_in(frontier)
+    planned.extend(candidates_in(replacement_positions))
     frontier_expanded = False
     if len(planned) < limit and len(frontier) < len(remaining_positions):
         overflow = candidates_in(remaining_positions[frontier_size:])
@@ -527,6 +542,8 @@ def plan_review_frontier(
             continue
         materialized = dict(card)
         materialized["review_planning"] = {
+            "purpose": ("sentence_replacement" if target_id in selected_target_ids
+                        else "new_target"),
             "teaching_position": teaching_position,
             "unknown_allowance": allowance,
             "unknown_context_learning_unit_keys": plan[8],
@@ -561,6 +578,110 @@ def select_validated_curriculum(
     later_unknown_limit: int = 2,
     harder_unknown_tolerance: Optional[float] = 2.0,
     limit: Optional[int] = None,
+    strategy: str = "reassign",
+    max_reassignment_states: int = 64,
+    max_reassignment_depth: int = 3,
+) -> Dict[str, Any]:
+    """Repair greedy sentence conflicts by bounded, fully revalidated replays.
+
+    Only already accepted alternatives participate. Each replay starts with the
+    original known set, so no future learning leaks into earlier examples. Keep
+    the greedy result unless a trial teaches more units and retains every unit
+    already taught by that result. Search exhaustion is not proof of infeasibility.
+    """
+    if strategy not in {"greedy", "reassign"}:
+        raise ValueError("unknown scheduling strategy")
+    if not 0 <= max_reassignment_states <= 256 or not 0 <= max_reassignment_depth <= 8:
+        raise ValueError("reassignment bounds exceed safety limits")
+    config = dict(frontier_size=frontier_size, zero_unknown_through=zero_unknown_through,
+                  one_unknown_through=one_unknown_through, later_unknown_limit=later_unknown_limit,
+                  harder_unknown_tolerance=harder_unknown_tolerance, limit=limit)
+    baseline = _select_greedy_curriculum(cards, validation_report, **config)
+    best = baseline
+    base_units = {_learning_unit_key(c) for c in baseline["accepted"]}
+    decisions = {int(row["audit_position"]): row["decision"]
+                 for status in VALIDATION_STATUSES for row in validation_report.get(status, [])}
+    grouped = {}
+    for card in cards:
+        position = int(card.get("curriculum_position") or card["audit_position"])
+        if decisions.get(int(card["audit_position"]), {}).get("status") == "accepted":
+            grouped.setdefault(position, []).append(card)
+    for values in grouped.values():
+        values.sort(key=lambda c: (int(c.get("candidate_position") or 1), int(c["audit_position"])))
+
+    def moves(result, forced):
+        owners = {int(c.get("sentence_id") or 0): c for c in result["accepted"]}
+        emitted = set()
+        for target in result["deferred"]:
+            for blocked in grouped.get(target["curriculum_position"], []):
+                owner = owners.get(int(blocked.get("sentence_id") or 0))
+                if not owner:
+                    continue
+                position = owner["lexical_position"]
+                if position in forced:
+                    continue
+                for alternate in grouped.get(position, []):
+                    if int(alternate.get("sentence_id") or 0) == int(owner.get("sentence_id") or 0):
+                        continue
+                    move = (position, int(alternate["audit_position"]))
+                    if move not in emitted:
+                        emitted.add(move)
+                        yield {**forced, position: move[1]}
+
+    queue = deque([({}, baseline)])
+    seen = {()}
+    evaluated = 0
+    depth_limited = False
+    improvements = []
+    enabled = strategy == "reassign" and (limit is None or len(best["accepted"]) < limit)
+    if enabled:
+        while queue and evaluated < max_reassignment_states:
+            forced, result = queue.popleft()
+            if len(forced) >= max_reassignment_depth:
+                depth_limited |= next(moves(result, forced), None) is not None
+                continue
+            for proposed in moves(result, forced):
+                key = tuple(sorted(proposed.items()))
+                if key in seen:
+                    continue
+                if evaluated >= max_reassignment_states:
+                    queue.append((forced, result))
+                    break
+                seen.add(key)
+                trial = _select_greedy_curriculum(
+                    cards, validation_report, **config, forced_candidates=proposed)
+                evaluated += 1
+                trial_units = {_learning_unit_key(c) for c in trial["accepted"]}
+                if (len(trial_units) > len(best["accepted"]) and base_units <= trial_units):
+                    best = trial
+                    improvements.append({"accepted": len(trial_units),
+                                         "forced_audit_positions": dict(proposed)})
+                queue.append((proposed, trial))
+                if limit is not None and len(best["accepted"]) >= limit:
+                    queue.clear()
+                    break
+    best["summary"]["scheduling_strategy"] = strategy
+    best["reassignment_search"] = {
+        "evaluated_states": evaluated, "max_states": max_reassignment_states,
+        "max_depth": max_reassignment_depth, "depth_limit_reached": depth_limited,
+        "state_limit_reached": enabled and bool(queue) and evaluated >= max_reassignment_states,
+        "baseline_accepted": len(baseline["accepted"]), "improvements": improvements,
+        "note": "Unreviewed/rejected alternatives are never accepted; bounded search is not exhaustive.",
+    }
+    return best
+
+
+def _select_greedy_curriculum(
+    cards: Sequence[Mapping[str, Any]],
+    validation_report: Mapping[str, Any],
+    *,
+    frontier_size: int = 100,
+    zero_unknown_through: int = 20,
+    one_unknown_through: int = 200,
+    later_unknown_limit: int = 2,
+    harder_unknown_tolerance: Optional[float] = 2.0,
+    limit: Optional[int] = None,
+    forced_candidates: Optional[Mapping[int, int]] = None,
 ) -> Dict[str, Any]:
     """Schedule approved cards from a lexical frontier and sentence dependencies.
 
@@ -569,6 +690,8 @@ def select_validated_curriculum(
     taught next. Missing dependency metadata fails closed.
     """
     from .progression import allowed_unknown_context_words
+
+    forced_candidates = forced_candidates or {}
 
     if frontier_size < 1:
         raise ValueError("frontier size must be positive")
@@ -623,6 +746,9 @@ def select_validated_curriculum(
         plans = []
         for curriculum_position in positions:
             for card in grouped[curriculum_position]:
+                if (curriculum_position in forced_candidates and
+                        int(card["audit_position"]) != forced_candidates[curriculum_position]):
+                    continue
                 decision = decisions.get(int(card["audit_position"]))
                 sentence_id = int(card.get("sentence_id") or 0)
                 raw_context_ids = _context_learning_units(card)
@@ -743,6 +869,8 @@ def select_validated_curriculum(
         blockers = set()
         minimum_unknown = None
         for card in accepted_candidates:
+            if int(card.get("sentence_id") or 0) in used_sentence_ids:
+                blockers.add("sentence_reserved")
             blockers.update(context_meaning_issues(card))
             raw_context_ids = _context_learning_units(card)
             if (
@@ -800,6 +928,7 @@ def select_validated_curriculum(
             "zero_unknown_through": zero_unknown_through,
             "one_unknown_through": one_unknown_through,
             "later_unknown_limit": later_unknown_limit,
+            "harder_unknown_tolerance": harder_unknown_tolerance,
             "requested_limit": limit,
             "complete": limit is None or len(selected) == limit,
         },

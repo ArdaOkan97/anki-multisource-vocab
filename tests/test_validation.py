@@ -423,9 +423,11 @@ class ValidationTest(unittest.TestCase):
         selection = select_validated_curriculum(
             [first, alternate, second], validation
         )
-        self.assertEqual(selection["summary"]["accepted"], 1)
-        self.assertEqual(selection["summary"]["deferred"], 1)
-        self.assertEqual(selection["accepted"][0]["sentence_id"], 10)
+        self.assertEqual(selection["summary"]["accepted"], 2)
+        self.assertEqual(selection["summary"]["deferred"], 0)
+        self.assertEqual([c["sentence_id"] for c in selection["accepted"]], [11, 10])
+        greedy = select_validated_curriculum([first, alternate, second], validation, strategy="greedy")
+        self.assertEqual(greedy["summary"]["accepted"], 1)
 
     def test_selection_limit_keeps_later_targets_deferred(self):
         cards = []
