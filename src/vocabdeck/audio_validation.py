@@ -26,7 +26,7 @@ CTC_BASE_MODEL = "reazon-research/japanese-wav2vec2-large"
 CTC_BASE_REVISION = "55969d3700533972fcc4ff0e3747f0bc3c21e4c1"
 WHISPER_MODEL_REPO = "mlx-community/whisper-large-v3-turbo"
 WHISPER_MODEL_REVISION = "a4aaeec0636e6fef84abdcbe3544cb2bf7e9f6fb"
-CTC_BACKEND_VERSION = 3
+CTC_BACKEND_VERSION = 4
 
 # Vocabulary and dual-head architecture are adapted from nyosegawa/hiragana-asr
 # (Apache-2.0): https://github.com/nyosegawa/hiragana-asr
@@ -96,6 +96,7 @@ class AudioTranscript:
     model: str
     model_revision: str
     device: str
+    runtime: Optional[Dict[str, Any]] = None
 
     def as_dict(self) -> dict:
         value = asdict(self)
@@ -116,6 +117,7 @@ class OrthographicTranscript:
     backend: str
     model: str
     model_revision: str
+    runtime: Optional[Dict[str, Any]] = None
 
     def as_dict(self) -> dict:
         value = asdict(self)
@@ -577,10 +579,15 @@ def _align_candidate(
 def _audio_key(card: Mapping[str, Any], video: Path, config: AudioGateConfig) -> str:
     stat = video.stat()
     payload = {
+        "card_snapshot": dict(card),
         "candidate_key": card.get("candidate_key"),
         "learning_unit_key": card.get("learning_unit_key"),
         "japanese": card.get("japanese"),
         "reading": card.get("reading"),
+        "gloss": card.get("gloss"),
+        "target_spans": card.get("target_lexical_spans"),
+        "target_start": card.get("target_lexical_start", card.get("target_start")),
+        "target_end": card.get("target_lexical_end", card.get("target_end")),
         "start_ms": card.get("start_ms"),
         "end_ms": card.get("end_ms"),
         "video": str(video.resolve()),
@@ -642,9 +649,41 @@ def _repaired_card(
         "sense_key": sense_key,
         "learning_unit_key": learning_unit_key(identity, sense_key),
     })
+    # This is an occurrence repair, not a global reading replacement. Update
+    # only the marked target dependencies and never transfer old learned status.
+    old_unit = str(card.get("learning_unit_key") or f"lexeme:{card.get('lexeme_id')}")
+    new_unit = repaired["learning_unit_key"]
+    from .validation import _context_learning_units, _initial_known_learning_units
+    context = _context_learning_units(card)
+    if context is not None:
+        legacy_target = f"lexeme:{card.get('lexeme_id')}"
+        repaired["context_learning_unit_keys"] = sorted((context - {old_unit, legacy_target}) | {new_unit})
+        initial = _initial_known_learning_units(card)
+        if initial is not None:
+            repaired["initial_known_context_learning_unit_keys"] = sorted(initial)
+    spans = {tuple(span) for span in card.get("target_lexical_spans", [])}
+    if not spans:
+        spans = {(card.get("target_lexical_start", card.get("target_start")),
+                  card.get("target_lexical_end", card.get("target_end")))}
+    if isinstance(card.get("context_meaning_dependencies"), list):
+        dependencies = []
+        for original_dependency in card["context_meaning_dependencies"]:
+            dependency = dict(original_dependency)
+            if (dependency.get("start"), dependency.get("end")) in spans:
+                dependency["learning_unit_key"] = new_unit
+                if "reading" in dependency:
+                    dependency["reading"] = selected
+            dependencies.append(dependency)
+        repaired["context_meaning_dependencies"] = dependencies
+        repaired["context_learning_unit_keys"] = sorted({d["learning_unit_key"] for d in dependencies})
+    for field in ("lexeme_id", "note_id", "card_id", "last_seen_reps"):
+        repaired[field] = None
+    for field in ("context_lexeme_ids", "initial_known_context_lexeme_ids",
+                  "initial_unknown_context_lexeme_ids", "validation", "reading_consensus"):
+        repaired.pop(field, None)
     sentence_id = repaired.get("sentence_id")
-    start = repaired.get("target_lexical_start")
-    end = repaired.get("target_lexical_end")
+    start = repaired.get("target_lexical_start", repaired.get("target_start"))
+    end = repaired.get("target_lexical_end", repaired.get("target_end"))
     if (start is None or end is None) and repaired.get("target_lexical_spans"):
         start, end = repaired["target_lexical_spans"][0]
     if sentence_id is not None and start is not None and end is not None:
@@ -931,6 +970,13 @@ class AudioContentGate:
                     extra={"reading_revalidation": revalidation},
                 )
                 return self._store(record_path, result)
+            accepted_card["reading_consensus"] = revalidation
+            accepted_card["audit_findings"] = [f for f in accepted_card.get("audit_findings", [])
+                                                if f.get("code") != "reading_disagreement"]
+            accepted_card["audit_criteria"] = [
+                {**c, "status": "passed", "detail": "Audio reading repair independently rechecked by reading analyzers"}
+                if c.get("code") == "contextual_reading" else dict(c)
+                for c in accepted_card.get("audit_criteria", [])]
             # A reading repair changes the card fingerprint. Existing recorded
             # semantic reviews must not be silently reused downstream.
             accepted_card["requires_contextual_revalidation"] = True

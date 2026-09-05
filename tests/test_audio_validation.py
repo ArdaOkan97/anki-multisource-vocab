@@ -186,6 +186,30 @@ def test_cached_decision_skips_second_transcription(tmp_path):
 
 
 @patch("vocabdeck.audio_validation._extract_window", fake_extract)
+def test_missing_omae_is_rejected_even_after_expansion(tmp_path):
+    reviewer, transcriber = gate(["だれだ"], alternatives=("おまえ",))
+    result = reviewer.review(card(
+        tmp_path, lemma="お前", reading="オマエ", gloss="you",
+        japanese="誰だ お前。", target_lexical_spans=[[3, 5]],
+        target_lexical_start=3, target_lexical_end=5,
+    ), tmp_path / "cache")
+    assert result["status"] == "rejected"
+    assert transcriber.calls == 2
+    assert "card" not in result
+
+
+@patch("vocabdeck.audio_validation._extract_window", fake_extract)
+def test_changed_card_metadata_does_not_reuse_cached_card(tmp_path):
+    reviewer, transcriber = gate(["つぎわわたしだ"], boundary_margin_ms=100)
+    candidate = card(tmp_path, audit_position=1)
+    reviewer.review(candidate, tmp_path / "cache")
+    candidate["audit_position"] = 2
+    result = reviewer.review(candidate, tmp_path / "cache")
+    assert result["card"]["audit_position"] == 2
+    assert transcriber.calls == 2
+
+
+@patch("vocabdeck.audio_validation._extract_window", fake_extract)
 def test_hybrid_uses_orthography_only_with_unanimous_current_reading(tmp_path):
     ctc = FakeTranscriber(["ばるだわ"])
     orthographic = FakeOrthographicTranscriber([

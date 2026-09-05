@@ -344,6 +344,7 @@ def merge_validation_reports(
         item = decisions[position]
         groups[str(item["decision"]["status"])].append(item)
     return {
+        **({"audio_required": True} if existing.get("audio_required") or current.get("audio_required") else {}),
         **groups,
         "summary": {status: len(rows) for status, rows in groups.items()},
     }
@@ -591,6 +592,12 @@ def select_validated_curriculum(
     """
     if strategy not in {"greedy", "reassign"}:
         raise ValueError("unknown scheduling strategy")
+    if validation_report.get("audio_required"):
+        accepted_positions = {int(r["audit_position"]) for r in validation_report.get("accepted", [])}
+        by_position = {int(c["audit_position"]): c for c in cards}
+        if any(p not in by_position or by_position[p].get("audio_validation", {}).get("status") != "accepted"
+               or by_position[p].get("requires_contextual_revalidation") for p in accepted_positions):
+            raise ValueError("audio-required selection needs materialized, semantically revalidated audio cards")
     if not 0 <= max_reassignment_states <= 256 or not 0 <= max_reassignment_depth <= 8:
         raise ValueError("reassignment bounds exceed safety limits")
     config = dict(frontier_size=frontier_size, zero_unknown_through=zero_unknown_through,

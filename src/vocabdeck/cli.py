@@ -408,6 +408,12 @@ def build_parser() -> argparse.ArgumentParser:
     constrained_curriculum.add_argument("--predictions-output", required=True, type=Path)
     constrained_curriculum.add_argument("--preview", type=Path)
     constrained_curriculum.add_argument("--no-media", action="store_true")
+    constrained_curriculum.add_argument("--audio-gate", action="store_true",
+                                        help="validate audio before acceptance, using isolated offline model phases")
+    constrained_curriculum.add_argument("--audio-cache-directory", type=Path,
+                                        default=Path(".vocabdeck/audio-review"))
+    constrained_curriculum.add_argument("--audio-state-output", type=Path,
+                                        help="repair/resume state; defaults beside validation output")
     constrained_curriculum.add_argument(
         "--resume", action="store_true",
         help="resume from existing validation and prediction outputs",
@@ -850,6 +856,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
         initial_validation = None
         initial_predictions = None
+        initial_audio_state = None
+        audio_gate = None
+        audio_state_output = args.audio_state_output or args.validation_output.with_name(
+            args.validation_output.stem + "-audio-state.json")
         if args.resume:
             if args.validation_output.exists():
                 initial_validation = json.loads(
@@ -859,16 +869,25 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 initial_predictions = json.loads(
                     args.predictions_output.read_text(encoding="utf-8")
                 )
+            if args.audio_gate and audio_state_output.exists():
+                initial_audio_state = json.loads(audio_state_output.read_text(encoding="utf-8"))
+        if (initial_validation or {}).get("audio_required") and not args.audio_gate:
+            raise ValueError("resume of an audio-validated run requires --audio-gate and its audio state")
 
         def checkpoint(value):
             write_json(value["selection"], args.selection_output)
             write_json(value["validation"], args.validation_output)
             write_json(value["predictions"], args.predictions_output)
+            if args.audio_gate:
+                write_json(value["audio_state"], audio_state_output)
 
-        reviewer = MLXLabelReviewer(
-            args.model, revision=args.revision,
-            memory_limit_gb=args.memory_limit_gb,
-        )
+        if args.audio_gate:
+            from .isolated_inference import IsolatedDatasetReviewer, make_audio_gate
+            reviewer = IsolatedDatasetReviewer(args.model, args.revision, args.memory_limit_gb)
+            audio_gate = make_audio_gate(args.memory_limit_gb)
+        else:
+            reviewer = MLXLabelReviewer(
+                args.model, revision=args.revision, memory_limit_gb=args.memory_limit_gb)
         try:
             result = run_constrained_curriculum(
                 load_card_artifact(args.input), reviewer,
@@ -881,6 +900,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 initial_validation=initial_validation,
                 initial_predictions=initial_predictions,
                 checkpoint=checkpoint,
+                audio_gate=audio_gate,
+                audio_cache_directory=args.audio_cache_directory,
+                initial_audio_state=initial_audio_state,
             )
         finally:
             reviewer.close()
@@ -892,6 +914,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         selection_output = write_json(result["selection"], args.selection_output)
         validation_output = write_json(result["validation"], args.validation_output)
         predictions_output = write_json(result["predictions"], args.predictions_output)
+        if args.audio_gate:
+            write_json(result["audio_state"], audio_state_output)
         preview = None
         if args.preview:
             preview = render_preview_html(
@@ -903,6 +927,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "validation_output": str(validation_output),
             "predictions_output": str(predictions_output),
             "preview": None if preview is None else str(preview),
+            "audio_state_output": str(audio_state_output) if args.audio_gate else None,
             **result["predictions"]["summary"],
             "curriculum": result["selection"]["summary"],
         }, ensure_ascii=False, indent=2))
