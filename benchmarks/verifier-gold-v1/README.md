@@ -12,6 +12,12 @@ small, constrained card verifier. `dataset.json` contains four distinct splits:
   covering sense, expression, reading/homograph, fragment, slang, and one-word
   failure modes.
 
+The newer [sense-repair and occurrence-equivalence benchmark](semantic-repair.md)
+is separate from this original accept/reject evaluation. It can propose corrected
+dictionary senses and compare contextual meanings, but does not change production
+generation. Its new semantic review queue does not inherit implicit gold labels
+from the original card review.
+
 The two queues are deliberately marked `unreviewed`; the benchmark never scores
 them until a human assigns gold labels. No Qwen or other LLM response is treated
 as ground truth. Source hashes, schema versions, prompt versions, acceptance-rule
