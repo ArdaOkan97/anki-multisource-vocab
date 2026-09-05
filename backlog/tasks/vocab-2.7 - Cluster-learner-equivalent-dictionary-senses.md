@@ -4,9 +4,11 @@ title: Cluster learner-equivalent dictionary senses
 status: To Do
 assignee: []
 created_date: '2026-08-27 11:36'
+updated_date: '2026-09-05 06:19'
 labels: []
 dependencies:
   - VOCAB-2.1
+  - VOCAB-2.9
 documentation:
   - baselines/hxh-e01-e10-hybrid-qwen9b-200-v1/human-review.json
 parent_task_id: VOCAB-2

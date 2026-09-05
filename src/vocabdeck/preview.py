@@ -32,6 +32,13 @@ def render_preview_html(
       <audio controls preload="none" src="{audio_src}"></audio>
       <img loading="lazy" src="{image_src}" alt="Source frame">"""
         progression = row.get("example_progression") or {}
+        scheduling = row.get("scheduling") or {}
+        content_words = int(progression.get("content_words", row.get("sentence_word_count", 0)))
+        unknown_words = int(scheduling.get(
+            "unknown_context_words",
+            row.get("unknown_context_words", progression.get("unknown_other_words", 0)),
+        ))
+        unknown_label = "word" if unknown_words == 1 else "words"
         target, target_start, target_end = learner_target_span(row)
         target_spans = learner_target_spans(row)
         cloze = blank_target(
@@ -53,10 +60,10 @@ def render_preview_html(
     <div class="divider"></div>
     <div class="expression"><ruby>{html.escape(str(row['lemma']))}<rt>{html.escape(hiragana(str(row['reading'])))}</rt></ruby></div>
     <div class="sentence full">{answer_sentence}</div>
+    <div class="meta">{content_words} content words ·
+      {unknown_words} other unknown {unknown_label} (excluding the target)</div>
     {media_html}
-    <div class="meta">Difficulty {float(row['difficulty_score']):.1f} ·
-      {int(progression.get('content_words', 0))} content words ·
-      {int(progression.get('unknown_other_words', 0))} other unknown ·
+    <div class="meta">Word difficulty {float(row['difficulty_score']):.1f} ·
       {int(progression.get('harder_unknown_words', 0))} harder than target ·
       {html.escape(str(row['series']))} S{int(row['season']):02d}E{int(row['episode']):02d}
     </div>

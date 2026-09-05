@@ -40,7 +40,8 @@
     "not_fixed_by_text_verifier": [40, 56]
   },
   "decision": "fail_closed",
-  "decision_reason": "The universal constrained verifier had zero known semantic false accepts but only produced 138 of 200 requested cards after full alternative-sentence search. Keep the frozen baseline as production default. Next evaluate a calibrated risk router that requires model review only for semantically risky cards; audio and duplicate-learning-unit gates remain independent requirements.",
+  "decision_reason": "Keep the frozen baseline as production default. The candidate pool contains 7687 target-occurrence pairs across 2260 distinct sentences; only 460 were model-reviewed, so low yield is not proof that the verifier is too strict. Repair context meaning identities and coordinated scheduling, deduplicate equivalent senses, and integrate audio validation before another 200-card attempt. Stored-identity unknown checks passing is not proof of correct context meanings.",
+  "followup_accounting": "benchmarks/verifier-gold-v1/candidate-accounting.md",
   "resource_policy": {
     "sequential_inference_only": true,
     "default_memory_limit_gb": 4.0,
