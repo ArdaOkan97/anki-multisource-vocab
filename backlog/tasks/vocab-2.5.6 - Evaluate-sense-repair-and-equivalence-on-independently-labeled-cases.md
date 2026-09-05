@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-05 09:06'
-updated_date: '2026-09-05 09:50'
+updated_date: '2026-09-05 10:03'
 labels: []
 dependencies:
   - VOCAB-2.5.5
@@ -32,6 +32,8 @@ Use the new semantic-repair/equivalence harness to compare the pinned provisiona
 
 <!-- SECTION:PLAN:BEGIN -->
 1. Extend the identical eight-case diagnostic to the previously cached Gemma 2 2B Japanese, Qwen3 1.7B and Phi-4 Mini revisions requested by the user. 2. Run one offline process at a time under the existing exclusive 4 GiB MLX guard; preserve raw outputs and record cleanup, time and peak memory. 3. Compare observed decisions with the existing 2B/4B runs without claiming accuracy from unreviewed cases. 4. Keep independent semantic annotation and held-out/cross-show evaluation pending before any production decision.
+
+5. User-approved simplification experiment: compare only lemma and two recorded dictionary glosses (no sentences, JSON, offsets or full option inventories), using the same five cached models and unchanged strict output parser/decoding. Rotate labels and reverse meaning order; include identical-gloss sanity controls. Treat this as a distinct dictionary-equivalence task, not a causal A/B or gold-scored contextual evaluation. Preserve raw runs and production defaults.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -40,4 +42,6 @@ Use the new semantic-repair/equivalence harness to compare the pinned provisiona
 User explicitly requested testing the three earlier verifier candidates on the new equivalence/sense-repair diagnostic. This is an initial slice of the task, not completion of the independent-gold acceptance criteria.
 
 Completed user-requested additional eight-case diagnostics with unchanged prompts/parser/options. Sequential offline cached runs under exclusive 4 GiB MLX cap: Gemma 2B Japanese 26.07s / 2.206 GB peak, six same pair decisions (including concerning are pair), two sense order disagreements; Qwen3 1.7B 28.61s / 1.719 GB, six invalid-format pair abstentions plus two sense order disagreements; Phi-4 Mini 37.77s / 3.187 GB, eight invalid-format abstentions. All cleanup completed; fingerprint evaluation passed. Qwen/Phi often echo option text, so format failures are not proof of semantic inability; parser was not relaxed post hoc. No new gold labels, no adoption, no production changes. Evidence and reproduction: benchmarks/verifier-gold-v1/semantic-repair-additional-models.md. Broader independent-label acceptance criteria remain unchecked.
+
+Completed approved word-and-two-glosses probe with identical strict parser and decoding, six original dictionary pairs plus two identical-gloss controls. Five sequential offline runs completed under 4 GiB MLX guard: Qwen3.5 2B 6.21s/1.691 GB, 4B 13.64s/2.627 GB, Gemma 6.07s/1.608 GB, Qwen3 1.7B 5.70s/1.149 GB, Phi 8.44s/2.348 GB. All pair hashes matched; cleanup completed. Both Qwen3.5 models now distinguish the are definitions, but identical-gloss control passes were 1/2 for 2B and 0/2 for 4B; Gemma passed 2/2 but answered same for five non-control pairs. Qwen1.7/Phi still had extra-text formatting failures. This changes the semantic question, so it is not a controlled contextual-prompt A/B or gold accuracy test. No production changes. Exact prompts/results: benchmarks/verifier-gold-v1/simple-dictionary-pairs.md. Added nine tests; full suite 239 passed.
 <!-- SECTION:NOTES:END -->
