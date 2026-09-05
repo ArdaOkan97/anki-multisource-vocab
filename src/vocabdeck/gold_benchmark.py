@@ -28,6 +28,13 @@ CARD_FIELDS = (
     "start_ms", "end_ms", "target_start", "target_end",
 )
 
+VERIFIER_PROMPT_FIELDS = (
+    "candidate_key", "learning_unit_key", "sense_key",
+    "lemma", "reading", "part_of_speech", "gloss", "target_surface",
+    "japanese", "english", "series", "season", "episode", "cue_index",
+    "sentence_id", "target_start", "target_end",
+)
+
 
 def _read_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
@@ -70,6 +77,59 @@ def _stable_id(split: str, card: Mapping[str, Any], mutation: str = "original") 
         json.dumps(identity, ensure_ascii=False, sort_keys=True).encode("utf-8")
     ).hexdigest()[:20]
     return f"{split}-{digest}"
+
+
+def verifier_case_id(card: Mapping[str, Any]) -> str:
+    """Fingerprint verifier input independently of artifact-local ordering."""
+    prompt_input = {
+        key: card.get(key) for key in VERIFIER_PROMPT_FIELDS
+        if card.get(key) is not None
+    }
+    digest = hashlib.sha256(
+        json.dumps(prompt_input, ensure_ascii=False, sort_keys=True).encode("utf-8")
+    ).hexdigest()[:24]
+    return f"production-{digest}"
+
+
+def build_candidate_dataset(
+    cards: Sequence[Mapping[str, Any]], *, source_artifact: str = "",
+) -> Dict[str, Any]:
+    """Wrap production candidates without inventing gold labels."""
+    unreviewed = _labels("unreviewed", "unreviewed", "unreviewed", [], None)
+    rows = []
+    for card in cards:
+        projected = _project_card(card)
+        rows.append({
+            "schema_version": DATASET_SCHEMA_VERSION,
+            "case_id": verifier_case_id(card),
+            "split": "production_candidates",
+            "review_status": "unreviewed",
+            "card": projected,
+            "labels": unreviewed,
+            "provenance": {
+                "kind": "production_candidate",
+                "reviewer": None,
+                "source_artifact": source_artifact,
+            },
+            "tags": [],
+        })
+    dataset = {
+        "schema_version": DATASET_SCHEMA_VERSION,
+        "dataset_id": "vocab-verifier-production-candidates-v1",
+        "description": "Unlabeled production candidates for fail-closed verification.",
+        "prompt_versions": {
+            "sense": SENSE_PROMPT_VERSION,
+            "subtitle_support": SUPPORT_PROMPT_VERSION,
+            "acceptance_policy": ACCEPTANCE_POLICY_VERSION,
+        },
+        "splits": {"production_candidates": rows},
+        "source_policy": {
+            "llm_outputs_are_gold": False,
+            "unreviewed_queues_are_scored": False,
+        },
+    }
+    validate_dataset(dataset)
+    return dataset
 
 
 def _labels(

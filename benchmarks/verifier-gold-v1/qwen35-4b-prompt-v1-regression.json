@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "task": "VOCAB-2.5.4",
+  "model": "mlx-community/Qwen3.5-4B-MLX-4bit",
+  "revision": "32f3e8ecf65426fc3306969496342d504bfa13f3",
+  "prompt_version": 1,
+  "semantic_validation": {
+    "dataset": "benchmarks/verifier-gold-v1/semantic-validation-105.json",
+    "gold_cases": 105,
+    "semantic_positives": 99,
+    "semantic_negatives": 6,
+    "semantic_true_accepts": 59,
+    "semantic_false_accepts": 0,
+    "semantic_accepted_precision": 1.0,
+    "semantic_positive_coverage": 0.59596,
+    "abstentions": 46,
+    "option_order_unstable": 12,
+    "invalid_outputs": 0
+  },
+  "episodes_1_through_10": {
+    "requested_cards": 200,
+    "usable_cards": 138,
+    "candidate_word_senses": 1500,
+    "candidate_occurrences": 7687,
+    "verifier_decisions": 460,
+    "verifier_accepts": 140,
+    "scheduled_accepts": 138,
+    "unknown_progression_passed": true,
+    "unique_sentences": true,
+    "unique_lemmas": 134,
+    "lemma_diversity": 0.971014,
+    "katakana_targets": 4,
+    "katakana_ratio": 0.028986,
+    "episodes_represented": 10,
+    "peak_memory_gb": 3.188,
+    "cleanup_verified": true
+  },
+  "known_review_findings": {
+    "fixed_or_replaced": [68, 69, 78],
+    "not_fixed_by_text_verifier": [40, 56]
+  },
+  "decision": "fail_closed",
+  "decision_reason": "The universal constrained verifier had zero known semantic false accepts but only produced 138 of 200 requested cards after full alternative-sentence search. Keep the frozen baseline as production default. Next evaluate a calibrated risk router that requires model review only for semantically risky cards; audio and duplicate-learning-unit gates remain independent requirements.",
+  "resource_policy": {
+    "sequential_inference_only": true,
+    "default_memory_limit_gb": 4.0,
+    "hard_memory_ceiling_gb": 6.0
+  }
+}

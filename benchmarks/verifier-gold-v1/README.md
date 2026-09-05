@@ -53,3 +53,48 @@ interval, coverage, abstentions, option-order instability, invalid outputs,
 throughput, and peak memory. It refuses to claim the 99.5% production precision
 target unless at least 600 gold cases were accepted and the confidence interval's
 lower bound clears the target.
+
+## Provisional 4B semantic validation
+
+`semantic-validation-105.json` freezes all 105 currently labeled cases as one
+semantic-validation cohort: 99 semantic positives and six semantic negatives.
+It includes the reported contextual-sense failures and clean counterexamples,
+while audio, duplicate-sentence, and curriculum-accounting defects remain the
+responsibility of their dedicated gates.
+
+Qwen3.5 4B MLX 4-bit prompt v1 accepted 59 semantic positives and no semantic
+negatives. Semantic accepted precision was therefore 1.0 on this cohort, with
+59.6% positive coverage and 46 abstentions. The run peaked at 3.171 GiB under
+the 4 GiB guard and cleaned up successfully. This is enough to advance the
+configuration to an end-to-end deck regression, but not enough to claim the
+repository's 99.5% production precision target: only 59 gold cases were
+accepted, far below the required 600.
+
+The ordinary production-label metric reports four false accepts because those
+four cases are non-text defects. They are deliberately excluded from the
+semantic false-accept count; treating them as text-verifier failures would hide
+which independent guardrail still needs work.
+
+## Episodes 1–10 regression decision
+
+The end-to-end experiment searched 7,687 ranked sentence occurrences for 1,500
+word-senses. Each word-sense advanced to its next easiest sentence after a
+rejection and discarded its remaining alternatives after acceptance. Unknown
+word counts remained hard limits; relative unknown difficulty was changed from
+an exclusion to a sorting preference after the hard rule caused a curriculum
+dead end.
+
+The verifier made 460 decisions, accepted 140 occurrences, and scheduled 138
+unique cards. The result passed unknown-word progression, contained no duplicate
+sentences, had 97.1% lemma diversity, limited katakana targets to 2.9%, and
+represented all ten episodes. It also removed or replaced reported cards 68,
+69, and 78. It did not solve the duplicate-learning-unit issue on card 40 or the
+audio issue on card 56, which belong to separate gates.
+
+The decision is **fail closed**: 138 usable cards is below the requested 200, so
+the universal verifier is not adopted and the frozen baseline remains the
+production default. The next experiment should calibrate a risk router that
+allows deterministic clean cards through while requiring constrained model
+review for ambiguous sense, expression, or subtitle-alignment cases. Exact
+metrics and the pinned model revision are recorded in
+`qwen35-4b-prompt-v1-regression.json`.

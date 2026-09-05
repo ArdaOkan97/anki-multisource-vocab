@@ -8,7 +8,7 @@ from pathlib import Path
 import random
 import re
 import time
-from typing import Any, Dict, List, Mapping, Optional, Protocol, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Protocol, Sequence, Tuple
 
 from .database import canonical_sense_key
 from .dictionary import JMDictResolver
@@ -220,6 +220,15 @@ def run_constrained_benchmark(
             continue
         options = sense_options(card, resolver)
         expected = str(card.get("sense_key") or "")
+        if len(options) + 1 > len(_LABELS):
+            records.append({
+                "audit_position": position,
+                "teacher_accepted": bool(teacher[position]),
+                "accepted": False,
+                "reason": "too_many_sense_options",
+            })
+            counters["abstained"] += 1
+            continue
         if expected not in {option["sense_key"] for option in options}:
             records.append({
                 "audit_position": position,
@@ -405,6 +414,136 @@ def run_constrained_dataset(
         },
         "inference": dict(inference),
         "records": records,
+    }
+
+
+def run_constrained_curriculum(
+    cards: Sequence[Mapping[str, Any]], reviewer: LabelReviewer, *,
+    limit: int = 200, frontier_size: int = 100, max_rounds: int = 100,
+    prompt_version: int = SENSE_PROMPT_VERSION,
+    resolver: Optional[JMDictResolver] = None,
+    harder_unknown_tolerance: Optional[float] = 2.0,
+    initial_validation: Optional[Mapping[str, Any]] = None,
+    initial_predictions: Optional[Mapping[str, Any]] = None,
+    checkpoint: Optional[Callable[[Mapping[str, Any]], None]] = None,
+) -> Dict[str, Any]:
+    """Iteratively verify only teachable frontiers and build a curriculum."""
+    from .gold_benchmark import build_candidate_dataset
+    from .validation import (
+        ConstrainedPredictionValidator, DeterministicCardValidator,
+        UnanimousCardValidator, merge_validation_reports,
+        plan_review_frontier, select_validated_curriculum, validate_cards,
+    )
+
+    started = time.perf_counter()
+    validation: Dict[str, Any] = dict(initial_validation or {
+        "accepted": [], "rejected": [], "abstained": [],
+        "summary": {"accepted": 0, "rejected": 0, "abstained": 0},
+    })
+    selection: Dict[str, Any] = select_validated_curriculum(
+        cards, validation, frontier_size=frontier_size, limit=limit,
+        harder_unknown_tolerance=harder_unknown_tolerance,
+    )
+    all_predictions: List[Dict[str, Any]] = [
+        dict(row) for row in (initial_predictions or {}).get("records", [])
+    ]
+    initial_evaluated = len(all_predictions)
+    round_summaries: List[Dict[str, Any]] = []
+    peak_memory = 0.0
+    for round_number in range(1, max_rounds + 1):
+        frontier = plan_review_frontier(
+            cards,
+            selected_cards=selection["accepted"],
+            validation_report=validation,
+            limit=max(40, limit - len(selection["accepted"])),
+            frontier_size=frontier_size,
+            harder_unknown_tolerance=harder_unknown_tolerance,
+        )
+        frontier_cards = list(frontier["cards"])
+        if not frontier_cards:
+            break
+        dataset = build_candidate_dataset(frontier_cards)
+        predictions = run_constrained_dataset(
+            dataset, reviewer, prompt_version=prompt_version,
+            resolver=resolver,
+        )
+        current = validate_cards(
+            frontier_cards,
+            UnanimousCardValidator([
+                DeterministicCardValidator(),
+                ConstrainedPredictionValidator(dataset, predictions),
+            ]),
+        )
+        validation = merge_validation_reports(validation, current)
+        selection = select_validated_curriculum(
+            cards, validation, frontier_size=frontier_size, limit=limit,
+            harder_unknown_tolerance=harder_unknown_tolerance,
+        )
+        all_predictions.extend(predictions["records"])
+        peak_memory = max(
+            peak_memory, float(predictions["summary"].get("peak_memory_gb") or 0)
+        )
+        round_summaries.append({
+            "round": round_number,
+            "planned": len(frontier_cards),
+            "verified_accepted": current["summary"]["accepted"],
+            "curriculum_accepted": selection["summary"]["accepted"],
+        })
+        if checkpoint is not None:
+            checkpoint({
+                "selection": selection,
+                "validation": validation,
+                "predictions": {
+                    "schema_version": 1,
+                    "model": reviewer.model_name,
+                    "prompt_versions": {
+                        "sense": prompt_version,
+                        "subtitle_support": prompt_version,
+                        "acceptance_policy": 1,
+                    },
+                    "summary": {
+                        "evaluated": len(all_predictions),
+                        "peak_memory_gb": round(peak_memory, 3),
+                        "rounds": len(round_summaries),
+                        "cleanup_verified": False,
+                    },
+                    "records": all_predictions,
+                },
+                "rounds": round_summaries,
+            })
+        if bool(selection["summary"].get("complete")):
+            break
+    elapsed = time.perf_counter() - started
+    evaluated = len(all_predictions)
+    session_evaluated = evaluated - initial_evaluated
+    return {
+        "selection": selection,
+        "validation": validation,
+        "predictions": {
+            "schema_version": 1,
+            "model": reviewer.model_name,
+            "prompt_versions": {
+                "sense": prompt_version,
+                "subtitle_support": prompt_version,
+                "acceptance_policy": 1,
+            },
+            "summary": {
+                "evaluated": evaluated,
+                "session_evaluated": session_evaluated,
+                "accepted": validation["summary"]["accepted"],
+                "abstained_or_rejected": (
+                    validation["summary"]["abstained"]
+                    + validation["summary"]["rejected"]
+                ),
+                "cards_per_second": (
+                    round(session_evaluated / elapsed, 3) if elapsed else None
+                ),
+                "peak_memory_gb": round(peak_memory, 3),
+                "rounds": len(round_summaries),
+            },
+            "records": all_predictions,
+        },
+        "rounds": round_summaries,
     }
 
 

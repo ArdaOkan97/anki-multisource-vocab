@@ -93,6 +93,21 @@ class ComparisonTest(unittest.TestCase):
         self.assertEqual([item["status"] for item in findings], ["changed", "unchanged", "removed"])
         self.assertTrue(findings[0]["manual_confirmation_required"])
 
+    def test_reports_deck_diversity_duplicates_and_episode_coverage(self):
+        first = card("a::s1", 1, lemma="テレビ", episode=1, sentence_id=10)
+        second = card("b::s1", 2, lemma="見る", episode=2, sentence_id=10)
+
+        quality = compare_card_sets([first, second], [first, second])["checks"][
+            "deck_quality"
+        ]
+
+        self.assertFalse(quality["unique_sentences"])
+        self.assertEqual(quality["duplicate_sentences"][0]["positions"], [1, 2])
+        self.assertEqual(quality["unique_lemmas"], 2)
+        self.assertEqual(quality["katakana_targets"], 1)
+        self.assertEqual(quality["katakana_ratio"], 0.5)
+        self.assertEqual(quality["episode_counts"], {"1": 1, "2": 1})
+
     def test_loads_array_or_selection_and_writes_both_reports(self):
         cards = [card("a::s1", 1)]
         report = compare_card_sets(cards, cards)

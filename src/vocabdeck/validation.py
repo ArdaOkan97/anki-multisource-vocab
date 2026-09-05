@@ -231,6 +231,42 @@ class RecordedReviewValidator:
         )
 
 
+class ConstrainedPredictionValidator:
+    """Use fingerprinted constrained-verifier output as a fail-closed stage."""
+
+    name = "llm:constrained_verifier"
+
+    def __init__(
+        self, dataset: Mapping[str, Any], predictions: Mapping[str, Any],
+    ) -> None:
+        from .gold_benchmark import iter_cases, validate_dataset
+
+        validate_dataset(dataset)
+        if predictions.get("prompt_versions") != dataset.get("prompt_versions"):
+            raise ValueError("prediction prompt/rule versions do not match the dataset")
+        expected_ids = {str(case["case_id"]) for case in iter_cases(dataset)}
+        self._predictions = {
+            str(row.get("case_id")): dict(row)
+            for row in predictions.get("records", [])
+            if str(row.get("case_id")) in expected_ids
+        }
+
+    def validate(self, card: Mapping[str, Any]) -> ValidationResult:
+        from .gold_benchmark import verifier_case_id
+
+        prediction = self._predictions.get(verifier_case_id(card))
+        if prediction is None:
+            return ValidationResult(
+                self.name, "abstained", ("missing_or_stale_constrained_review",)
+            )
+        if bool(prediction.get("accepted")):
+            return ValidationResult(self.name, "accepted", ())
+        reason = str(prediction.get("reason") or "invalid_output")
+        if reason in {"different_sense", "subtitle_not_supported"}:
+            return ValidationResult(self.name, "rejected", (reason,))
+        return ValidationResult(self.name, "abstained", (reason,))
+
+
 class UnanimousCardValidator:
     """Accept only when every independent validator explicitly accepts."""
 
@@ -289,6 +325,29 @@ def write_validation_report(report: Mapping[str, Any], output: Path) -> Path:
     return output
 
 
+def merge_validation_reports(
+    existing: Mapping[str, Any], current: Mapping[str, Any],
+) -> Dict[str, Any]:
+    """Merge resumable decisions by audit position; current decisions win."""
+    decisions: Dict[int, Dict[str, Any]] = {}
+    for report in (existing, current):
+        for status in VALIDATION_STATUSES:
+            for item in report.get(status, []):
+                materialized = dict(item)
+                materialized["decision"] = dict(item["decision"])
+                decisions[int(item["audit_position"])] = materialized
+    groups: Dict[str, List[Dict[str, Any]]] = {
+        "accepted": [], "rejected": [], "abstained": [],
+    }
+    for position in sorted(decisions):
+        item = decisions[position]
+        groups[str(item["decision"]["status"])].append(item)
+    return {
+        **groups,
+        "summary": {status: len(rows) for status, rows in groups.items()},
+    }
+
+
 def plan_review_frontier(
     cards: Sequence[Mapping[str, Any]],
     *,
@@ -296,12 +355,13 @@ def plan_review_frontier(
     reviews_by_pass: Optional[
         Mapping[str, Sequence[Mapping[str, Any]]]
     ] = None,
+    validation_report: Optional[Mapping[str, Any]] = None,
     limit: int = 40,
     frontier_size: int = 100,
     zero_unknown_through: int = 20,
     one_unknown_through: int = 200,
     later_unknown_limit: int = 2,
-    harder_unknown_tolerance: float = 2.0,
+    harder_unknown_tolerance: Optional[float] = 2.0,
 ) -> Dict[str, Any]:
     """Choose currently teachable occurrences that still need model review."""
     from .progression import allowed_unknown_context_words
@@ -317,6 +377,11 @@ def plan_review_frontier(
             review_pass, reviews_by_pass.get(review_pass, ())
         )
         for review_pass in review_passes
+    }
+    constrained_decisions = {
+        int(item["audit_position"]): dict(item["decision"])
+        for status in VALIDATION_STATUSES
+        for item in (validation_report or {}).get(status, [])
     }
     grouped: Dict[int, List[Mapping[str, Any]]] = {}
     for card in cards:
@@ -388,33 +453,42 @@ def plan_review_frontier(
                 if len(unknown_ids) > allowance:
                     continue
                 target_difficulty = lexical_difficulties[target_id]
-                if any(
-                    value not in lexical_difficulties
-                    or lexical_difficulties[value]
-                    > target_difficulty + harder_unknown_tolerance
+                if any(value not in lexical_difficulties for value in unknown_ids):
+                    continue
+                hardest_gap = max((
+                    lexical_difficulties[value] - target_difficulty
                     for value in unknown_ids
+                ), default=0.0)
+                if (
+                    harder_unknown_tolerance is not None
+                    and hardest_gap > harder_unknown_tolerance
                 ):
                     continue
-                review_results = {
-                    review_pass: validator.validate(card)
-                    for review_pass, validator in validators.items()
-                }
-                if any(
-                    result.status == "rejected" or (
-                        result.status == "abstained"
-                        and not all(
-                            reason.startswith("missing_")
-                            and reason.endswith("_review")
-                            for reason in result.reason_codes
+                if validation_report is not None:
+                    if int(card["audit_position"]) in constrained_decisions:
+                        continue
+                    missing_passes = ["constrained_verifier"]
+                else:
+                    review_results = {
+                        review_pass: validator.validate(card)
+                        for review_pass, validator in validators.items()
+                    }
+                    if any(
+                        result.status == "rejected" or (
+                            result.status == "abstained"
+                            and not all(
+                                reason.startswith("missing_")
+                                and reason.endswith("_review")
+                                for reason in result.reason_codes
+                            )
                         )
-                    )
-                    for result in review_results.values()
-                ):
-                    continue
-                missing_passes = [
-                    review_pass for review_pass, result in review_results.items()
-                    if result.status != "accepted"
-                ]
+                        for result in review_results.values()
+                    ):
+                        continue
+                    missing_passes = [
+                        review_pass for review_pass, result in review_results.items()
+                        if result.status != "accepted"
+                    ]
                 if not missing_passes:
                     # It is already fully reviewed; the main selector, not this
                     # planner, owns materializing it into the teaching sequence.
@@ -425,7 +499,8 @@ def plan_review_frontier(
                     )
                 )
                 planned.append((
-                    len(unknown_ids), curriculum_position, example_value,
+                    len(unknown_ids), max(0.0, hardest_gap),
+                    curriculum_position, example_value,
                     int(card.get("candidate_position") or 1), sentence_id,
                     card, missing_passes, sorted(unknown_ids),
                 ))
@@ -434,16 +509,18 @@ def plan_review_frontier(
     frontier = remaining_positions[:frontier_size]
     planned = candidates_in(frontier)
     frontier_expanded = False
-    if not planned and len(frontier) < len(remaining_positions):
-        planned = candidates_in(remaining_positions[frontier_size:])
-        frontier_expanded = bool(planned)
+    if len(planned) < limit and len(frontier) < len(remaining_positions):
+        overflow = candidates_in(remaining_positions[frontier_size:])
+        if overflow:
+            planned.extend(overflow)
+            frontier_expanded = True
     planned.sort(key=lambda item: item[:5])
     # Review one occurrence per target in a round. Rejected occurrences can be
     # replaced by the next candidate in the following resumable round.
     chosen = []
     seen_targets = set()
     for plan in planned:
-        card = plan[5]
+        card = plan[6]
         target_id = _learning_unit_key(card)
         if target_id in seen_targets:
             continue
@@ -451,8 +528,8 @@ def plan_review_frontier(
         materialized["review_planning"] = {
             "teaching_position": teaching_position,
             "unknown_allowance": allowance,
-            "unknown_context_learning_unit_keys": plan[7],
-            "missing_review_passes": plan[6],
+            "unknown_context_learning_unit_keys": plan[8],
+            "missing_review_passes": plan[7],
             "frontier_expanded": frontier_expanded,
         }
         chosen.append(materialized)
@@ -481,7 +558,7 @@ def select_validated_curriculum(
     zero_unknown_through: int = 20,
     one_unknown_through: int = 200,
     later_unknown_limit: int = 2,
-    harder_unknown_tolerance: float = 2.0,
+    harder_unknown_tolerance: Optional[float] = 2.0,
     limit: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Schedule approved cards from a lexical frontier and sentence dependencies.
@@ -565,9 +642,16 @@ def select_validated_curriculum(
                 target_difficulty = lexical_difficulties[target_id]
                 if any(
                     lexeme_id not in lexical_difficulties
-                    or lexical_difficulties[lexeme_id]
-                    > target_difficulty + harder_unknown_tolerance
                     for lexeme_id in unknown_ids
+                ):
+                    continue
+                hardest_gap = max((
+                    lexical_difficulties[lexeme_id] - target_difficulty
+                    for lexeme_id in unknown_ids
+                ), default=0.0)
+                if (
+                    harder_unknown_tolerance is not None
+                    and hardest_gap > harder_unknown_tolerance
                 ):
                     continue
                 example_value = float(
@@ -576,7 +660,8 @@ def select_validated_curriculum(
                     )
                 )
                 plans.append((
-                    len(unknown_ids), curriculum_position, example_value,
+                    len(unknown_ids), max(0.0, hardest_gap),
+                    curriculum_position, example_value,
                     int(card.get("candidate_position") or 1), sentence_id,
                     card, decision, sorted(unknown_ids), allowance,
                 ))
@@ -595,7 +680,7 @@ def select_validated_curriculum(
         if plan is None:
             break
         (
-            _, curriculum_position, _, _, _, card, decision, unknown_ids,
+            _, _, curriculum_position, _, _, _, card, decision, unknown_ids,
             allowance,
         ) = plan
         materialized = dict(card)
@@ -610,6 +695,10 @@ def select_validated_curriculum(
             "frontier_size": frontier_size,
             "frontier_expanded": expanded,
         }
+        # Preserve the stable top-level fields used by baseline comparison and
+        # Anki metadata, alongside the richer scheduling explanation.
+        materialized["unknown_context_words"] = len(unknown_ids)
+        materialized["unknown_context_learning_unit_keys"] = unknown_ids
         progression = dict(materialized.get("example_progression") or {})
         progression["position"] = teaching_position
         progression["unknown_other_words"] = len(unknown_ids)
